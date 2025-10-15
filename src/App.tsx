@@ -11,6 +11,7 @@ import Catalog from "./pages/Catalog";
 import Admin from "./pages/Admin";
 import Professor from "./pages/Professor";
 import Lia from "./pages/Lia";
+import Navbar from "./components/Navbar";
 
 const queryClient = new QueryClient();
 
@@ -20,6 +21,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <Navbar />
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
