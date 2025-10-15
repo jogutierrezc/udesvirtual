@@ -103,7 +103,7 @@ export const LiaChat = () => {
                       : "bg-muted text-foreground"
                   }`}
                 >
-                  <p className="text-sm">{message.content}</p>
+                  <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
                 </div>
               </div>
             ))}

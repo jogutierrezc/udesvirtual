@@ -4,15 +4,30 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { LiaChat } from "@/components/LiaChat";
-import { Search, Calendar, Users, MapPin, Video, BookOpen } from "lucide-react";
+import { Search, Calendar, Users, MapPin, Video, BookOpen, UserPlus, MessageSquare } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 
 const Catalog = () => {
+  const { toast } = useToast();
   const [classes, setClasses] = useState<any[]>([]);
   const [teachers, setTeachers] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
+  const [selectedClass, setSelectedClass] = useState<any>(null);
+  const [registering, setRegistering] = useState(false);
+  const [registrationForm, setRegistrationForm] = useState({
+    full_name: "",
+    phone: "",
+    email: "",
+    institution: "",
+    country: "",
+    participant_type: "",
+  });
 
   useEffect(() => {
     loadData();
@@ -61,6 +76,52 @@ const Catalog = () => {
       t.interests.some((i: string) => i.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRegistering(true);
+
+    try {
+      const { error } = await supabase.from("class_registrations").insert({
+        class_id: selectedClass.id,
+        ...registrationForm,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "¡Registro Exitoso! 🎉",
+        description: selectedClass.virtual_room_link 
+          ? "Se ha registrado correctamente. Aquí está el link de acceso a la clase virtual."
+          : "Se ha registrado correctamente.",
+      });
+
+      // Show virtual room link in alert
+      if (selectedClass.virtual_room_link) {
+        setTimeout(() => {
+          alert(`Link de acceso a la clase virtual:\n\n${selectedClass.virtual_room_link}\n\n¡Guarda este link para acceder a la clase!`);
+        }, 500);
+      }
+
+      setRegistrationForm({
+        full_name: "",
+        phone: "",
+        email: "",
+        institution: "",
+        country: "",
+        participant_type: "",
+      });
+      setSelectedClass(null);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setRegistering(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -70,9 +131,17 @@ const Catalog = () => {
             <h1 className="text-2xl font-bold">Catálogo Académico</h1>
             <p className="text-white/80">Clases Espejo, MasterClass y Docentes</p>
           </div>
-          <Link to="/">
-            <Button variant="secondary">Inicio</Button>
-          </Link>
+          <div className="flex gap-2">
+            <Link to="/lia">
+              <Button variant="secondary">
+                <MessageSquare className="h-4 w-4 mr-2" />
+                Hablar con LIA
+              </Button>
+            </Link>
+            <Link to="/">
+              <Button variant="secondary">Inicio</Button>
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -149,6 +218,89 @@ const Catalog = () => {
                     <Badge variant="outline">{classItem.knowledge_area}</Badge>
                     <Badge variant="outline">{classItem.profession}</Badge>
                   </div>
+
+                  <Dialog open={selectedClass?.id === classItem.id} onOpenChange={(open) => !open && setSelectedClass(null)}>
+                    <DialogTrigger asChild>
+                      <Button className="w-full mt-2" onClick={() => setSelectedClass(classItem)}>
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        Registrarse
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Registro para: {classItem.title}</DialogTitle>
+                        <DialogDescription>Complete el formulario para registrarse en esta clase</DialogDescription>
+                      </DialogHeader>
+                      <form onSubmit={handleRegister} className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="full_name">Nombre Completo *</Label>
+                          <Input
+                            id="full_name"
+                            value={registrationForm.full_name}
+                            onChange={(e) => setRegistrationForm({ ...registrationForm, full_name: e.target.value })}
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="phone">Teléfono *</Label>
+                          <Input
+                            id="phone"
+                            value={registrationForm.phone}
+                            onChange={(e) => setRegistrationForm({ ...registrationForm, phone: e.target.value })}
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="email">Correo Electrónico *</Label>
+                          <Input
+                            id="email"
+                            type="email"
+                            value={registrationForm.email}
+                            onChange={(e) => setRegistrationForm({ ...registrationForm, email: e.target.value })}
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="institution">Institución de Origen *</Label>
+                          <Input
+                            id="institution"
+                            value={registrationForm.institution}
+                            onChange={(e) => setRegistrationForm({ ...registrationForm, institution: e.target.value })}
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="country">País *</Label>
+                          <Input
+                            id="country"
+                            value={registrationForm.country}
+                            onChange={(e) => setRegistrationForm({ ...registrationForm, country: e.target.value })}
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="participant_type">Tipo de Participante *</Label>
+                          <Select
+                            value={registrationForm.participant_type}
+                            onValueChange={(value) => setRegistrationForm({ ...registrationForm, participant_type: value })}
+                            required
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Seleccione..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Estudiante">Estudiante</SelectItem>
+                              <SelectItem value="Docente">Docente</SelectItem>
+                              <SelectItem value="Otro">Otro</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <Button type="submit" className="w-full" disabled={registering}>
+                          {registering ? "Registrando..." : "Confirmar Registro"}
+                        </Button>
+                      </form>
+                    </DialogContent>
+                  </Dialog>
                 </CardContent>
               </Card>
             ))}

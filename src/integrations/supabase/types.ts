@@ -14,6 +14,53 @@ export type Database = {
   }
   public: {
     Tables: {
+      class_registrations: {
+        Row: {
+          class_id: string
+          country: string
+          created_at: string | null
+          email: string
+          full_name: string
+          id: string
+          institution: string
+          participant_type: string
+          phone: string
+          updated_at: string | null
+        }
+        Insert: {
+          class_id: string
+          country: string
+          created_at?: string | null
+          email: string
+          full_name: string
+          id?: string
+          institution: string
+          participant_type: string
+          phone: string
+          updated_at?: string | null
+        }
+        Update: {
+          class_id?: string
+          country?: string
+          created_at?: string | null
+          email?: string
+          full_name?: string
+          id?: string
+          institution?: string
+          participant_type?: string
+          phone?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_registrations_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       classes: {
         Row: {
           allied_professor: string
