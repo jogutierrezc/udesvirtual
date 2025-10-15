@@ -4,9 +4,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, CheckCircle, XCircle, LogOut, Users, BookOpen, GraduationCap } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, LogOut, Users, BookOpen, GraduationCap, PlusCircle } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
 
 type Class = Tables<"classes">;
@@ -17,9 +22,27 @@ const Admin = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [userId, setUserId] = useState<string>("");
+  const [submitting, setSubmitting] = useState(false);
   const [pendingClasses, setPendingClasses] = useState<Class[]>([]);
   const [pendingTeachers, setPendingTeachers] = useState<Teacher[]>([]);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
+
+  // Class form state
+  const [classForm, setClassForm] = useState({
+    title: "",
+    capacity: "",
+    hours: "",
+    allied_professor: "",
+    description: "",
+    virtual_room_required: false,
+    virtual_room_link: "",
+    campus: "",
+    class_date: "",
+    class_type: "mirror" as "mirror" | "masterclass",
+    knowledge_area: "",
+    profession: "",
+  });
 
   useEffect(() => {
     checkAuth();
@@ -32,6 +55,8 @@ const Admin = () => {
       navigate("/auth");
       return;
     }
+
+    setUserId(session.user.id);
 
     const { data: role } = await supabase
       .from("user_roles")
@@ -115,6 +140,53 @@ const Admin = () => {
     }
   };
 
+  const handleCreateClass = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+
+    try {
+      const { error } = await supabase.from("classes").insert({
+        ...classForm,
+        capacity: parseInt(classForm.capacity),
+        hours: parseInt(classForm.hours),
+        created_by: userId,
+        status: "approved", // Admin can approve directly
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Éxito",
+        description: "Clase creada y aprobada automáticamente.",
+      });
+
+      setClassForm({
+        title: "",
+        capacity: "",
+        hours: "",
+        allied_professor: "",
+        description: "",
+        virtual_room_required: false,
+        virtual_room_link: "",
+        campus: "",
+        class_date: "",
+        class_type: "mirror",
+        knowledge_area: "",
+        profession: "",
+      });
+
+      loadData();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate("/");
@@ -144,21 +216,184 @@ const Admin = () => {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <Tabs defaultValue="classes" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+        <Tabs defaultValue="create" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="create">
+              <PlusCircle className="h-4 w-4 mr-2" />
+              Crear Clase
+            </TabsTrigger>
             <TabsTrigger value="classes">
               <BookOpen className="h-4 w-4 mr-2" />
-              Clases Pendientes ({pendingClasses.length})
+              Pendientes ({pendingClasses.length})
             </TabsTrigger>
             <TabsTrigger value="teachers">
               <GraduationCap className="h-4 w-4 mr-2" />
-              Docentes Pendientes ({pendingTeachers.length})
+              Docentes ({pendingTeachers.length})
             </TabsTrigger>
             <TabsTrigger value="registrations">
               <Users className="h-4 w-4 mr-2" />
               Registros ({registrations.length})
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="create">
+            <Card>
+              <CardHeader>
+                <CardTitle>Crear Nueva Clase Espejo / MasterClass</CardTitle>
+                <CardDescription>Las clases creadas por el administrador se aprueban automáticamente</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleCreateClass} className="space-y-4">
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="title">Título de la Clase *</Label>
+                      <Input
+                        id="title"
+                        value={classForm.title}
+                        onChange={(e) => setClassForm({ ...classForm, title: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="class_type">Tipo de Clase *</Label>
+                      <Select
+                        value={classForm.class_type}
+                        onValueChange={(value: "mirror" | "masterclass") =>
+                          setClassForm({ ...classForm, class_type: value })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="mirror">Clase Espejo</SelectItem>
+                          <SelectItem value="masterclass">MasterClass</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="allied_professor">Profesor Aliado *</Label>
+                      <Input
+                        id="allied_professor"
+                        value={classForm.allied_professor}
+                        onChange={(e) => setClassForm({ ...classForm, allied_professor: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="capacity">Capacidad de Estudiantes *</Label>
+                      <Input
+                        id="capacity"
+                        type="number"
+                        value={classForm.capacity}
+                        onChange={(e) => setClassForm({ ...classForm, capacity: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="hours">Número de Horas *</Label>
+                      <Input
+                        id="hours"
+                        type="number"
+                        value={classForm.hours}
+                        onChange={(e) => setClassForm({ ...classForm, hours: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="campus">Campus *</Label>
+                      <Input
+                        id="campus"
+                        value={classForm.campus}
+                        onChange={(e) => setClassForm({ ...classForm, campus: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="class_date">Fecha y Hora *</Label>
+                      <Input
+                        id="class_date"
+                        type="datetime-local"
+                        value={classForm.class_date}
+                        onChange={(e) => setClassForm({ ...classForm, class_date: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="knowledge_area">Área de Conocimiento *</Label>
+                      <Input
+                        id="knowledge_area"
+                        value={classForm.knowledge_area}
+                        onChange={(e) => setClassForm({ ...classForm, knowledge_area: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="profession">Profesión *</Label>
+                      <Input
+                        id="profession"
+                        value={classForm.profession}
+                        onChange={(e) => setClassForm({ ...classForm, profession: e.target.value })}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Descripción *</Label>
+                    <Textarea
+                      id="description"
+                      value={classForm.description}
+                      onChange={(e) => setClassForm({ ...classForm, description: e.target.value })}
+                      required
+                      rows={4}
+                    />
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="virtual_room"
+                      checked={classForm.virtual_room_required}
+                      onCheckedChange={(checked) =>
+                        setClassForm({ ...classForm, virtual_room_required: checked })
+                      }
+                    />
+                    <Label htmlFor="virtual_room">Requiere Sala Virtual</Label>
+                  </div>
+
+                  {classForm.virtual_room_required && (
+                    <div className="space-y-2">
+                      <Label htmlFor="virtual_room_link">Link de Sala Virtual (Teams, Meet, Zoom)</Label>
+                      <Input
+                        id="virtual_room_link"
+                        type="url"
+                        placeholder="https://..."
+                        value={classForm.virtual_room_link}
+                        onChange={(e) => setClassForm({ ...classForm, virtual_room_link: e.target.value })}
+                      />
+                    </div>
+                  )}
+
+                  <Button type="submit" disabled={submitting} className="w-full">
+                    {submitting ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <PlusCircle className="h-4 w-4 mr-2" />
+                    )}
+                    Crear y Publicar Clase
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           <TabsContent value="classes" className="space-y-4">
             {pendingClasses.length === 0 ? (
