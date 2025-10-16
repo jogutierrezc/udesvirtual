@@ -514,11 +514,15 @@ const Admin = () => {
                             )
                             .filter((classId) => classId !== "")
                         )
-                      ).map((classId) => (
-                        <SelectItem key={classId} value={classId}>
-                          {classId}
-                        </SelectItem>
-                      ))}
+                      ).map((classId) => {
+                        const regClass = registrations.find((r: any) => String(r.class_id).trim() === classId);
+                        const courseName = regClass?.classes?.title || classId;
+                        return (
+                          <SelectItem key={classId} value={classId}>
+                            {courseName}
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                 </div>
@@ -541,7 +545,7 @@ const Admin = () => {
                             <td className="border px-2 py-1">{reg.full_name}</td>
                             <td className="border px-2 py-1">{reg.institution}</td>
                             <td className="border px-2 py-1">{reg.country}</td>
-                            <td className="border px-2 py-1">{reg.class_id}</td>
+                            <td className="border px-2 py-1">{reg.classes?.title || reg.class_id}</td>
                           </tr>
                         ))}
                     </tbody>
@@ -550,8 +554,6 @@ const Admin = () => {
               </div>
             )}
           </TabsContent>
-  // ...existing code...
-  // Estado para filtro de clase en registros
 
         </Tabs>
       </div>
