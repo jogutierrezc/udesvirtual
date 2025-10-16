@@ -65,12 +65,20 @@ const Catalog = () => {
     }
   };
 
-  const filteredClasses = classes.filter(
-    (c) =>
-      c.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.knowledge_area.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.profession.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredClasses = classes.filter((c) => {
+    const searchLower = searchTerm.toLowerCase();
+    const areasMatch = Array.isArray(c.knowledge_area) 
+      ? c.knowledge_area.some((area) => area.toLowerCase().includes(searchLower))
+      : c.knowledge_area?.toLowerCase().includes(searchLower);
+    
+    return (
+      c.title.toLowerCase().includes(searchLower) ||
+      areasMatch ||
+      c.profession.toLowerCase().includes(searchLower) ||
+      c.allied_professor?.toLowerCase().includes(searchLower) ||
+      c.allied_institution?.toLowerCase().includes(searchLower)
+    );
+  });
 
   const filteredTeachers = teachers.filter(
     (t) =>
@@ -175,7 +183,10 @@ const Catalog = () => {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <CardTitle className="mb-2">{classItem.title}</CardTitle>
-                      <CardDescription>{classItem.allied_professor}</CardDescription>
+                      <CardDescription>
+                        <strong>Profesor Aliado:</strong> {classItem.allied_professor}
+                        {classItem.allied_institution && ` - ${classItem.allied_institution}`}
+                      </CardDescription>
                     </div>
                     <Badge variant={classItem.class_type === "mirror" ? "default" : "secondary"}>
                       {classItem.class_type === "mirror" ? "Clase Espejo" : "MasterClass"}
@@ -211,7 +222,13 @@ const Catalog = () => {
                     )}
                   </div>
                   <div className="flex flex-wrap gap-2 pt-2">
-                    <Badge variant="outline">{classItem.knowledge_area}</Badge>
+                    {Array.isArray(classItem.knowledge_area) ? (
+                      classItem.knowledge_area.map((area, i) => (
+                        <Badge key={i} variant="outline">{area}</Badge>
+                      ))
+                    ) : (
+                      <Badge variant="outline">{classItem.knowledge_area}</Badge>
+                    )}
                     <Badge variant="outline">{classItem.profession}</Badge>
                   </div>
                   <Dialog open={selectedClass?.id === classItem.id} onOpenChange={(open) => !open && setSelectedClass(null)}>

@@ -9,8 +9,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, LogOut, PlusCircle, BookOpen, GraduationCap } from "lucide-react";
+import { Loader2, LogOut, PlusCircle, BookOpen, GraduationCap, Package } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { TagInput } from "@/components/TagInput";
 
 const Professor = () => {
   const navigate = useNavigate();
@@ -25,13 +26,14 @@ const Professor = () => {
     capacity: "",
     hours: "",
     allied_professor: "",
+    allied_institution: "",
     description: "",
     virtual_room_required: false,
     virtual_room_link: "",
     campus: "",
     class_date: "",
     class_type: "mirror" as "mirror" | "masterclass",
-    knowledge_area: "",
+    knowledge_area: [] as string[],
     profession: "",
   });
 
@@ -44,7 +46,21 @@ const Professor = () => {
     campus: "",
     phone: "",
     email: "",
-    interests: "",
+    interests: [] as string[],
+  });
+
+  // Offering form state
+  const [offeringForm, setOfferingForm] = useState({
+    title: "",
+    description: "",
+    offering_type: "exchange" as "exchange" | "programada",
+    knowledge_area: [] as string[],
+    profession: "",
+    allied_professor: "",
+    allied_institution: "",
+    capacity: "",
+    hours: "",
+    campus: "",
   });
 
   useEffect(() => {
@@ -96,13 +112,14 @@ const Professor = () => {
         capacity: "",
         hours: "",
         allied_professor: "",
+        allied_institution: "",
         description: "",
         virtual_room_required: false,
         virtual_room_link: "",
         campus: "",
         class_date: "",
         class_type: "mirror",
-        knowledge_area: "",
+        knowledge_area: [],
         profession: "",
       });
     } catch (error: any) {
@@ -248,6 +265,16 @@ const Professor = () => {
                     </div>
 
                     <div className="space-y-2">
+                      <Label htmlFor="allied_institution">Institución Aliada (IES) *</Label>
+                      <Input
+                        id="allied_institution"
+                        value={classForm.allied_institution}
+                        onChange={(e) => setClassForm({ ...classForm, allied_institution: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
                       <Label htmlFor="capacity">Capacidad de Estudiantes *</Label>
                       <Input
                         id="capacity"
@@ -291,12 +318,11 @@ const Professor = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="knowledge_area">Área de Conocimiento *</Label>
-                      <Input
-                        id="knowledge_area"
-                        value={classForm.knowledge_area}
-                        onChange={(e) => setClassForm({ ...classForm, knowledge_area: e.target.value })}
-                        required
+                      <Label htmlFor="knowledge_area">Áreas de Conocimiento * (Tags)</Label>
+                      <TagInput
+                        tags={classForm.knowledge_area}
+                        onChange={(tags) => setClassForm({ ...classForm, knowledge_area: tags })}
+                        placeholder="Escribir área y presionar Enter"
                       />
                     </div>
 

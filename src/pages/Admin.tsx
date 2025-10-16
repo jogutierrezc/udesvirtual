@@ -11,12 +11,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, CheckCircle, XCircle, LogOut, Users, BookOpen, GraduationCap, PlusCircle } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, LogOut, Users, BookOpen, GraduationCap, PlusCircle, Package } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
+import { TagInput } from "@/components/TagInput";
 
 type Class = Tables<"classes">;
 type Teacher = Tables<"teachers">;
 type Registration = Tables<"class_registrations">;
+type Offering = Tables<"course_offerings">;
 
 const Admin = () => {
   // Estado para filtro de clase en registros
@@ -29,6 +31,7 @@ const Admin = () => {
   const [pendingClasses, setPendingClasses] = useState<Class[]>([]);
   const [pendingTeachers, setPendingTeachers] = useState<Teacher[]>([]);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
+  const [pendingOfferings, setPendingOfferings] = useState<Offering[]>([]);
 
   // Class form state
   const [classForm, setClassForm] = useState({
@@ -36,14 +39,29 @@ const Admin = () => {
     capacity: "",
     hours: "",
     allied_professor: "",
+    allied_institution: "",
     description: "",
     virtual_room_required: false,
     virtual_room_link: "",
     campus: "",
     class_date: "",
     class_type: "mirror" as "mirror" | "masterclass",
-    knowledge_area: "",
+    knowledge_area: [] as string[],
     profession: "",
+  });
+
+  // Offering form state
+  const [offeringForm, setOfferingForm] = useState({
+    title: "",
+    description: "",
+    offering_type: "exchange" as "exchange" | "programada",
+    knowledge_area: [] as string[],
+    profession: "",
+    allied_professor: "",
+    allied_institution: "",
+    capacity: "",
+    hours: "",
+    campus: "",
   });
 
   useEffect(() => {
@@ -73,15 +91,17 @@ const Admin = () => {
 
   const loadData = async () => {
     try {
-      const [classesRes, teachersRes, regsRes] = await Promise.all([
+      const [classesRes, teachersRes, regsRes, offeringsRes] = await Promise.all([
         supabase.from("classes").select("*").eq("status", "pending").order("created_at", { ascending: false }),
         supabase.from("teachers").select("*").eq("status", "pending").order("created_at", { ascending: false }),
-  supabase.from("class_registrations").select("*, classes(*)").order("created_at", { ascending: false }),
+        supabase.from("class_registrations").select("*, classes(*)").order("created_at", { ascending: false }),
+        supabase.from("course_offerings").select("*").eq("status", "pending").order("created_at", { ascending: false }),
       ]);
 
       setPendingClasses(classesRes.data || []);
       setPendingTeachers(teachersRes.data || []);
       setRegistrations(regsRes.data || []);
+      setPendingOfferings(offeringsRes.data || []);
     } catch (error) {
       console.error("Error loading data:", error);
       toast({
@@ -167,13 +187,14 @@ const Admin = () => {
         capacity: "",
         hours: "",
         allied_professor: "",
+        allied_institution: "",
         description: "",
         virtual_room_required: false,
         virtual_room_link: "",
         campus: "",
         class_date: "",
         class_type: "mirror",
-        knowledge_area: "",
+        knowledge_area: [],
         profession: "",
       });
 
@@ -186,6 +207,30 @@ const Admin = () => {
       });
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const updateOfferingStatus = async (id: string, status: "approved" | "rejected") => {
+    try {
+      const { error } = await supabase
+        .from("course_offerings")
+        .update({ status })
+        .eq("id", id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Éxito",
+        description: `Oferta ${status === "approved" ? "aprobada" : "rechazada"}`,
+      });
+
+      loadData();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -219,10 +264,14 @@ const Admin = () => {
 
       <div className="max-w-7xl mx-auto px-4 py-8">
         <Tabs defaultValue="create" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="create">
               <PlusCircle className="h-4 w-4 mr-2" />
               Crear Clase
+            </TabsTrigger>
+            <TabsTrigger value="offerings">
+              <Package className="h-4 w-4 mr-2" />
+              Ofertas ({pendingOfferings.length})
             </TabsTrigger>
             <TabsTrigger value="classes">
               <BookOpen className="h-4 w-4 mr-2" />
@@ -286,6 +335,16 @@ const Admin = () => {
                     </div>
 
                     <div className="space-y-2">
+                      <Label htmlFor="allied_institution">Institución Aliada (IES) *</Label>
+                      <Input
+                        id="allied_institution"
+                        value={classForm.allied_institution}
+                        onChange={(e) => setClassForm({ ...classForm, allied_institution: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
                       <Label htmlFor="capacity">Capacidad de Estudiantes *</Label>
                       <Input
                         id="capacity"
@@ -329,12 +388,11 @@ const Admin = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="knowledge_area">Área de Conocimiento *</Label>
-                      <Input
-                        id="knowledge_area"
-                        value={classForm.knowledge_area}
-                        onChange={(e) => setClassForm({ ...classForm, knowledge_area: e.target.value })}
-                        required
+                      <Label htmlFor="knowledge_area">Áreas de Conocimiento * (Tags)</Label>
+                      <TagInput
+                        tags={classForm.knowledge_area}
+                        onChange={(tags) => setClassForm({ ...classForm, knowledge_area: tags })}
+                        placeholder="Escribir área y presionar Enter"
                       />
                     </div>
 
@@ -397,6 +455,58 @@ const Admin = () => {
             </Card>
           </TabsContent>
 
+          <TabsContent value="offerings" className="space-y-4">
+            {pendingOfferings.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">No hay ofertas pendientes</p>
+            ) : (
+              pendingOfferings.map((offering) => (
+                <Card key={offering.id}>
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <CardTitle>{offering.title}</CardTitle>
+                        <CardDescription>
+                          {offering.allied_professor && `Por: ${offering.allied_professor}`}
+                          {offering.allied_institution && ` - ${offering.allied_institution}`}
+                        </CardDescription>
+                      </div>
+                      <Badge variant={offering.offering_type === "exchange" ? "default" : "secondary"}>
+                        {offering.offering_type === "exchange" ? "Exchange" : "Programada"}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <p className="text-sm">{offering.description}</p>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <p><strong>Capacidad:</strong> {offering.capacity}</p>
+                      <p><strong>Horas:</strong> {offering.hours}</p>
+                      <p><strong>Campus:</strong> {offering.campus}</p>
+                      <p><strong>Profesión:</strong> {offering.profession}</p>
+                    </div>
+                    {offering.knowledge_area && offering.knowledge_area.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        <strong className="text-sm">Áreas:</strong>
+                        {offering.knowledge_area.map((area, i) => (
+                          <Badge key={i} variant="outline">{area}</Badge>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex gap-2 pt-2">
+                      <Button onClick={() => updateOfferingStatus(offering.id, "approved")} className="flex-1">
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Aprobar
+                      </Button>
+                      <Button onClick={() => updateOfferingStatus(offering.id, "rejected")} variant="destructive" className="flex-1">
+                        <XCircle className="h-4 w-4 mr-2" />
+                        Rechazar
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </TabsContent>
+
           <TabsContent value="classes" className="space-y-4">
             {pendingClasses.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">No hay clases pendientes</p>
@@ -421,7 +531,7 @@ const Admin = () => {
                       <p><strong>Horas:</strong> {classItem.hours}</p>
                       <p><strong>Campus:</strong> {classItem.campus}</p>
                       <p><strong>Fecha:</strong> {new Date(classItem.class_date).toLocaleDateString("es-ES")}</p>
-                      <p><strong>Área:</strong> {classItem.knowledge_area}</p>
+                      <p><strong>Área:</strong> {Array.isArray(classItem.knowledge_area) ? classItem.knowledge_area.join(", ") : classItem.knowledge_area}</p>
                       <p><strong>Profesión:</strong> {classItem.profession}</p>
                     </div>
                     {classItem.virtual_room_required && (
@@ -516,7 +626,7 @@ const Admin = () => {
                         )
                       ).map((classId) => {
                         const regClass = registrations.find((r: any) => String(r.class_id).trim() === classId);
-                        const courseName = regClass?.classes?.title || classId;
+                        const courseName = (regClass as any)?.classes?.title || classId;
                         return (
                           <SelectItem key={classId} value={classId}>
                             {courseName}

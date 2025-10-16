@@ -63,6 +63,7 @@ export type Database = {
       }
       classes: {
         Row: {
+          allied_institution: string | null
           allied_professor: string
           campus: string
           capacity: number
@@ -73,7 +74,7 @@ export type Database = {
           description: string
           hours: number
           id: string
-          knowledge_area: string
+          knowledge_area: string[]
           profession: string
           status: Database["public"]["Enums"]["request_status"] | null
           title: string
@@ -82,6 +83,7 @@ export type Database = {
           virtual_room_required: boolean | null
         }
         Insert: {
+          allied_institution?: string | null
           allied_professor: string
           campus: string
           capacity: number
@@ -92,7 +94,7 @@ export type Database = {
           description: string
           hours: number
           id?: string
-          knowledge_area: string
+          knowledge_area?: string[]
           profession: string
           status?: Database["public"]["Enums"]["request_status"] | null
           title: string
@@ -101,6 +103,7 @@ export type Database = {
           virtual_room_required?: boolean | null
         }
         Update: {
+          allied_institution?: string | null
           allied_professor?: string
           campus?: string
           capacity?: number
@@ -111,7 +114,7 @@ export type Database = {
           description?: string
           hours?: number
           id?: string
-          knowledge_area?: string
+          knowledge_area?: string[]
           profession?: string
           status?: Database["public"]["Enums"]["request_status"] | null
           title?: string
@@ -128,6 +131,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      course_offerings: {
+        Row: {
+          allied_institution: string | null
+          allied_professor: string | null
+          campus: string
+          capacity: number
+          created_at: string | null
+          created_by: string
+          description: string
+          hours: number
+          id: string
+          knowledge_area: string[]
+          offering_type: string
+          profession: string
+          status: Database["public"]["Enums"]["request_status"] | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          allied_institution?: string | null
+          allied_professor?: string | null
+          campus: string
+          capacity: number
+          created_at?: string | null
+          created_by: string
+          description: string
+          hours: number
+          id?: string
+          knowledge_area?: string[]
+          offering_type: string
+          profession: string
+          status?: Database["public"]["Enums"]["request_status"] | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          allied_institution?: string | null
+          allied_professor?: string | null
+          campus?: string
+          capacity?: number
+          created_at?: string | null
+          created_by?: string
+          description?: string
+          hours?: number
+          id?: string
+          knowledge_area?: string[]
+          offering_type?: string
+          profession?: string
+          status?: Database["public"]["Enums"]["request_status"] | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
