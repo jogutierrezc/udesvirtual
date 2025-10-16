@@ -148,6 +148,10 @@ export type Database = {
           profession: string
           status: Database["public"]["Enums"]["request_status"] | null
           title: string
+          udes_professor_email: string | null
+          udes_professor_name: string | null
+          udes_professor_phone: string | null
+          udes_professor_program: string | null
           updated_at: string | null
         }
         Insert: {
@@ -165,6 +169,10 @@ export type Database = {
           profession: string
           status?: Database["public"]["Enums"]["request_status"] | null
           title: string
+          udes_professor_email?: string | null
+          udes_professor_name?: string | null
+          udes_professor_phone?: string | null
+          udes_professor_program?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -182,6 +190,10 @@ export type Database = {
           profession?: string
           status?: Database["public"]["Enums"]["request_status"] | null
           title?: string
+          udes_professor_email?: string | null
+          udes_professor_name?: string | null
+          udes_professor_phone?: string | null
+          udes_professor_program?: string | null
           updated_at?: string | null
         }
         Relationships: []

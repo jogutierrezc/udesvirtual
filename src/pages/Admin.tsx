@@ -50,7 +50,7 @@ const Admin = () => {
     profession: "",
   });
 
-  // Offering form state (datos del profesor UDES en allied_professor y allied_institution)
+  // Offering form state
   const [offeringForm, setOfferingForm] = useState({
     title: "",
     description: "",
@@ -60,10 +60,24 @@ const Admin = () => {
     capacity: "",
     hours: "",
     campus: "",
-    // allied_professor contendrá: "Nombre | Teléfono | Email"
     allied_professor: "",
-    // allied_institution contendrá: "Carrera | Campus"
     allied_institution: "",
+    udes_professor_name: "",
+    udes_professor_program: "",
+    udes_professor_phone: "",
+    udes_professor_email: "",
+  });
+
+  // Teacher form state
+  const [teacherForm, setTeacherForm] = useState({
+    teacher_name: "",
+    campus: "",
+    email: "",
+    phone: "",
+    profile_description: "",
+    interests: [] as string[],
+    cvlac_link: "",
+    orcid_link: "",
   });
 
   useEffect(() => {
@@ -218,11 +232,21 @@ const Admin = () => {
 
     try {
       const { error } = await supabase.from("course_offerings").insert({
-        ...offeringForm,
+        title: offeringForm.title,
+        description: offeringForm.description,
+        offering_type: offeringForm.offering_type,
+        knowledge_area: offeringForm.knowledge_area,
+        profession: offeringForm.profession,
         capacity: parseInt(offeringForm.capacity),
         hours: parseInt(offeringForm.hours),
+        campus: offeringForm.campus,
+        allied_professor: offeringForm.allied_professor,
+        allied_institution: offeringForm.allied_institution,
+        udes_professor_name: offeringForm.udes_professor_name,
+        udes_professor_program: offeringForm.udes_professor_program,
+        udes_professor_phone: offeringForm.udes_professor_phone,
+        udes_professor_email: offeringForm.udes_professor_email,
         created_by: userId,
-        status: "approved", // Admin can approve directly
       });
 
       if (error) throw error;
@@ -243,6 +267,50 @@ const Admin = () => {
         campus: "",
         allied_professor: "",
         allied_institution: "",
+        udes_professor_name: "",
+        udes_professor_program: "",
+        udes_professor_phone: "",
+        udes_professor_email: "",
+      });
+
+      loadData();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleCreateTeacher = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+
+    try {
+      const { error } = await supabase.from("teachers").insert({
+        ...teacherForm,
+        user_id: userId,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Éxito",
+        description: "Perfil de profesor creado y aprobado automáticamente.",
+      });
+
+      setTeacherForm({
+        teacher_name: "",
+        campus: "",
+        email: "",
+        phone: "",
+        profile_description: "",
+        interests: [],
+        cvlac_link: "",
+        orcid_link: "",
       });
 
       loadData();
@@ -311,7 +379,7 @@ const Admin = () => {
 
       <div className="max-w-7xl mx-auto px-4 py-8">
         <Tabs defaultValue="create" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="create">
               <PlusCircle className="h-4 w-4 mr-2" />
               Crear Clase
@@ -319,6 +387,10 @@ const Admin = () => {
             <TabsTrigger value="create-offering">
               <Package className="h-4 w-4 mr-2" />
               Crear Oferta
+            </TabsTrigger>
+            <TabsTrigger value="create-teacher">
+              <GraduationCap className="h-4 w-4 mr-2" />
+              Crear Profesor
             </TabsTrigger>
             <TabsTrigger value="classes">
               <BookOpen className="h-4 w-4 mr-2" />
@@ -502,6 +574,113 @@ const Admin = () => {
             </Card>
           </TabsContent>
 
+          <TabsContent value="create-teacher">
+            <Card>
+              <CardHeader>
+                <CardTitle>Crear Perfil de Profesor Investigador</CardTitle>
+                <CardDescription>Los perfiles creados por el administrador se aprueban automáticamente</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleCreateTeacher} className="space-y-4">
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="teacher_name">Nombre Completo *</Label>
+                      <Input
+                        id="teacher_name"
+                        value={teacherForm.teacher_name}
+                        onChange={(e) => setTeacherForm({ ...teacherForm, teacher_name: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="teacher_campus">Campus *</Label>
+                      <Input
+                        id="teacher_campus"
+                        value={teacherForm.campus}
+                        onChange={(e) => setTeacherForm({ ...teacherForm, campus: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="teacher_email">Correo Electrónico *</Label>
+                      <Input
+                        id="teacher_email"
+                        type="email"
+                        value={teacherForm.email}
+                        onChange={(e) => setTeacherForm({ ...teacherForm, email: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="teacher_phone">Teléfono *</Label>
+                      <Input
+                        id="teacher_phone"
+                        value={teacherForm.phone}
+                        onChange={(e) => setTeacherForm({ ...teacherForm, phone: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="cvlac_link">Link CVLAC (Opcional)</Label>
+                      <Input
+                        id="cvlac_link"
+                        type="url"
+                        placeholder="https://..."
+                        value={teacherForm.cvlac_link}
+                        onChange={(e) => setTeacherForm({ ...teacherForm, cvlac_link: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="orcid_link">Link ORCID (Opcional)</Label>
+                      <Input
+                        id="orcid_link"
+                        type="url"
+                        placeholder="https://..."
+                        value={teacherForm.orcid_link}
+                        onChange={(e) => setTeacherForm({ ...teacherForm, orcid_link: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="profile_description">Descripción del Perfil *</Label>
+                    <Textarea
+                      id="profile_description"
+                      value={teacherForm.profile_description}
+                      onChange={(e) => setTeacherForm({ ...teacherForm, profile_description: e.target.value })}
+                      required
+                      rows={4}
+                      placeholder="Experiencia, logros, áreas de investigación..."
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="teacher_interests">Áreas de Interés * (Tags)</Label>
+                    <TagInput
+                      tags={teacherForm.interests}
+                      onChange={(tags) => setTeacherForm({ ...teacherForm, interests: tags })}
+                      placeholder="Escribir área y presionar Enter"
+                    />
+                  </div>
+
+                  <Button type="submit" disabled={submitting} className="w-full">
+                    {submitting ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <PlusCircle className="h-4 w-4 mr-2" />
+                    )}
+                    Crear Perfil de Profesor
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           <TabsContent value="create-offering">
             <Card>
               <CardHeader>
@@ -609,26 +788,18 @@ const Admin = () => {
                         <Label htmlFor="udes_prof_name">Nombre Profesor UDES *</Label>
                         <Input
                           id="udes_prof_name"
-                          value={offeringForm.allied_professor.split(" | ")[0] || ""}
-                          onChange={(e) => {
-                            const parts = offeringForm.allied_professor.split(" | ");
-                            parts[0] = e.target.value;
-                            setOfferingForm({ ...offeringForm, allied_professor: parts.join(" | ") });
-                          }}
+                          value={offeringForm.udes_professor_name}
+                          onChange={(e) => setOfferingForm({ ...offeringForm, udes_professor_name: e.target.value })}
                           required
                         />
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="udes_prof_career">Carrera *</Label>
+                        <Label htmlFor="udes_prof_program">Programa al que pertenece *</Label>
                         <Input
-                          id="udes_prof_career"
-                          value={offeringForm.allied_institution.split(" | ")[0] || ""}
-                          onChange={(e) => {
-                            const parts = offeringForm.allied_institution.split(" | ");
-                            parts[0] = e.target.value;
-                            setOfferingForm({ ...offeringForm, allied_institution: parts.join(" | ") });
-                          }}
+                          id="udes_prof_program"
+                          value={offeringForm.udes_professor_program}
+                          onChange={(e) => setOfferingForm({ ...offeringForm, udes_professor_program: e.target.value })}
                           required
                         />
                       </div>
@@ -637,12 +808,8 @@ const Admin = () => {
                         <Label htmlFor="udes_prof_phone">Teléfono *</Label>
                         <Input
                           id="udes_prof_phone"
-                          value={offeringForm.allied_professor.split(" | ")[1] || ""}
-                          onChange={(e) => {
-                            const parts = offeringForm.allied_professor.split(" | ");
-                            parts[1] = e.target.value;
-                            setOfferingForm({ ...offeringForm, allied_professor: parts.join(" | ") });
-                          }}
+                          value={offeringForm.udes_professor_phone}
+                          onChange={(e) => setOfferingForm({ ...offeringForm, udes_professor_phone: e.target.value })}
                           required
                         />
                       </div>
@@ -652,26 +819,8 @@ const Admin = () => {
                         <Input
                           id="udes_prof_email"
                           type="email"
-                          value={offeringForm.allied_professor.split(" | ")[2] || ""}
-                          onChange={(e) => {
-                            const parts = offeringForm.allied_professor.split(" | ");
-                            parts[2] = e.target.value;
-                            setOfferingForm({ ...offeringForm, allied_professor: parts.join(" | ") });
-                          }}
-                          required
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="udes_prof_campus">Campus Profesor *</Label>
-                        <Input
-                          id="udes_prof_campus"
-                          value={offeringForm.allied_institution.split(" | ")[1] || ""}
-                          onChange={(e) => {
-                            const parts = offeringForm.allied_institution.split(" | ");
-                            parts[1] = e.target.value;
-                            setOfferingForm({ ...offeringForm, allied_institution: parts.join(" | ") });
-                          }}
+                          value={offeringForm.udes_professor_email}
+                          onChange={(e) => setOfferingForm({ ...offeringForm, udes_professor_email: e.target.value })}
                           required
                         />
                       </div>
