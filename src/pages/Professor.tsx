@@ -19,6 +19,9 @@ const Professor = () => {
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
+  const [myApprovedClasses, setMyApprovedClasses] = useState<any[]>([]);
+  const [editClassId, setEditClassId] = useState<string | null>(null);
+  const [editClassForm, setEditClassForm] = useState<any | null>(null);
 
   // Class form state
   const [classForm, setClassForm] = useState({
@@ -66,6 +69,22 @@ const Professor = () => {
   useEffect(() => {
     checkAuth();
   }, []);
+
+  useEffect(() => {
+    if (userId) {
+      loadMyApprovedClasses();
+    }
+  }, [userId]);
+
+  const loadMyApprovedClasses = async () => {
+    const { data, error } = await supabase
+      .from("classes")
+      .select("*")
+      .eq("created_by", userId)
+      .eq("status", "approved")
+      .order("created_at", { ascending: false });
+    if (!error) setMyApprovedClasses(data || []);
+  };
 
   const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -201,7 +220,7 @@ const Professor = () => {
 
       <div className="max-w-5xl mx-auto px-4 py-8">
         <Tabs defaultValue="class" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="class">
               <BookOpen className="h-4 w-4 mr-2" />
               Crear Clase
@@ -210,9 +229,129 @@ const Professor = () => {
               <GraduationCap className="h-4 w-4 mr-2" />
               Perfil Investigador
             </TabsTrigger>
+            <TabsTrigger value="myclasses">
+              <Package className="h-4 w-4 mr-2" />
+              Mis Clases Aprobadas
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="class">
+          <TabsContent value="myclasses">
+            <Card>
+              <CardHeader>
+                <CardTitle>Mis Clases Aprobadas</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {myApprovedClasses.length === 0 ? (
+                  <p className="text-muted-foreground">No tienes clases aprobadas.</p>
+                ) : (
+                  <div className="space-y-4">
+                    {myApprovedClasses.map((clase) => (
+                      <Card key={clase.id} className="border">
+                        <CardHeader>
+                          <CardTitle>{clase.title}</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-2">
+                          <div><strong>Fecha:</strong> {new Date(clase.class_date).toLocaleDateString("es-ES")}</div>
+                          <div><strong>Tipo:</strong> {clase.class_type}</div>
+                          <div><strong>Capacidad:</strong> {clase.capacity}</div>
+                          <div><strong>Campus:</strong> {clase.campus}</div>
+                          <div><strong>Profesor Aliado:</strong> {clase.allied_professor}</div>
+                          <div><strong>Institución Aliada:</strong> {clase.allied_institution}</div>
+                          <div><strong>Descripción:</strong> {clase.description}</div>
+                          <Button size="sm" variant="outline" onClick={() => {
+                            setEditClassId(clase.id);
+                            setEditClassForm({ ...clase });
+                          }}>Editar</Button>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+                {/* Formulario de edición */}
+                {editClassId && editClassForm && (
+                  <form
+                    className="mt-6 space-y-4 border-t pt-4"
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      setSubmitting(true);
+                      const { error } = await supabase
+                        .from("classes")
+                        .update({
+                          ...editClassForm,
+                          capacity: parseInt(editClassForm.capacity),
+                          hours: parseInt(editClassForm.hours),
+                        })
+                        .eq("id", editClassId);
+                      setSubmitting(false);
+                      if (!error) {
+                        toast({ title: "Clase actualizada" });
+                        setEditClassId(null);
+                        setEditClassForm(null);
+                        loadMyApprovedClasses();
+                      } else {
+                        toast({ title: "Error", description: error.message, variant: "destructive" });
+                      }
+                    }}
+                  >
+                    <Label>Título</Label>
+                    <Input
+                      value={editClassForm.title}
+                      onChange={e => setEditClassForm({ ...editClassForm, title: e.target.value })}
+                      required
+                    />
+                    <Label>Capacidad</Label>
+                    <Input
+                      type="number"
+                      value={editClassForm.capacity}
+                      onChange={e => setEditClassForm({ ...editClassForm, capacity: e.target.value })}
+                      required
+                    />
+                    <Label>Horas</Label>
+                    <Input
+                      type="number"
+                      value={editClassForm.hours}
+                      onChange={e => setEditClassForm({ ...editClassForm, hours: e.target.value })}
+                      required
+                    />
+                    <Label>Campus</Label>
+                    <Input
+                      value={editClassForm.campus}
+                      onChange={e => setEditClassForm({ ...editClassForm, campus: e.target.value })}
+                      required
+                    />
+                    <Label>Fecha</Label>
+                    <Input
+                      type="datetime-local"
+                      value={editClassForm.class_date}
+                      onChange={e => setEditClassForm({ ...editClassForm, class_date: e.target.value })}
+                      required
+                    />
+                    <Label>Profesor Aliado</Label>
+                    <Input
+                      value={editClassForm.allied_professor}
+                      onChange={e => setEditClassForm({ ...editClassForm, allied_professor: e.target.value })}
+                    />
+                    <Label>Institución Aliada</Label>
+                    <Input
+                      value={editClassForm.allied_institution}
+                      onChange={e => setEditClassForm({ ...editClassForm, allied_institution: e.target.value })}
+                    />
+                    <Label>Descripción</Label>
+                    <Textarea
+                      value={editClassForm.description}
+                      onChange={e => setEditClassForm({ ...editClassForm, description: e.target.value })}
+                      rows={3}
+                    />
+                    <div className="flex gap-2">
+                      <Button type="submit" disabled={submitting}>Guardar</Button>
+                      <Button type="button" variant="outline" onClick={() => { setEditClassId(null); setEditClassForm(null); }}>Cancelar</Button>
+                    </div>
+                  </form>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
             <Card>
               <CardHeader>
                 <CardTitle>Nueva Clase Espejo / MasterClass</CardTitle>
