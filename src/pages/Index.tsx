@@ -15,11 +15,11 @@ const Index = () => {
           </div>
           
           <h1 className="text-4xl md:text-6xl font-bold leading-tight">
-            Link Internacional Avanzado
+            UDES Exchange
           </h1>
           
           <p className="text-xl text-white/90 max-w-2xl mx-auto">
-            Sistema de gestión para Clases Espejo, MasterClass y Docentes Investigadores
+            Portal de Oferta Pública y Abierta de Cursos Cortos, Master Class y Clases Espejo e Investigadores UDES
           </p>
 
           <div className="flex gap-4 justify-center pt-4">
@@ -33,78 +33,6 @@ const Index = () => {
                 Ver Catálogo
               </Button>
             </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section className="py-16 px-4">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">¿Qué puedes hacer?</h2>
-            <p className="text-muted-foreground">Explora las funcionalidades según tu rol</p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            <Card className="shadow-card hover:shadow-elegant transition-all duration-300">
-              <CardHeader>
-                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                  <Users className="w-6 h-6 text-primary" />
-                </div>
-                <CardTitle>Estudiantes</CardTitle>
-                <CardDescription>
-                  Explora clases espejo, masterclasses y conoce docentes investigadores
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li>✓ Buscar por área de conocimiento</li>
-                  <li>✓ Ver detalles de las clases</li>
-                  <li>✓ Consultar perfiles académicos</li>
-                  <li>✓ Chat con LIA para consultas</li>
-                </ul>
-              </CardContent>
-            </Card>
-
-            <Card className="shadow-card hover:shadow-elegant transition-all duration-300">
-              <CardHeader>
-                <div className="w-12 h-12 rounded-lg bg-accent/10 flex items-center justify-center mb-4">
-                  <BookOpen className="w-6 h-6 text-accent" />
-                </div>
-                <CardTitle>Profesores</CardTitle>
-                <CardDescription>
-                  Crea y gestiona tus clases y perfil académico
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li>✓ Enviar solicitudes de clases</li>
-                  <li>✓ Crear perfil de investigador</li>
-                  <li>✓ Gestionar tus publicaciones</li>
-                  <li>✓ Seguimiento de aprobaciones</li>
-                </ul>
-              </CardContent>
-            </Card>
-
-            <Card className="shadow-card hover:shadow-elegant transition-all duration-300">
-              <CardHeader>
-                <div className="w-12 h-12 rounded-lg bg-secondary/10 flex items-center justify-center mb-4">
-                  <GraduationCap className="w-6 h-6 text-secondary" />
-                </div>
-                <CardTitle>Administradores</CardTitle>
-                <CardDescription>
-                  Gestiona la oferta académica y aprueba solicitudes
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li>✓ Aprobar/rechazar clases</li>
-                  <li>✓ Publicar oferta académica</li>
-                  <li>✓ Clasificar profesores</li>
-                  <li>✓ Panel de administración</li>
-                </ul>
-              </CardContent>
-            </Card>
           </div>
         </div>
       </section>

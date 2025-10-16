@@ -50,18 +50,20 @@ const Admin = () => {
     profession: "",
   });
 
-  // Offering form state
+  // Offering form state (datos del profesor UDES en allied_professor y allied_institution)
   const [offeringForm, setOfferingForm] = useState({
     title: "",
     description: "",
     offering_type: "exchange" as "exchange" | "programada",
     knowledge_area: [] as string[],
     profession: "",
-    allied_professor: "",
-    allied_institution: "",
     capacity: "",
     hours: "",
     campus: "",
+    // allied_professor contendrá: "Nombre | Teléfono | Email"
+    allied_professor: "",
+    // allied_institution contendrá: "Carrera | Campus"
+    allied_institution: "",
   });
 
   useEffect(() => {
@@ -210,6 +212,51 @@ const Admin = () => {
     }
   };
 
+  const handleCreateOffering = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+
+    try {
+      const { error } = await supabase.from("course_offerings").insert({
+        ...offeringForm,
+        capacity: parseInt(offeringForm.capacity),
+        hours: parseInt(offeringForm.hours),
+        created_by: userId,
+        status: "approved", // Admin can approve directly
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Éxito",
+        description: "Oferta creada y aprobada automáticamente.",
+      });
+
+      setOfferingForm({
+        title: "",
+        description: "",
+        offering_type: "exchange",
+        knowledge_area: [],
+        profession: "",
+        capacity: "",
+        hours: "",
+        campus: "",
+        allied_professor: "",
+        allied_institution: "",
+      });
+
+      loadData();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const updateOfferingStatus = async (id: string, status: "approved" | "rejected") => {
     try {
       const { error } = await supabase
@@ -269,9 +316,9 @@ const Admin = () => {
               <PlusCircle className="h-4 w-4 mr-2" />
               Crear Clase
             </TabsTrigger>
-            <TabsTrigger value="offerings">
+            <TabsTrigger value="create-offering">
               <Package className="h-4 w-4 mr-2" />
-              Ofertas ({pendingOfferings.length})
+              Crear Oferta
             </TabsTrigger>
             <TabsTrigger value="classes">
               <BookOpen className="h-4 w-4 mr-2" />
@@ -455,7 +502,196 @@ const Admin = () => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="offerings" className="space-y-4">
+          <TabsContent value="create-offering">
+            <Card>
+              <CardHeader>
+                <CardTitle>Crear Nueva Oferta Académica</CardTitle>
+                <CardDescription>Oferta pública y abierta de cursos cortos con profesor UDES</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleCreateOffering} className="space-y-4">
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="offering_title">Título de la Oferta *</Label>
+                      <Input
+                        id="offering_title"
+                        value={offeringForm.title}
+                        onChange={(e) => setOfferingForm({ ...offeringForm, title: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="offering_type">Tipo de Oferta *</Label>
+                      <Select
+                        value={offeringForm.offering_type}
+                        onValueChange={(value: "exchange" | "programada") =>
+                          setOfferingForm({ ...offeringForm, offering_type: value })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="exchange">Exchange</SelectItem>
+                          <SelectItem value="programada">Programada</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="offering_capacity">Capacidad de Estudiantes *</Label>
+                      <Input
+                        id="offering_capacity"
+                        type="number"
+                        value={offeringForm.capacity}
+                        onChange={(e) => setOfferingForm({ ...offeringForm, capacity: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="offering_hours">Número de Horas *</Label>
+                      <Input
+                        id="offering_hours"
+                        type="number"
+                        value={offeringForm.hours}
+                        onChange={(e) => setOfferingForm({ ...offeringForm, hours: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="offering_campus">Campus *</Label>
+                      <Input
+                        id="offering_campus"
+                        value={offeringForm.campus}
+                        onChange={(e) => setOfferingForm({ ...offeringForm, campus: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="offering_profession">Profesión/Programa *</Label>
+                      <Input
+                        id="offering_profession"
+                        value={offeringForm.profession}
+                        onChange={(e) => setOfferingForm({ ...offeringForm, profession: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="offering_knowledge_area">Áreas de Conocimiento * (Tags)</Label>
+                      <TagInput
+                        tags={offeringForm.knowledge_area}
+                        onChange={(tags) => setOfferingForm({ ...offeringForm, knowledge_area: tags })}
+                        placeholder="Escribir área y presionar Enter"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="offering_description">Descripción *</Label>
+                    <Textarea
+                      id="offering_description"
+                      value={offeringForm.description}
+                      onChange={(e) => setOfferingForm({ ...offeringForm, description: e.target.value })}
+                      required
+                      rows={4}
+                    />
+                  </div>
+
+                  <div className="border-t pt-4 mt-4">
+                    <h3 className="font-semibold mb-4">Datos del Profesor UDES</h3>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="udes_prof_name">Nombre Profesor UDES *</Label>
+                        <Input
+                          id="udes_prof_name"
+                          value={offeringForm.allied_professor.split(" | ")[0] || ""}
+                          onChange={(e) => {
+                            const parts = offeringForm.allied_professor.split(" | ");
+                            parts[0] = e.target.value;
+                            setOfferingForm({ ...offeringForm, allied_professor: parts.join(" | ") });
+                          }}
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="udes_prof_career">Carrera *</Label>
+                        <Input
+                          id="udes_prof_career"
+                          value={offeringForm.allied_institution.split(" | ")[0] || ""}
+                          onChange={(e) => {
+                            const parts = offeringForm.allied_institution.split(" | ");
+                            parts[0] = e.target.value;
+                            setOfferingForm({ ...offeringForm, allied_institution: parts.join(" | ") });
+                          }}
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="udes_prof_phone">Teléfono *</Label>
+                        <Input
+                          id="udes_prof_phone"
+                          value={offeringForm.allied_professor.split(" | ")[1] || ""}
+                          onChange={(e) => {
+                            const parts = offeringForm.allied_professor.split(" | ");
+                            parts[1] = e.target.value;
+                            setOfferingForm({ ...offeringForm, allied_professor: parts.join(" | ") });
+                          }}
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="udes_prof_email">Correo *</Label>
+                        <Input
+                          id="udes_prof_email"
+                          type="email"
+                          value={offeringForm.allied_professor.split(" | ")[2] || ""}
+                          onChange={(e) => {
+                            const parts = offeringForm.allied_professor.split(" | ");
+                            parts[2] = e.target.value;
+                            setOfferingForm({ ...offeringForm, allied_professor: parts.join(" | ") });
+                          }}
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="udes_prof_campus">Campus Profesor *</Label>
+                        <Input
+                          id="udes_prof_campus"
+                          value={offeringForm.allied_institution.split(" | ")[1] || ""}
+                          onChange={(e) => {
+                            const parts = offeringForm.allied_institution.split(" | ");
+                            parts[1] = e.target.value;
+                            setOfferingForm({ ...offeringForm, allied_institution: parts.join(" | ") });
+                          }}
+                          required
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <Button type="submit" disabled={submitting} className="w-full">
+                    {submitting ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <PlusCircle className="h-4 w-4 mr-2" />
+                    )}
+                    Crear y Publicar Oferta
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="offerings-old" className="space-y-4">
             {pendingOfferings.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">No hay ofertas pendientes</p>
             ) : (

@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Link } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -52,18 +54,22 @@ const Professor = () => {
     interests: [] as string[],
   });
 
-  // Offering form state
+  // Offering form state (datos del profesor UDES)
   const [offeringForm, setOfferingForm] = useState({
     title: "",
     description: "",
     offering_type: "exchange" as "exchange" | "programada",
     knowledge_area: [] as string[],
     profession: "",
-    allied_professor: "",
-    allied_institution: "",
     capacity: "",
     hours: "",
     campus: "",
+    // Datos del profesor UDES (el profesor actual)
+    udes_professor_name: "",
+    udes_professor_career: "",
+    udes_professor_campus: "",
+    udes_professor_phone: "",
+    udes_professor_email: "",
   });
 
   useEffect(() => {
@@ -190,6 +196,62 @@ const Professor = () => {
     }
   };
 
+  const handleCreateOffering = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+
+    try {
+      // Construir los campos allied_professor y allied_institution con los datos del profesor UDES
+      const allied_professor = `${offeringForm.udes_professor_name} | ${offeringForm.udes_professor_phone} | ${offeringForm.udes_professor_email}`;
+      const allied_institution = `${offeringForm.udes_professor_career} | ${offeringForm.udes_professor_campus}`;
+
+      const { error } = await supabase.from("course_offerings").insert({
+        title: offeringForm.title,
+        description: offeringForm.description,
+        offering_type: offeringForm.offering_type,
+        knowledge_area: offeringForm.knowledge_area,
+        profession: offeringForm.profession,
+        capacity: parseInt(offeringForm.capacity),
+        hours: parseInt(offeringForm.hours),
+        campus: offeringForm.campus,
+        allied_professor,
+        allied_institution,
+        created_by: userId,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Éxito",
+        description: "Oferta creada. Pendiente de aprobación.",
+      });
+
+      setOfferingForm({
+        title: "",
+        description: "",
+        offering_type: "exchange",
+        knowledge_area: [],
+        profession: "",
+        capacity: "",
+        hours: "",
+        campus: "",
+        udes_professor_name: "",
+        udes_professor_career: "",
+        udes_professor_campus: "",
+        udes_professor_phone: "",
+        udes_professor_email: "",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate("/");
@@ -211,19 +273,37 @@ const Professor = () => {
             <h1 className="text-2xl font-bold">Panel de Profesor</h1>
             <p className="text-white/80">Crear Clases y Perfil de Investigador</p>
           </div>
-          <Button variant="secondary" onClick={handleLogout}>
-            <LogOut className="h-4 w-4 mr-2" />
-            Cerrar Sesión
-          </Button>
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="secondary" className="">Opciones</Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem asChild>
+                  <Link to="/">Inicio</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/catalog">Catálogo</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleLogout}>
+                  <LogOut className="h-4 w-4 mr-2" /> Cerrar sesión
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </header>
 
       <div className="max-w-5xl mx-auto px-4 py-8">
         <Tabs defaultValue="class" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="class">
               <BookOpen className="h-4 w-4 mr-2" />
               Crear Clase
+            </TabsTrigger>
+            <TabsTrigger value="offering">
+              <PlusCircle className="h-4 w-4 mr-2" />
+              Crear Oferta
             </TabsTrigger>
             <TabsTrigger value="teacher">
               <GraduationCap className="h-4 w-4 mr-2" />
@@ -512,6 +592,174 @@ const Professor = () => {
                       <PlusCircle className="h-4 w-4 mr-2" />
                     )}
                     Crear Clase
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="offering">
+            <Card>
+              <CardHeader>
+                <CardTitle>Crear Nueva Oferta Académica</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleCreateOffering} className="space-y-4">
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="offering_title">Título de la Oferta *</Label>
+                      <Input
+                        id="offering_title"
+                        value={offeringForm.title}
+                        onChange={(e) => setOfferingForm({ ...offeringForm, title: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="offering_type">Tipo de Oferta *</Label>
+                      <Select
+                        value={offeringForm.offering_type}
+                        onValueChange={(value: "exchange" | "programada") =>
+                          setOfferingForm({ ...offeringForm, offering_type: value })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="exchange">Exchange</SelectItem>
+                          <SelectItem value="programada">Programada</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="offering_capacity">Capacidad de Estudiantes *</Label>
+                      <Input
+                        id="offering_capacity"
+                        type="number"
+                        value={offeringForm.capacity}
+                        onChange={(e) => setOfferingForm({ ...offeringForm, capacity: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="offering_hours">Número de Horas *</Label>
+                      <Input
+                        id="offering_hours"
+                        type="number"
+                        value={offeringForm.hours}
+                        onChange={(e) => setOfferingForm({ ...offeringForm, hours: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="offering_campus">Campus *</Label>
+                      <Input
+                        id="offering_campus"
+                        value={offeringForm.campus}
+                        onChange={(e) => setOfferingForm({ ...offeringForm, campus: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="offering_profession">Profesión/Programa *</Label>
+                      <Input
+                        id="offering_profession"
+                        value={offeringForm.profession}
+                        onChange={(e) => setOfferingForm({ ...offeringForm, profession: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="offering_knowledge_area">Áreas de Conocimiento * (Tags)</Label>
+                      <TagInput
+                        tags={offeringForm.knowledge_area}
+                        onChange={(tags) => setOfferingForm({ ...offeringForm, knowledge_area: tags })}
+                        placeholder="Escribir área y presionar Enter"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="offering_description">Descripción *</Label>
+                    <Textarea
+                      id="offering_description"
+                      value={offeringForm.description}
+                      onChange={(e) => setOfferingForm({ ...offeringForm, description: e.target.value })}
+                      required
+                      rows={4}
+                    />
+                  </div>
+
+                  <div className="border-t pt-4 mt-4">
+                    <h3 className="font-semibold mb-4">Datos del Profesor UDES</h3>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="udes_prof_name">Nombre Profesor *</Label>
+                        <Input
+                          id="udes_prof_name"
+                          value={offeringForm.udes_professor_name}
+                          onChange={(e) => setOfferingForm({ ...offeringForm, udes_professor_name: e.target.value })}
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="udes_prof_career">Carrera *</Label>
+                        <Input
+                          id="udes_prof_career"
+                          value={offeringForm.udes_professor_career}
+                          onChange={(e) => setOfferingForm({ ...offeringForm, udes_professor_career: e.target.value })}
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="udes_prof_phone">Teléfono *</Label>
+                        <Input
+                          id="udes_prof_phone"
+                          value={offeringForm.udes_professor_phone}
+                          onChange={(e) => setOfferingForm({ ...offeringForm, udes_professor_phone: e.target.value })}
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="udes_prof_email">Correo *</Label>
+                        <Input
+                          id="udes_prof_email"
+                          type="email"
+                          value={offeringForm.udes_professor_email}
+                          onChange={(e) => setOfferingForm({ ...offeringForm, udes_professor_email: e.target.value })}
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="udes_prof_campus">Campus Profesor *</Label>
+                        <Input
+                          id="udes_prof_campus"
+                          value={offeringForm.udes_professor_campus}
+                          onChange={(e) => setOfferingForm({ ...offeringForm, udes_professor_campus: e.target.value })}
+                          required
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <Button type="submit" disabled={submitting} className="w-full">
+                    {submitting ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <PlusCircle className="h-4 w-4 mr-2" />
+                    )}
+                    Crear Oferta
                   </Button>
                 </form>
               </CardContent>
