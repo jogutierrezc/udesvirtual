@@ -95,8 +95,15 @@ export const Navbar = () => {
     <nav className="w-full border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
       <div className="mx-auto max-w-6xl px-4 h-14 flex items-center justify-between">
         <div className="flex items-center gap-6">
-          <Link to="/" className="font-semibold text-primary">
-            UDES Virtual
+          <Link to="/" className="flex items-center gap-4 py-1">
+            <div className="flex items-center h-12">
+              <img
+                src="https://udes.edu.co/images/logo/logo-con-acreditada-color.png"
+                alt="Logo UDES"
+                className="h-10 w-auto object-contain"
+                style={{ maxWidth: 140 }}
+              />
+            </div>
           </Link>
           <div className="hidden md:flex items-center gap-2">
             {links.map((l) => (

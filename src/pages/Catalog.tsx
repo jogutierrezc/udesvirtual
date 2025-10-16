@@ -28,6 +28,9 @@ const Catalog = () => {
     country: "",
     participant_type: "",
   });
+  // Estado para mostrar el modal con el link
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [classLink, setClassLink] = useState<string>("");
 
   useEffect(() => {
     loadData();
@@ -95,11 +98,10 @@ const Catalog = () => {
           : "Se ha registrado correctamente.",
       });
 
-      // Show virtual room link in alert
+      // Mostrar el link en un modal pop-up
       if (selectedClass.virtual_room_link) {
-        setTimeout(() => {
-          alert(`Link de acceso a la clase virtual:\n\n${selectedClass.virtual_room_link}\n\n¡Guarda este link para acceder a la clase!`);
-        }, 500);
+        setClassLink(selectedClass.virtual_room_link);
+        setShowLinkModal(true);
       }
 
       setRegistrationForm({
@@ -161,7 +163,6 @@ const Catalog = () => {
       {/* Classes Section */}
       <section className="max-w-6xl mx-auto px-4 pb-8">
         <h2 className="text-2xl font-bold mb-6">Clases y MasterClasses</h2>
-        
         {loading ? (
           <p className="text-muted-foreground">Cargando...</p>
         ) : filteredClasses.length === 0 ? (
@@ -183,7 +184,6 @@ const Catalog = () => {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <p className="text-sm text-muted-foreground line-clamp-2">{classItem.description}</p>
-                  
                   <div className="space-y-2 text-sm">
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Calendar className="h-4 w-4" />
@@ -195,17 +195,14 @@ const Catalog = () => {
                         minute: "2-digit",
                       })}
                     </div>
-                    
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <MapPin className="h-4 w-4" />
                       {classItem.campus}
                     </div>
-                    
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Users className="h-4 w-4" />
                       Capacidad: {classItem.capacity} estudiantes
                     </div>
-                    
                     {classItem.virtual_room_required && (
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <Video className="h-4 w-4" />
@@ -213,12 +210,10 @@ const Catalog = () => {
                       </div>
                     )}
                   </div>
-
                   <div className="flex flex-wrap gap-2 pt-2">
                     <Badge variant="outline">{classItem.knowledge_area}</Badge>
                     <Badge variant="outline">{classItem.profession}</Badge>
                   </div>
-
                   <Dialog open={selectedClass?.id === classItem.id} onOpenChange={(open) => !open && setSelectedClass(null)}>
                     <DialogTrigger asChild>
                       <Button className="w-full mt-2" onClick={() => setSelectedClass(classItem)}>
@@ -306,6 +301,33 @@ const Catalog = () => {
             ))}
           </div>
         )}
+        {/* Modal pop-up para mostrar el link de la clase */}
+        <Dialog open={showLinkModal} onOpenChange={(open) => !open && setShowLinkModal(false)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Acceso a la clase virtual</DialogTitle>
+              <DialogDescription>
+                ¡Registro exitoso! Aquí tienes el link de acceso a la clase virtual:
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col gap-4 items-center py-2">
+              <a
+                href={classLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary underline break-all text-center"
+              >
+                {classLink}
+              </a>
+              <Button
+                onClick={() => window.open(classLink, "_blank", "noopener,noreferrer")}
+                className="w-full"
+              >
+                Abrir clase en nueva ventana
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </section>
 
       {/* Teachers Section */}

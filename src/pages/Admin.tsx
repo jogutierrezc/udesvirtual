@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -19,6 +19,8 @@ type Teacher = Tables<"teachers">;
 type Registration = Tables<"class_registrations">;
 
 const Admin = () => {
+  // Estado para filtro de clase en registros
+  const [selectedClassId, setSelectedClassId] = useState<string>("");
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -74,7 +76,7 @@ const Admin = () => {
       const [classesRes, teachersRes, regsRes] = await Promise.all([
         supabase.from("classes").select("*").eq("status", "pending").order("created_at", { ascending: false }),
         supabase.from("teachers").select("*").eq("status", "pending").order("created_at", { ascending: false }),
-        supabase.from("class_registrations").select("*, classes(title)").order("created_at", { ascending: false }),
+  supabase.from("class_registrations").select("*, classes(*)").order("created_at", { ascending: false }),
       ]);
 
       setPendingClasses(classesRes.data || []);
@@ -489,26 +491,68 @@ const Admin = () => {
             {registrations.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">No hay registros</p>
             ) : (
-              <div className="grid gap-4">
-                {registrations.map((reg: any) => (
-                  <Card key={reg.id}>
-                    <CardHeader>
-                      <CardTitle>{reg.full_name}</CardTitle>
-                      <CardDescription>Clase: {reg.classes?.title || "N/A"}</CardDescription>
-                    </CardHeader>
-                    <CardContent className="grid grid-cols-2 gap-2 text-sm">
-                      <p><strong>Email:</strong> {reg.email}</p>
-                      <p><strong>Teléfono:</strong> {reg.phone}</p>
-                      <p><strong>Institución:</strong> {reg.institution}</p>
-                      <p><strong>País:</strong> {reg.country}</p>
-                      <p><strong>Tipo:</strong> {reg.participant_type}</p>
-                      <p><strong>Fecha:</strong> {new Date(reg.created_at).toLocaleDateString("es-ES")}</p>
-                    </CardContent>
-                  </Card>
-                ))}
+              <div className="space-y-4">
+                {/* Selector de clase para filtrar */}
+                <div className="flex flex-col md:flex-row md:items-center gap-2 mb-4">
+                  <Label htmlFor="classFilter">Filtrar por clase:</Label>
+                  <Select
+                    value={selectedClassId || ""}
+                    onValueChange={(value) => setSelectedClassId(value)}
+                  >
+                    <SelectTrigger className="min-w-[200px]">
+                      <SelectValue placeholder="Todas las clases" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Todas las clases</SelectItem>
+                      {Array.from(
+                        new Set(
+                          registrations
+                            .map((r: any) =>
+                              r.class_id !== undefined && r.class_id !== null
+                                ? String(r.class_id).trim()
+                                : ""
+                            )
+                            .filter((classId) => classId !== "")
+                        )
+                      ).map((classId) => (
+                        <SelectItem key={classId} value={classId}>
+                          {classId}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {/* Tabla solo participantes, formato Excel */}
+                <div className="overflow-x-auto">
+                  <table className="min-w-full border text-sm bg-white">
+                    <thead className="bg-muted">
+                      <tr>
+                        <th className="border px-2 py-1">Nombre</th>
+                        <th className="border px-2 py-1">Universidad de Origen</th>
+                        <th className="border px-2 py-1">País</th>
+                        <th className="border px-2 py-1">Curso Seleccionado</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {registrations
+                        .filter((reg: any) => !selectedClassId || reg.class_id === selectedClassId)
+                        .map((reg: any) => (
+                          <tr key={reg.id} className="hover:bg-muted/40">
+                            <td className="border px-2 py-1">{reg.full_name}</td>
+                            <td className="border px-2 py-1">{reg.institution}</td>
+                            <td className="border px-2 py-1">{reg.country}</td>
+                            <td className="border px-2 py-1">{reg.class_id}</td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </TabsContent>
+  // ...existing code...
+  // Estado para filtro de clase en registros
+
         </Tabs>
       </div>
     </div>
