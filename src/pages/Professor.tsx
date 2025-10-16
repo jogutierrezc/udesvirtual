@@ -138,14 +138,8 @@ const Professor = () => {
     setSubmitting(true);
 
     try {
-      const interests = teacherForm.interests
-        .split(",")
-        .map((i) => i.trim())
-        .filter((i) => i.length > 0);
-
       const { error } = await supabase.from("teachers").insert({
         ...teacherForm,
-        interests,
         user_id: userId,
       });
 
@@ -164,7 +158,7 @@ const Professor = () => {
         campus: "",
         phone: "",
         email: "",
-        interests: "",
+        interests: [],
       });
     } catch (error: any) {
       toast({
@@ -471,13 +465,11 @@ const Professor = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="interests">Intereses (separados por comas) *</Label>
-                    <Input
-                      id="interests"
-                      placeholder="Ej: Inteligencia Artificial, Machine Learning, Educación"
-                      value={teacherForm.interests}
-                      onChange={(e) => setTeacherForm({ ...teacherForm, interests: e.target.value })}
-                      required
+                    <Label htmlFor="interests">Intereses (Tags) *</Label>
+                    <TagInput
+                      tags={teacherForm.interests}
+                      onChange={(tags) => setTeacherForm({ ...teacherForm, interests: tags })}
+                      placeholder="Escribir interés y presionar Enter"
                     />
                   </div>
 
