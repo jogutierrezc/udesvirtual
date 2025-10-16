@@ -16,9 +16,11 @@ const Catalog = () => {
   const { toast } = useToast();
   const [classes, setClasses] = useState<any[]>([]);
   const [teachers, setTeachers] = useState<any[]>([]);
+  const [offerings, setOfferings] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [selectedClass, setSelectedClass] = useState<any>(null);
+  const [selectedOffering, setSelectedOffering] = useState<any>(null);
   const [registering, setRegistering] = useState(false);
   const [registrationForm, setRegistrationForm] = useState({
     full_name: "",

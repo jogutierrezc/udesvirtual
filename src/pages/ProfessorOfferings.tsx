@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Search, Users, MapPin, BookOpen, Mail, Phone } from "lucide-react";
 import { Link } from "react-router-dom";
 import { LiaChat } from "@/components/LiaChat";
@@ -12,6 +13,8 @@ const ProfessorOfferings = () => {
   const [offerings, setOfferings] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
+  const [selectedOffering, setSelectedOffering] = useState<any | null>(null);
+  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     loadOfferings();
@@ -98,7 +101,14 @@ const ProfessorOfferings = () => {
         ) : (
           <div className="grid md:grid-cols-2 gap-6">
             {filteredOfferings.map((offering) => (
-              <Card key={offering.id} className="shadow-card hover:shadow-elegant transition-all">
+              <Card 
+                key={offering.id} 
+                className="shadow-card hover:shadow-elegant transition-all cursor-pointer"
+                onClick={() => {
+                  setSelectedOffering(offering);
+                  setShowModal(true);
+                }}
+              >
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -113,7 +123,7 @@ const ProfessorOfferings = () => {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <p className="text-sm text-muted-foreground line-clamp-3">{offering.description}</p>
+                  <p className="text-sm text-muted-foreground line-clamp-3 text-justify">{offering.description}</p>
 
                   <div className="space-y-2 text-sm">
                     <div className="flex items-center gap-2 text-muted-foreground">
@@ -143,37 +153,10 @@ const ProfessorOfferings = () => {
                     )}
                   </div>
 
-                  {/* Información del profesor UDES */}
-                  {offering.udes_professor_name && (
+                  {/* Vista previa del profesor */}
+                  {(offering.allied_professor || offering.allied_institution) && (
                     <div className="border-t pt-4 mt-4">
-                      <h4 className="font-semibold mb-2 text-sm">Profesor UDES a Cargo:</h4>
-                      <div className="space-y-2 text-sm">
-                        <p className="font-medium">{offering.udes_professor_name}</p>
-                        {offering.udes_professor_program && (
-                          <p className="text-muted-foreground">
-                            Programa: {offering.udes_professor_program}
-                          </p>
-                        )}
-                        <div className="flex flex-col gap-1">
-                          {offering.udes_professor_email && (
-                            <div className="flex items-center gap-2 text-muted-foreground">
-                              <Mail className="h-3 w-3" />
-                              <a
-                                href={`mailto:${offering.udes_professor_email}`}
-                                className="hover:text-primary"
-                              >
-                                {offering.udes_professor_email}
-                              </a>
-                            </div>
-                          )}
-                          {offering.udes_professor_phone && (
-                            <div className="flex items-center gap-2 text-muted-foreground">
-                              <Phone className="h-3 w-3" />
-                              {offering.udes_professor_phone}
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                      <p className="text-xs text-muted-foreground">Haz clic para ver más detalles</p>
                     </div>
                   )}
                 </CardContent>
@@ -182,6 +165,130 @@ const ProfessorOfferings = () => {
           </div>
         )}
       </section>
+
+      {/* Modal con detalles completos */}
+      <Dialog open={showModal} onOpenChange={setShowModal}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          {selectedOffering && (
+            <>
+              <DialogHeader>
+                <div className="flex items-start justify-between">
+                  <DialogTitle className="text-2xl pr-4">{selectedOffering.title}</DialogTitle>
+                  <Badge variant={selectedOffering.offering_type === "exchange" ? "default" : "secondary"}>
+                    {selectedOffering.offering_type === "exchange" ? "Exchange" : "Programada"}
+                  </Badge>
+                </div>
+                <DialogDescription>
+                  <strong>Programa:</strong> {selectedOffering.profession}
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-6 mt-4">
+                {/* Descripción completa */}
+                <div>
+                  <h3 className="font-semibold mb-2">Descripción</h3>
+                  <p className="text-sm text-muted-foreground text-justify">{selectedOffering.description}</p>
+                </div>
+
+                {/* Detalles del curso */}
+                <div>
+                  <h3 className="font-semibold mb-2">Detalles del Curso</h3>
+                  <div className="grid md:grid-cols-2 gap-4 text-sm">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-muted-foreground" />
+                      <span><strong>Campus:</strong> {selectedOffering.campus}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                      <span><strong>Capacidad:</strong> {selectedOffering.capacity} estudiantes</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <BookOpen className="h-4 w-4 text-muted-foreground" />
+                      <span><strong>Duración:</strong> {selectedOffering.hours} horas</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Áreas de conocimiento */}
+                {selectedOffering.knowledge_area && (
+                  <div>
+                    <h3 className="font-semibold mb-2">Áreas de Conocimiento</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {Array.isArray(selectedOffering.knowledge_area) ? (
+                        selectedOffering.knowledge_area.map((area, i) => (
+                          <Badge key={i} variant="outline">
+                            {area}
+                          </Badge>
+                        ))
+                      ) : (
+                        <Badge variant="outline">{selectedOffering.knowledge_area}</Badge>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Información del profesor UDES */}
+                {(selectedOffering.allied_professor || selectedOffering.allied_institution) && (
+                  <div className="border-t pt-4">
+                    <h3 className="font-semibold mb-3">Profesor UDES a Cargo</h3>
+                    <div className="space-y-3">
+                      {selectedOffering.allied_professor && (
+                        <>
+                          {(() => {
+                            const parts = selectedOffering.allied_professor.split(" | ");
+                            const name = parts[0] || "";
+                            const phone = parts[1] || "";
+                            const email = parts[2] || "";
+                            
+                            return (
+                              <>
+                                <p className="font-medium text-lg">{name}</p>
+                                {selectedOffering.allied_institution && (() => {
+                                  const instParts = selectedOffering.allied_institution.split(" | ");
+                                  const career = instParts[0] || "";
+                                  const campus = instParts[1] || "";
+                                  return (
+                                    <div className="space-y-1 text-sm text-muted-foreground">
+                                      {career && <p><strong>Carrera:</strong> {career}</p>}
+                                      {campus && <p><strong>Campus:</strong> {campus}</p>}
+                                    </div>
+                                  );
+                                })()}
+                                <div className="flex flex-col gap-2 mt-4">
+                                  {email && (
+                                    <Button 
+                                      variant="outline" 
+                                      className="w-full justify-start"
+                                      onClick={() => window.location.href = `mailto:${email}`}
+                                    >
+                                      <Mail className="h-4 w-4 mr-2" />
+                                      {email}
+                                    </Button>
+                                  )}
+                                  {phone && (
+                                    <Button 
+                                      variant="outline" 
+                                      className="w-full justify-start"
+                                      onClick={() => window.location.href = `tel:${phone}`}
+                                    >
+                                      <Phone className="h-4 w-4 mr-2" />
+                                      {phone}
+                                    </Button>
+                                  )}
+                                </div>
+                              </>
+                            );
+                          })()}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <LiaChat />
     </div>
