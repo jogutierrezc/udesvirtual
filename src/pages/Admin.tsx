@@ -496,14 +496,14 @@ const Admin = () => {
                 <div className="flex flex-col md:flex-row md:items-center gap-2 mb-4">
                   <Label htmlFor="classFilter">Filtrar por clase:</Label>
                   <Select
-                    value={selectedClassId || ""}
-                    onValueChange={(value) => setSelectedClassId(value)}
+                    value={selectedClassId || "all"}
+                    onValueChange={(value) => setSelectedClassId(value === "all" ? "" : value)}
                   >
                     <SelectTrigger className="min-w-[200px]">
                       <SelectValue placeholder="Todas las clases" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Todas las clases</SelectItem>
+                      <SelectItem value="all">Todas las clases</SelectItem>
                       {Array.from(
                         new Set(
                           registrations
