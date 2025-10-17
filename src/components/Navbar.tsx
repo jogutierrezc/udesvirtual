@@ -3,7 +3,9 @@ import { Link, NavLink } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Menu } from "lucide-react";
 
 type AppRole = "admin" | "professor" | "student";
 
@@ -17,6 +19,7 @@ interface UserInfo {
 export const Navbar = () => {
   const [user, setUser] = useState<UserInfo | null>(null);
   const [loading, setLoading] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -70,6 +73,16 @@ export const Navbar = () => {
   }, []);
 
   const links = useMemo(() => {
+    // Si es admin, mostrar navegación de administrador
+    if (user?.role === "admin") {
+      return [
+        { to: "/admin/catalog", label: "Catálogo" },
+        { to: "/admin/offerings", label: "Oferta" },
+        { to: "/admin/registrations", label: "Registros" },
+      ];
+    }
+    
+    // Navegación normal para otros usuarios
     const base = [
       { to: "/", label: "Inicio" },
       { to: "/catalog", label: "Catálogo" },
@@ -77,7 +90,7 @@ export const Navbar = () => {
       { to: "/coil-offerings", label: "COIL" },
       { to: "/lia", label: "LIA" },
     ];
-    if (user?.role === "admin") base.push({ to: "/admin", label: "Admin" });
+    
     if (user?.role === "professor") base.push({ to: "/professor", label: "Profesor" });
     return base;
   }, [user?.role]);
@@ -96,33 +109,35 @@ export const Navbar = () => {
   return (
     <nav className="w-full border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
       <div className="mx-auto max-w-6xl px-4 h-14 flex items-center justify-between">
-        <div className="flex items-center gap-6">
-          <Link to="/" className="flex items-center gap-4 py-1">
-            <div className="flex items-center h-12">
-              <img
-                src="https://udes.edu.co/images/logo/logo-con-acreditada-color.png"
-                alt="Logo UDES"
-                className="h-10 w-auto object-contain"
-                style={{ maxWidth: 140 }}
-              />
-            </div>
-          </Link>
-          <div className="hidden md:flex items-center gap-2">
-            {links.map((l) => (
-              <NavLink
-                key={l.to}
-                to={l.to}
-                className={({ isActive }) =>
-                  `px-3 py-2 rounded-md text-sm font-medium ${isActive ? "bg-primary/10 text-primary" : "text-foreground/80 hover:text-foreground"}`
-                }
-              >
-                {l.label}
-              </NavLink>
-            ))}
+        {/* Logo */}
+        <Link to="/" className="flex items-center gap-4 py-1">
+          <div className="flex items-center h-12">
+            <img
+              src="https://udes.edu.co/images/logo/logo-con-acreditada-color.png"
+              alt="Logo UDES"
+              className="h-10 w-auto object-contain"
+              style={{ maxWidth: 140 }}
+            />
           </div>
+        </Link>
+
+        {/* Desktop Navigation */}
+        <div className="hidden md:flex items-center gap-2">
+          {links.map((l) => (
+            <NavLink
+              key={l.to}
+              to={l.to}
+              className={({ isActive }) =>
+                `px-3 py-2 rounded-md text-sm font-medium ${isActive ? "bg-primary/10 text-primary" : "text-foreground/80 hover:text-foreground"}`
+              }
+            >
+              {l.label}
+            </NavLink>
+          ))}
         </div>
 
-        <div className="flex items-center gap-3">
+        {/* Desktop User Menu */}
+        <div className="hidden md:flex items-center gap-3">
           {loading ? (
             <div className="h-9 w-28 animate-pulse rounded-md bg-muted" />
           ) : user ? (
@@ -141,11 +156,6 @@ export const Navbar = () => {
                   <DropdownMenuItem asChild>
                     <Link to="/dashboard">Panel</Link>
                   </DropdownMenuItem>
-                  {user.role === "admin" && (
-                    <DropdownMenuItem asChild>
-                      <Link to="/admin">Admin</Link>
-                    </DropdownMenuItem>
-                  )}
                   {user.role === "professor" && (
                     <DropdownMenuItem asChild>
                       <Link to="/professor">Profesor</Link>
@@ -160,6 +170,94 @@ export const Navbar = () => {
               <Button>Iniciar sesión</Button>
             </Link>
           )}
+        </div>
+
+        {/* Mobile Menu */}
+        <div className="md:hidden">
+          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-[300px] sm:w-[400px]">
+              <SheetHeader>
+                <SheetTitle>
+                  {user ? (
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-12 w-12">
+                        <AvatarFallback>{initials}</AvatarFallback>
+                      </Avatar>
+                      <div className="text-left">
+                        <div className="text-base font-medium">{user.name}</div>
+                        <div className="text-sm text-muted-foreground capitalize">{user.role}</div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-left">Menú</div>
+                  )}
+                </SheetTitle>
+              </SheetHeader>
+
+              <div className="mt-6 flex flex-col gap-4">
+                {/* Navigation Links */}
+                <div className="flex flex-col gap-2">
+                  {links.map((l) => (
+                    <Link
+                      key={l.to}
+                      to={l.to}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="px-4 py-3 rounded-md text-sm font-medium hover:bg-muted transition-colors"
+                    >
+                      {l.label}
+                    </Link>
+                  ))}
+                </div>
+
+                {/* User Actions */}
+                {user ? (
+                  <>
+                    <DropdownMenuSeparator />
+                    <div className="flex flex-col gap-2">
+                      <Link
+                        to="/dashboard"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="px-4 py-3 rounded-md text-sm font-medium hover:bg-muted transition-colors"
+                      >
+                        Panel
+                      </Link>
+                      {user.role === "professor" && (
+                        <Link
+                          to="/professor"
+                          onClick={() => setMobileMenuOpen(false)}
+                          className="px-4 py-3 rounded-md text-sm font-medium hover:bg-muted transition-colors"
+                        >
+                          Profesor
+                        </Link>
+                      )}
+                      <Button
+                        variant="destructive"
+                        onClick={() => {
+                          handleLogout();
+                          setMobileMenuOpen(false);
+                        }}
+                        className="w-full"
+                      >
+                        Cerrar sesión
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <DropdownMenuSeparator />
+                    <Link to="/auth" onClick={() => setMobileMenuOpen(false)}>
+                      <Button className="w-full">Iniciar sesión</Button>
+                    </Link>
+                  </>
+                )}
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
     </nav>
