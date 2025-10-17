@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, CheckCircle, XCircle, LogOut, Users, BookOpen, GraduationCap, PlusCircle, Package } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, LogOut, Users, BookOpen, GraduationCap, PlusCircle, Package, Globe } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
 import { TagInput } from "@/components/TagInput";
 
@@ -19,6 +19,7 @@ type Class = Tables<"classes">;
 type Teacher = Tables<"teachers">;
 type Registration = Tables<"class_registrations">;
 type Offering = Tables<"course_offerings">;
+type CoilProposal = Tables<"coil_proposals">;
 
 const Admin = () => {
   // Estado para filtro de clase en registros
@@ -32,6 +33,7 @@ const Admin = () => {
   const [pendingTeachers, setPendingTeachers] = useState<Teacher[]>([]);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [pendingOfferings, setPendingOfferings] = useState<Offering[]>([]);
+  const [pendingCoilProposals, setPendingCoilProposals] = useState<CoilProposal[]>([]);
 
   // Class form state
   const [classForm, setClassForm] = useState({
@@ -80,6 +82,19 @@ const Admin = () => {
     orcid_link: "",
   });
 
+  // COIL form state
+  const [coilForm, setCoilForm] = useState({
+    full_name: "",
+    email: "",
+    academic_program: "",
+    course_name: "",
+    academic_semester: "",
+    external_capacity: "",
+    project_topics: "",
+    languages: [] as string[],
+    sustainable_development_goals: [] as string[],
+  });
+
   useEffect(() => {
     checkAuth();
     loadData();
@@ -107,17 +122,19 @@ const Admin = () => {
 
   const loadData = async () => {
     try {
-      const [classesRes, teachersRes, regsRes, offeringsRes] = await Promise.all([
+      const [classesRes, teachersRes, regsRes, offeringsRes, coilRes] = await Promise.all([
         supabase.from("classes").select("*").eq("status", "pending").order("created_at", { ascending: false }),
         supabase.from("teachers").select("*").eq("status", "pending").order("created_at", { ascending: false }),
         supabase.from("class_registrations").select("*, classes(*)").order("created_at", { ascending: false }),
         supabase.from("course_offerings").select("*").eq("status", "pending").order("created_at", { ascending: false }),
+        supabase.from("coil_proposals").select("*").eq("status", "pending").order("created_at", { ascending: false }),
       ]);
 
       setPendingClasses(classesRes.data || []);
       setPendingTeachers(teachersRes.data || []);
       setRegistrations(regsRes.data || []);
       setPendingOfferings(offeringsRes.data || []);
+      setPendingCoilProposals(coilRes.data || []);
     } catch (error) {
       console.error("Error loading data:", error);
       toast({
@@ -325,6 +342,48 @@ const Admin = () => {
     }
   };
 
+  const handleCreateCoil = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+
+    try {
+      const { error } = await supabase.from("coil_proposals").insert({
+        ...coilForm,
+        external_capacity: parseInt(coilForm.external_capacity),
+        created_by: userId,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Éxito",
+        description: "Propuesta COIL creada y aprobada automáticamente.",
+      });
+
+      setCoilForm({
+        full_name: "",
+        email: "",
+        academic_program: "",
+        course_name: "",
+        academic_semester: "",
+        external_capacity: "",
+        project_topics: "",
+        languages: [],
+        sustainable_development_goals: [],
+      });
+
+      loadData();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const updateOfferingStatus = async (id: string, status: "approved" | "rejected") => {
     try {
       const { error } = await supabase
@@ -337,6 +396,30 @@ const Admin = () => {
       toast({
         title: "Éxito",
         description: `Oferta ${status === "approved" ? "aprobada" : "rechazada"}`,
+      });
+
+      loadData();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const updateCoilStatus = async (id: string, status: "approved" | "rejected") => {
+    try {
+      const { error } = await supabase
+        .from("coil_proposals")
+        .update({ status })
+        .eq("id", id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Éxito",
+        description: `Propuesta COIL ${status === "approved" ? "aprobada" : "rechazada"}`,
       });
 
       loadData();
@@ -379,7 +462,7 @@ const Admin = () => {
 
       <div className="max-w-7xl mx-auto px-4 py-8">
         <Tabs defaultValue="create" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="create">
               <PlusCircle className="h-4 w-4 mr-2" />
               Crear Clase
@@ -387,6 +470,10 @@ const Admin = () => {
             <TabsTrigger value="create-offering">
               <Package className="h-4 w-4 mr-2" />
               Crear Oferta
+            </TabsTrigger>
+            <TabsTrigger value="create-coil">
+              <Globe className="h-4 w-4 mr-2" />
+              Crear COIL
             </TabsTrigger>
             <TabsTrigger value="create-teacher">
               <GraduationCap className="h-4 w-4 mr-2" />
@@ -675,6 +762,122 @@ const Admin = () => {
                       <PlusCircle className="h-4 w-4 mr-2" />
                     )}
                     Crear Perfil de Profesor
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="create-coil">
+            <Card>
+              <CardHeader>
+                <CardTitle>Crear Propuesta COIL</CardTitle>
+                <CardDescription>Proyectos de Aprendizaje Colaborativo Internacional en Línea</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleCreateCoil} className="space-y-4">
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="coil_full_name">Nombre Completo *</Label>
+                      <Input
+                        id="coil_full_name"
+                        value={coilForm.full_name}
+                        onChange={(e) => setCoilForm({ ...coilForm, full_name: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="coil_email">Correo Electrónico Institucional *</Label>
+                      <Input
+                        id="coil_email"
+                        type="email"
+                        value={coilForm.email}
+                        onChange={(e) => setCoilForm({ ...coilForm, email: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="coil_program">Programa Académico *</Label>
+                      <Input
+                        id="coil_program"
+                        value={coilForm.academic_program}
+                        onChange={(e) => setCoilForm({ ...coilForm, academic_program: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="coil_course">Nombre del Curso *</Label>
+                      <Input
+                        id="coil_course"
+                        value={coilForm.course_name}
+                        onChange={(e) => setCoilForm({ ...coilForm, course_name: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="coil_semester">Semestre Académico *</Label>
+                      <Input
+                        id="coil_semester"
+                        value={coilForm.academic_semester}
+                        onChange={(e) => setCoilForm({ ...coilForm, academic_semester: e.target.value })}
+                        placeholder="Ej: 2025-1"
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="coil_capacity">Cupos para IES Externa *</Label>
+                      <Input
+                        id="coil_capacity"
+                        type="number"
+                        value={coilForm.external_capacity}
+                        onChange={(e) => setCoilForm({ ...coilForm, external_capacity: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="coil_languages">Idiomas del Proyecto * (Tags)</Label>
+                      <TagInput
+                        tags={coilForm.languages}
+                        onChange={(tags) => setCoilForm({ ...coilForm, languages: tags })}
+                        placeholder="Escribir idioma y presionar Enter"
+                      />
+                    </div>
+
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="coil_sdg">Objetivos de Desarrollo Sostenible (ODS) * (Tags)</Label>
+                      <TagInput
+                        tags={coilForm.sustainable_development_goals}
+                        onChange={(tags) => setCoilForm({ ...coilForm, sustainable_development_goals: tags })}
+                        placeholder="Escribir ODS y presionar Enter"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="coil_topics">Temas Específicos del Proyecto COIL *</Label>
+                    <Textarea
+                      id="coil_topics"
+                      value={coilForm.project_topics}
+                      onChange={(e) => setCoilForm({ ...coilForm, project_topics: e.target.value })}
+                      required
+                      rows={4}
+                      placeholder="Describa los temas específicos de interés para desarrollar el proyecto COIL acordes al syllabus del curso..."
+                    />
+                  </div>
+
+                  <Button type="submit" disabled={submitting} className="w-full">
+                    {submitting ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <PlusCircle className="h-4 w-4 mr-2" />
+                    )}
+                    Crear Propuesta COIL
                   </Button>
                 </form>
               </CardContent>

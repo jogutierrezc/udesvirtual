@@ -153,10 +153,10 @@ const ProfessorOfferings = () => {
                     )}
                   </div>
 
-                  {/* Vista previa del profesor */}
-                  {(offering.allied_professor || offering.allied_institution) && (
+                  {/* Vista previa del profesor UDES */}
+                  {offering.udes_professor_name && (
                     <div className="border-t pt-4 mt-4">
-                      <p className="text-xs text-muted-foreground">Haz clic para ver más detalles</p>
+                      <p className="text-xs text-muted-foreground">Haz clic para ver más detalles del profesor UDES</p>
                     </div>
                   )}
                 </CardContent>
@@ -228,59 +228,38 @@ const ProfessorOfferings = () => {
                 )}
 
                 {/* Información del profesor UDES */}
-                {(selectedOffering.allied_professor || selectedOffering.allied_institution) && (
+                {selectedOffering.udes_professor_name && (
                   <div className="border-t pt-4">
                     <h3 className="font-semibold mb-3">Profesor UDES a Cargo</h3>
                     <div className="space-y-3">
-                      {selectedOffering.allied_professor && (
-                        <>
-                          {(() => {
-                            const parts = selectedOffering.allied_professor.split(" | ");
-                            const name = parts[0] || "";
-                            const phone = parts[1] || "";
-                            const email = parts[2] || "";
-                            
-                            return (
-                              <>
-                                <p className="font-medium text-lg">{name}</p>
-                                {selectedOffering.allied_institution && (() => {
-                                  const instParts = selectedOffering.allied_institution.split(" | ");
-                                  const career = instParts[0] || "";
-                                  const campus = instParts[1] || "";
-                                  return (
-                                    <div className="space-y-1 text-sm text-muted-foreground">
-                                      {career && <p><strong>Carrera:</strong> {career}</p>}
-                                      {campus && <p><strong>Campus:</strong> {campus}</p>}
-                                    </div>
-                                  );
-                                })()}
-                                <div className="flex flex-col gap-2 mt-4">
-                                  {email && (
-                                    <Button 
-                                      variant="outline" 
-                                      className="w-full justify-start"
-                                      onClick={() => window.location.href = `mailto:${email}`}
-                                    >
-                                      <Mail className="h-4 w-4 mr-2" />
-                                      {email}
-                                    </Button>
-                                  )}
-                                  {phone && (
-                                    <Button 
-                                      variant="outline" 
-                                      className="w-full justify-start"
-                                      onClick={() => window.location.href = `tel:${phone}`}
-                                    >
-                                      <Phone className="h-4 w-4 mr-2" />
-                                      {phone}
-                                    </Button>
-                                  )}
-                                </div>
-                              </>
-                            );
-                          })()}
-                        </>
+                      <p className="font-medium text-lg">{selectedOffering.udes_professor_name}</p>
+                      {selectedOffering.udes_professor_program && (
+                        <p className="text-sm text-muted-foreground">
+                          <strong>Programa:</strong> {selectedOffering.udes_professor_program}
+                        </p>
                       )}
+                      <div className="flex flex-col gap-2 mt-4">
+                        {selectedOffering.udes_professor_email && (
+                          <Button 
+                            variant="outline" 
+                            className="w-full justify-start"
+                            onClick={() => window.location.href = `mailto:${selectedOffering.udes_professor_email}`}
+                          >
+                            <Mail className="h-4 w-4 mr-2" />
+                            {selectedOffering.udes_professor_email}
+                          </Button>
+                        )}
+                        {selectedOffering.udes_professor_phone && (
+                          <Button 
+                            variant="outline" 
+                            className="w-full justify-start"
+                            onClick={() => window.location.href = `tel:${selectedOffering.udes_professor_phone}`}
+                          >
+                            <Phone className="h-4 w-4 mr-2" />
+                            {selectedOffering.udes_professor_phone}
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}

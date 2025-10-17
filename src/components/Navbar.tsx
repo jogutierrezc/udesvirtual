@@ -74,6 +74,7 @@ export const Navbar = () => {
       { to: "/", label: "Inicio" },
       { to: "/catalog", label: "Catálogo" },
       { to: "/professor-offerings", label: "Oferta" },
+      { to: "/coil-offerings", label: "COIL" },
       { to: "/lia", label: "LIA" },
     ];
     if (user?.role === "admin") base.push({ to: "/admin", label: "Admin" });

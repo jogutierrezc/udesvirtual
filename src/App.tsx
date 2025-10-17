@@ -12,6 +12,7 @@ import Admin from "./pages/Admin";
 import Professor from "./pages/Professor";
 import Lia from "./pages/Lia";
 import ProfessorOfferings from "./pages/ProfessorOfferings";
+import CoilOfferings from "./pages/CoilOfferings";
 import Navbar from "./components/Navbar";
 
 const queryClient = new QueryClient();
@@ -29,6 +30,7 @@ const App = () => (
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/catalog" element={<Catalog />} />
           <Route path="/professor-offerings" element={<ProfessorOfferings />} />
+          <Route path="/coil-offerings" element={<CoilOfferings />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/professor" element={<Professor />} />
           <Route path="/lia" element={<Lia />} />

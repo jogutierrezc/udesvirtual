@@ -132,6 +132,57 @@ export type Database = {
           },
         ]
       }
+      coil_proposals: {
+        Row: {
+          academic_program: string
+          academic_semester: string
+          course_name: string
+          created_at: string | null
+          created_by: string
+          email: string
+          external_capacity: number
+          full_name: string
+          id: string
+          languages: string[]
+          project_topics: string
+          status: Database["public"]["Enums"]["request_status"] | null
+          sustainable_development_goals: string[]
+          updated_at: string | null
+        }
+        Insert: {
+          academic_program: string
+          academic_semester: string
+          course_name: string
+          created_at?: string | null
+          created_by: string
+          email: string
+          external_capacity: number
+          full_name: string
+          id?: string
+          languages?: string[]
+          project_topics: string
+          status?: Database["public"]["Enums"]["request_status"] | null
+          sustainable_development_goals?: string[]
+          updated_at?: string | null
+        }
+        Update: {
+          academic_program?: string
+          academic_semester?: string
+          course_name?: string
+          created_at?: string | null
+          created_by?: string
+          email?: string
+          external_capacity?: number
+          full_name?: string
+          id?: string
+          languages?: string[]
+          project_topics?: string
+          status?: Database["public"]["Enums"]["request_status"] | null
+          sustainable_development_goals?: string[]
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       course_offerings: {
         Row: {
           allied_institution: string | null
