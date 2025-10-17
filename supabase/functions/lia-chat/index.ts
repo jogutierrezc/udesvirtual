@@ -12,57 +12,55 @@ async function fetchUDESWebContent(url: string): Promise<string> {
     console.log(`🌐 Fetching UDES web content from: ${url}`);
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; UDES-LIA-Bot/1.0)',
+        "User-Agent": "Mozilla/5.0 (compatible; UDES-LIA-Bot/1.0)",
       },
     });
-    
+
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
-    
+
     const html = await response.text();
-    const doc = new DOMParser().parseFromString(html, 'text/html');
-    
+    const doc = new DOMParser().parseFromString(html, "text/html");
+
     if (!doc) {
-      throw new Error('Failed to parse HTML');
+      throw new Error("Failed to parse HTML");
     }
-    
+
     // Extraer texto relevante del documento
-    let text = '';
-    
+    let text = "";
+
     // Para páginas con tabs (como equipo-drni), extraer todo el contenido de tabs
     const tabPanels = doc.querySelectorAll('[role="tabpanel"], .tab-pane, .tabs-content, .tab-content');
     if (tabPanels && tabPanels.length > 0) {
       console.log(`📑 Found ${tabPanels.length} tab panels`);
       tabPanels.forEach((panel, index) => {
-        const panelText = panel.textContent || '';
+        const panelText = panel.textContent || "";
         if (panelText.trim()) {
           // Intentar extraer el nombre del tab/campus
-          const tabLabel = panel.getAttribute('aria-label') || 
-                          panel.getAttribute('data-tab') || 
-                          `Tab ${index + 1}`;
+          const tabLabel = panel.getAttribute("aria-label") || panel.getAttribute("data-tab") || `Tab ${index + 1}`;
           text += `\n\n=== ${tabLabel} ===\n${panelText.trim()}\n`;
         }
       });
     }
-    
+
     // Si no hay tabs, extraer el contenido del body
     if (!text || text.trim().length === 0) {
-      const body = doc.querySelector('body');
-      text = body?.textContent || '';
+      const body = doc.querySelector("body");
+      text = body?.textContent || "";
     }
-    
+
     // También extraer información de elementos específicos útiles
-    const teamMembers = doc.querySelectorAll('.team-member, .person, .staff-member, .equipo-item');
+    const teamMembers = doc.querySelectorAll(".team-member, .person, .staff-member, .equipo-item");
     if (teamMembers && teamMembers.length > 0) {
       console.log(`👥 Found ${teamMembers.length} team members`);
-      text += '\n\n=== MIEMBROS DEL EQUIPO ===\n';
+      text += "\n\n=== MIEMBROS DEL EQUIPO ===\n";
       teamMembers.forEach((member) => {
-        const name = member.querySelector('.name, .person-name, h3, h4')?.textContent?.trim();
-        const title = member.querySelector('.title, .position, .cargo')?.textContent?.trim();
+        const name = member.querySelector(".name, .person-name, h3, h4")?.textContent?.trim();
+        const title = member.querySelector(".title, .position, .cargo")?.textContent?.trim();
         const email = member.querySelector('.email, a[href^="mailto:"]')?.textContent?.trim();
-        const phone = member.querySelector('.phone, .telefono')?.textContent?.trim();
-        
+        const phone = member.querySelector(".phone, .telefono")?.textContent?.trim();
+
         if (name) {
           text += `\n- ${name}`;
           if (title) text += ` - ${title}`;
@@ -71,34 +69,34 @@ async function fetchUDESWebContent(url: string): Promise<string> {
         }
       });
     }
-    
+
     // Limpiar el texto
-    text = text.replace(/\s+/g, ' ').replace(/\n\s+/g, '\n').trim();
-    
+    text = text.replace(/\s+/g, " ").replace(/\n\s+/g, "\n").trim();
+
     // Limitar a 5000 caracteres para no sobrecargar el contexto
     if (text.length > 5000) {
-      text = text.substring(0, 5000) + '...\n[Contenido truncado por longitud]';
+      text = text.substring(0, 5000) + "...\n[Contenido truncado por longitud]";
     }
-    
+
     console.log(`✅ Successfully fetched content (${text.length} chars)`);
     return text;
   } catch (error) {
     console.error(`❌ Error fetching web content:`, error);
-    return '';
+    return "";
   }
 }
 
 // URLs importantes de UDES
 const UDES_URLS = {
-  equipo: 'https://udes.edu.co/nuestra-universidad/quienes-somos/equipo-directivo',
-  equipoInternacional: 'https://udes.edu.co/internacional/quienes-somos/equipo-drni',
-  misionVision: 'https://udes.edu.co/nuestra-universidad/quienes-somos/mision-vision',
-  historia: 'https://udes.edu.co/nuestra-universidad/quienes-somos/historia',
-  campus: 'https://udes.edu.co/nuestra-universidad/sedes-ubicacion',
-  acreditacion: 'https://udes.edu.co/nuestra-universidad/acreditacion',
-  programas: 'https://udes.edu.co/programas-academicos',
-  investigacion: 'https://udes.edu.co/investigacion',
-  internacional: 'https://udes.edu.co/relacionamiento-internacional',
+  equipo: "https://udes.edu.co/nuestra-universidad/quienes-somos/equipo-directivo",
+  equipoInternacional: "https://udes.edu.co/internacional/quienes-somos/equipo-drni",
+  misionVision: "https://udes.edu.co/nuestra-universidad/quienes-somos/mision-vision",
+  historia: "https://udes.edu.co/nuestra-universidad/quienes-somos/historia",
+  campus: "https://udes.edu.co/nuestra-universidad/sedes-ubicacion",
+  acreditacion: "https://udes.edu.co/nuestra-universidad/acreditacion",
+  programas: "https://udes.edu.co/programas-academicos",
+  investigacion: "https://udes.edu.co/investigacion",
+  internacional: "https://udes.edu.co/relacionamiento-internacional",
 };
 
 serve(async (req) => {
@@ -248,7 +246,9 @@ REGLAS FUNDAMENTALES:
 4. **NUNCA inventes información** - solo usa los datos proporcionados
 5. **Sé ESPECÍFICA Y DETALLADA**: Incluye todos los detalles relevantes
 
-${webContent ? `
+${
+  webContent
+    ? `
 🌐 INFORMACIÓN DE LA WEB OFICIAL DE UDES:
 
 ${webContent}
@@ -263,7 +263,9 @@ Usa esta información para responder preguntas sobre:
 - Investigación
 - Relaciones internacionales
 
-` : ''}
+`
+    : ""
+}
 
 ESTRUCTURA DE RESPUESTAS:
 📊 **Preguntas generales** ("¿Qué clases hay?", "¿Quién es el rector?"):
