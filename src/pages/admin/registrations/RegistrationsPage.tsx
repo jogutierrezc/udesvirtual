@@ -3,15 +3,73 @@ import { useAdmin } from "@/contexts/AdminContext";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Loader2, FileSpreadsheet } from "lucide-react";
+import * as XLSX from "xlsx";
+import { useToast } from "@/hooks/use-toast";
 
 export const RegistrationsPage = () => {
   const { registrations, loading } = useAdmin();
   const [selectedClassId, setSelectedClassId] = useState<string>("");
+  const { toast } = useToast();
 
   const filteredRegistrations = selectedClassId
     ? registrations.filter((reg: any) => String(reg.class_id) === selectedClassId)
     : registrations;
+
+  const exportToExcel = () => {
+    if (filteredRegistrations.length === 0) {
+      toast({
+        title: "No hay datos",
+        description: "No hay registros para exportar",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Preparar los datos para Excel
+    const excelData = filteredRegistrations.map((reg: any) => ({
+      "Nombre Completo": reg.full_name || "",
+      "Email": reg.email || "",
+      "Universidad de Origen": reg.institution || "",
+      "País": reg.country || "",
+      "Curso Seleccionado": reg.classes?.title || reg.class_id || "",
+      "Tipo de Clase": reg.classes?.class_type === "mirror" ? "Clase Espejo" : "MasterClass",
+      "Campus": reg.classes?.campus || "",
+      "Fecha de Registro": reg.created_at ? new Date(reg.created_at).toLocaleDateString("es-ES") : "",
+    }));
+
+    // Crear el libro de trabajo
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Registros");
+
+    // Ajustar el ancho de las columnas
+    const maxWidth = 50;
+    const colWidths = Object.keys(excelData[0] || {}).map((key) => ({
+      wch: Math.min(
+        Math.max(
+          key.length,
+          ...excelData.map((row: any) => String(row[key] || "").length)
+        ),
+        maxWidth
+      ),
+    }));
+    worksheet["!cols"] = colWidths;
+
+    // Nombre del archivo
+    const fileName = selectedClassId
+      ? `registros_${filteredRegistrations[0]?.classes?.title || "clase"}_${new Date().toLocaleDateString("es-ES").replace(/\//g, "-")}.xlsx`
+      : `registros_completos_${new Date().toLocaleDateString("es-ES").replace(/\//g, "-")}.xlsx`;
+
+    // Descargar el archivo
+    XLSX.writeFile(workbook, fileName);
+
+    toast({
+      title: "✅ Exportación exitosa",
+      description: `Se descargaron ${filteredRegistrations.length} registro(s) a Excel`,
+    });
+  };
 
   if (loading) {
     return (
@@ -37,41 +95,54 @@ export const RegistrationsPage = () => {
           <p className="text-center text-muted-foreground py-12 text-sm md:text-base">No hay registros</p>
         ) : (
           <div className="space-y-4">
-            {/* Class Filter */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-              <Label htmlFor="classFilter" className="text-sm">Filtrar por clase:</Label>
-              <Select
-                value={selectedClassId || "all"}
-                onValueChange={(value) => setSelectedClassId(value === "all" ? "" : value)}
+            {/* Class Filter and Export Button */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 flex-1">
+                <Label htmlFor="classFilter" className="text-sm whitespace-nowrap">Filtrar por clase:</Label>
+                <Select
+                  value={selectedClassId || "all"}
+                  onValueChange={(value) => setSelectedClassId(value === "all" ? "" : value)}
+                >
+                  <SelectTrigger className="w-full sm:w-[280px]">
+                    <SelectValue placeholder="Todas las clases" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas las clases</SelectItem>
+                    {Array.from(
+                      new Set(
+                        registrations
+                          .map((r: any) =>
+                            r.class_id !== undefined && r.class_id !== null
+                              ? String(r.class_id).trim()
+                              : ""
+                          )
+                          .filter((classId) => classId !== "")
+                      )
+                    ).map((classId) => {
+                      const regClass = registrations.find(
+                        (r: any) => String(r.class_id).trim() === classId
+                      );
+                      const courseName = (regClass as any)?.classes?.title || classId;
+                      return (
+                        <SelectItem key={classId} value={classId}>
+                          {courseName}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Export Button */}
+              <Button
+                onClick={exportToExcel}
+                disabled={filteredRegistrations.length === 0}
+                className="w-full sm:w-auto gap-2"
+                variant="default"
               >
-                <SelectTrigger className="w-full sm:w-[280px]">
-                  <SelectValue placeholder="Todas las clases" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas las clases</SelectItem>
-                  {Array.from(
-                    new Set(
-                      registrations
-                        .map((r: any) =>
-                          r.class_id !== undefined && r.class_id !== null
-                            ? String(r.class_id).trim()
-                            : ""
-                        )
-                        .filter((classId) => classId !== "")
-                    )
-                  ).map((classId) => {
-                    const regClass = registrations.find(
-                      (r: any) => String(r.class_id).trim() === classId
-                    );
-                    const courseName = (regClass as any)?.classes?.title || classId;
-                    return (
-                      <SelectItem key={classId} value={classId}>
-                        {courseName}
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
+                <FileSpreadsheet className="h-4 w-4" />
+                Exportar a Excel
+              </Button>
             </div>
 
             {/* Mobile View - Cards */}
