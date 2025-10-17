@@ -11,7 +11,7 @@ serve(async (req) => {
   try {
     const { messages, type = "chat", catalogContext } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    
+
     console.log("🔍 Edge Function recibió:", {
       mensajes: messages?.length,
       tieneContexto: !!catalogContext,
@@ -20,7 +20,7 @@ serve(async (req) => {
       ofertas: catalogContext?.offerings?.length || 0,
       coil: catalogContext?.coilProposals?.length || 0,
     });
-    
+
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
@@ -122,7 +122,7 @@ IMPORTANTE: Usa esta información actualizada para responder preguntas sobre:
 Siempre proporciona información específica y actualizada basándote en estos datos.
 `;
     }
-    
+
     console.log("📝 Contexto formateado:", {
       longitudContexto: catalogInfo.length,
       tieneClases: catalogInfo.includes("CLASES DISPONIBLES"),
@@ -166,10 +166,7 @@ ${catalogInfo}`;
 
     const body: any = {
       model: "google/gemini-2.5-flash",
-      messages: [
-        { role: "system", content: liaSystemPrompt },
-        ...messages
-      ],
+      messages: [{ role: "system", content: liaSystemPrompt }, ...messages],
       temperature: 0.7, // Hacer respuestas más naturales
       max_tokens: 300, // Limitar longitud de respuestas
     };
@@ -198,3 +195,46 @@ ${catalogInfo}`;
         },
       ];
       body.tool_choice = { type: "function", function: { name: "generate_summary" } };
+    }
+
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      if (response.status === 429) {
+        return new Response(
+          JSON.stringify({ error: "Límite de solicitudes alcanzado. Por favor intenta más tarde." }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+      if (response.status === 402) {
+        return new Response(JSON.stringify({ error: "Se requiere pago. Por favor contacta al administrador." }), {
+          status: 402,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const errorText = await response.text();
+      console.error("AI gateway error:", response.status, errorText);
+      throw new Error("Error en la API de IA");
+    }
+
+    const data = await response.json();
+    console.log("LIA response generated successfully");
+
+    return new Response(JSON.stringify(data), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    console.error("Error in lia-chat function:", error);
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Error desconocido" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});
