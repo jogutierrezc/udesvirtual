@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,6 +31,17 @@ export const LiaChat = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [catalogContext, setCatalogContext] = useState<CatalogContext | null>(null);
   const { toast } = useToast();
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll cuando hay nuevos mensajes
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   // Cargar el contexto del catálogo cuando se abre el chat
   useEffect(() => {
@@ -123,54 +134,56 @@ export const LiaChat = () => {
   }
 
   return (
-    <Card className="fixed bottom-6 right-6 w-96 h-[500px] shadow-elegant flex flex-col">
-      <CardHeader className="bg-gradient-to-r from-primary to-accent text-white rounded-t-lg">
+    <Card className="fixed bottom-4 right-4 w-[calc(100vw-2rem)] sm:w-96 h-[70vh] sm:h-[500px] shadow-elegant flex flex-col z-50">
+      <CardHeader className="bg-gradient-to-r from-primary to-accent text-white rounded-t-lg p-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5" />
-            <CardTitle className="text-lg">LIA - Asistente UDES</CardTitle>
+            <CardTitle className="text-base sm:text-lg">LIA - Asistente UDES</CardTitle>
           </div>
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setIsOpen(false)}
-            className="text-white hover:bg-white/20"
+            className="text-white hover:bg-white/20 h-8 w-8"
           >
             <X className="h-4 w-4" />
           </Button>
         </div>
       </CardHeader>
       
-      <CardContent className="flex-1 flex flex-col p-0">
-        <ScrollArea className="flex-1 p-4">
-          <div className="space-y-4">
+      <CardContent className="flex-1 flex flex-col p-0 overflow-hidden">
+        <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
+          <div className="space-y-4 pb-4">
             {messages.map((message, index) => (
               <div
                 key={index}
                 className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`max-w-[80%] rounded-lg px-4 py-2 ${
+                  className={`max-w-[85%] rounded-lg px-3 py-2 ${
                     message.role === "user"
                       ? "bg-primary text-white"
                       : "bg-muted text-foreground"
                   }`}
                 >
-                  <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+                  <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">{message.content}</p>
                 </div>
               </div>
             ))}
             {isLoading && (
               <div className="flex justify-start">
-                <div className="bg-muted rounded-lg px-4 py-2">
+                <div className="bg-muted rounded-lg px-3 py-2 flex items-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm text-muted-foreground">LIA está escribiendo...</span>
                 </div>
               </div>
             )}
+            <div ref={messagesEndRef} />
           </div>
         </ScrollArea>
 
-        <div className="p-4 border-t">
+        <div className="p-3 sm:p-4 border-t bg-background">
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -183,6 +196,8 @@ export const LiaChat = () => {
               onChange={(e) => setInput(e.target.value)}
               placeholder="Pregúntale a LIA..."
               disabled={isLoading}
+              className="flex-1"
+              autoComplete="off"
             />
             <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
               <Send className="h-4 w-4" />

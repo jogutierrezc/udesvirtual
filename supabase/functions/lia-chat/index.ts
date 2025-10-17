@@ -166,7 +166,10 @@ ${catalogInfo}`;
 
     const body: any = {
       model: "google/gemini-2.5-flash",
-      messages: [{ role: "system", content: liaSystemPrompt }, ...messages],
+      messages: [
+        { role: "system", content: liaSystemPrompt },
+        ...messages
+      ],
       temperature: 0.7, // Hacer respuestas más naturales
       max_tokens: 300, // Limitar longitud de respuestas
     };
