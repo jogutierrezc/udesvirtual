@@ -7,6 +7,7 @@ import { Send, Loader2, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
+import ReactMarkdown from "react-markdown";
 
 interface Message {
   role: "user" | "assistant";
@@ -165,7 +166,22 @@ const Lia = () => {
                         : "bg-muted text-foreground border border-border"
                     }`}
                   >
-                    <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+                    <div className="text-sm whitespace-pre-wrap break-words prose prose-sm max-w-none prose-a:text-primary prose-a:no-underline hover:prose-a:underline">
+                      <ReactMarkdown
+                        components={{
+                          a: ({ node, ...props }) => (
+                            <Link
+                              to={props.href || "#"}
+                              className="font-medium underline-offset-4 hover:underline"
+                            >
+                              {props.children}
+                            </Link>
+                          ),
+                        }}
+                      >
+                        {message.content}
+                      </ReactMarkdown>
+                    </div>
                   </div>
                 </div>
               ))}
