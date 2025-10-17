@@ -6,9 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { LiaChat } from "@/components/LiaChat";
-import { Search, Calendar, Users, MapPin, Video, BookOpen, UserPlus, MessageSquare } from "lucide-react";
+import { Search, Calendar, Users, MapPin, Video, BookOpen, UserPlus, MessageSquare, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 
@@ -20,6 +20,7 @@ const Catalog = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [selectedClass, setSelectedClass] = useState<any>(null);
+  const [selectedDetails, setSelectedDetails] = useState<any>(null);
   const [selectedOffering, setSelectedOffering] = useState<any>(null);
   const [registering, setRegistering] = useState(false);
   const [registrationForm, setRegistrationForm] = useState({
@@ -89,13 +90,14 @@ const Catalog = () => {
       t.interests.some((i: string) => i.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  const handleRegister = async (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent, classId?: string | number) => {
     e.preventDefault();
     setRegistering(true);
 
     try {
+      const targetClassId = classId ?? selectedClass?.id ?? selectedDetails?.id;
       const { error } = await supabase.from("class_registrations").insert({
-        class_id: selectedClass.id,
+        class_id: targetClassId,
         ...registrationForm,
       });
 
@@ -109,8 +111,9 @@ const Catalog = () => {
       });
 
       // Mostrar el link en un modal pop-up
-      if (selectedClass.virtual_room_link) {
-        setClassLink(selectedClass.virtual_room_link);
+      const classForLink = selectedClass ?? selectedDetails;
+      if (classForLink?.virtual_room_link) {
+        setClassLink(classForLink.virtual_room_link);
         setShowLinkModal(true);
       }
 
@@ -123,6 +126,7 @@ const Catalog = () => {
         participant_type: "",
       });
       setSelectedClass(null);
+      setSelectedDetails(null);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -131,6 +135,23 @@ const Catalog = () => {
       });
     } finally {
       setRegistering(false);
+    }
+  };
+
+  const handleCopyLink = async () => {
+    if (!classLink) return;
+    try {
+      await navigator.clipboard.writeText(classLink);
+      toast({
+        title: "Enlace copiado",
+        description: "El enlace de la clase se ha copiado al portapapeles.",
+      });
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "No se pudo copiar el enlace.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -234,12 +255,231 @@ const Catalog = () => {
                     <Badge variant="outline">{classItem.profession}</Badge>
                   </div>
                   <Dialog open={selectedClass?.id === classItem.id} onOpenChange={(open) => !open && setSelectedClass(null)}>
-                    <DialogTrigger asChild>
-                      <Button className="w-full mt-2" onClick={() => setSelectedClass(classItem)}>
-                        <UserPlus className="h-4 w-4 mr-2" />
-                        Registrarse
-                      </Button>
-                    </DialogTrigger>
+                    <div className="flex gap-2 w-full">
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button variant="ghost" className="flex-1" onClick={() => setSelectedDetails(classItem)}>
+                            <BookOpen className="h-4 w-4 mr-2" />
+                            Ver más
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="w-full max-w-5xl mx-4 sm:mx-auto rounded-lg p-6 sm:p-8 max-h-[85vh] overflow-y-auto">
+                          <DialogHeader>
+                            <DialogTitle>Detalles: {classItem.title}</DialogTitle>
+                            <DialogDescription>Información completa del curso y registro</DialogDescription>
+                          </DialogHeader>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                            {/* Left: course info */}
+                            <div className="space-y-4">
+                              <p className="text-sm text-muted-foreground text-justify">{classItem.description}</p>
+                              <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
+                                <div>
+                                  <p className="font-medium">Profesor Aliado</p>
+                                  <p>{classItem.allied_professor}</p>
+                                  {classItem.allied_institution && <p>{classItem.allied_institution}</p>}
+                                </div>
+                                <div>
+                                  <p className="font-medium">Fecha</p>
+                                  <p>{new Date(classItem.class_date).toLocaleString("es-ES")}</p>
+                                </div>
+                                <div>
+                                  <p className="font-medium">Campus</p>
+                                  <p>{classItem.campus}</p>
+                                </div>
+                                <div>
+                                  <p className="font-medium">Capacidad</p>
+                                  <p>{classItem.capacity}</p>
+                                </div>
+                              </div>
+
+                              {classItem.knowledge_area && (
+                                <div>
+                                  <p className="font-medium mb-2">Áreas</p>
+                                  <div className="flex flex-wrap gap-2">
+                                    {Array.isArray(classItem.knowledge_area)
+                                      ? classItem.knowledge_area.map((a: string, i: number) => (
+                                          <Badge key={i} variant="outline">{a}</Badge>
+                                        ))
+                                      : <Badge variant="outline">{classItem.knowledge_area}</Badge>
+                                    }
+                                  </div>
+                                </div>
+                              )}
+
+                              {classItem.virtual_room_required && (
+                                <div className="flex items-center gap-2 text-muted-foreground">
+                                  <Video className="h-4 w-4" />
+                                  <p className="text-justify">Sala virtual disponible</p>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Right: registration form */}
+                            <div className="bg-muted/5 p-4 rounded-md">
+                              {/* Close button top-right (redundant with global close but ensures visibility) */}
+                              <DialogClose className="absolute right-4 top-4 rounded-sm opacity-80 bg-transparent hover:opacity-100">
+                                <button aria-label="Cerrar" className="flex items-center justify-center">
+                                  <X className="h-4 w-4" />
+                                </button>
+                              </DialogClose>
+                              <h3 className="font-semibold mb-3">Formulario de Registro</h3>
+                              <form onSubmit={(e) => handleRegister(e, classItem.id)} className="space-y-4">
+                                <div className="space-y-2">
+                                  <Label htmlFor="full_name">Nombre Completo *</Label>
+                                  <Input
+                                    id="full_name"
+                                    value={registrationForm.full_name}
+                                    onChange={(e) => setRegistrationForm({ ...registrationForm, full_name: e.target.value })}
+                                    required
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="phone">Teléfono *</Label>
+                                  <Input
+                                    id="phone"
+                                    value={registrationForm.phone}
+                                    onChange={(e) => setRegistrationForm({ ...registrationForm, phone: e.target.value })}
+                                    required
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="email">Correo Electrónico *</Label>
+                                  <Input
+                                    id="email"
+                                    type="email"
+                                    value={registrationForm.email}
+                                    onChange={(e) => setRegistrationForm({ ...registrationForm, email: e.target.value })}
+                                    required
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="institution">Institución de Origen *</Label>
+                                  <Input
+                                    id="institution"
+                                    value={registrationForm.institution}
+                                    onChange={(e) => setRegistrationForm({ ...registrationForm, institution: e.target.value })}
+                                    required
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="country">País *</Label>
+                                  <Input
+                                    id="country"
+                                    value={registrationForm.country}
+                                    onChange={(e) => setRegistrationForm({ ...registrationForm, country: e.target.value })}
+                                    required
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="participant_type">Tipo de Participante *</Label>
+                                  <Select
+                                    value={registrationForm.participant_type}
+                                    onValueChange={(value) => setRegistrationForm({ ...registrationForm, participant_type: value })}
+                                    required
+                                  >
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Seleccione..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="Estudiante">Estudiante</SelectItem>
+                                      <SelectItem value="Docente">Docente</SelectItem>
+                                      <SelectItem value="Otro">Otro</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <Button type="submit" className="w-full" disabled={registering}>
+                                  {registering ? "Registrando..." : "Confirmar Registro"}
+                                </Button>
+                              </form>
+                            </div>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+
+                      <Dialog open={selectedClass?.id === classItem.id} onOpenChange={(open) => !open && setSelectedClass(null)}>
+                        <DialogTrigger asChild>
+                          <Button className="flex-1" onClick={() => setSelectedClass(classItem)}>
+                            <UserPlus className="h-4 w-4 mr-2" />
+                            Registrarse
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Registro para: {classItem.title}</DialogTitle>
+                            <DialogDescription>Complete el formulario para registrarse en esta clase</DialogDescription>
+                          </DialogHeader>
+                          <form onSubmit={handleRegister} className="space-y-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="full_name">Nombre Completo *</Label>
+                              <Input
+                                id="full_name"
+                                value={registrationForm.full_name}
+                                onChange={(e) => setRegistrationForm({ ...registrationForm, full_name: e.target.value })}
+                                required
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="phone">Teléfono *</Label>
+                              <Input
+                                id="phone"
+                                value={registrationForm.phone}
+                                onChange={(e) => setRegistrationForm({ ...registrationForm, phone: e.target.value })}
+                                required
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="email">Correo Electrónico *</Label>
+                              <Input
+                                id="email"
+                                type="email"
+                                value={registrationForm.email}
+                                onChange={(e) => setRegistrationForm({ ...registrationForm, email: e.target.value })}
+                                required
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="institution">Institución de Origen *</Label>
+                              <Input
+                                id="institution"
+                                value={registrationForm.institution}
+                                onChange={(e) => setRegistrationForm({ ...registrationForm, institution: e.target.value })}
+                                required
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="country">País *</Label>
+                              <Input
+                                id="country"
+                                value={registrationForm.country}
+                                onChange={(e) => setRegistrationForm({ ...registrationForm, country: e.target.value })}
+                                required
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="participant_type">Tipo de Participante *</Label>
+                              <Select
+                                value={registrationForm.participant_type}
+                                onValueChange={(value) => setRegistrationForm({ ...registrationForm, participant_type: value })}
+                                required
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Seleccione..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Estudiante">Estudiante</SelectItem>
+                                  <SelectItem value="Docente">Docente</SelectItem>
+                                  <SelectItem value="Otro">Otro</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <Button type="submit" className="w-full" disabled={registering}>
+                              {registering ? "Registrando..." : "Confirmar Registro"}
+                            </Button>
+                          </form>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
                     <DialogContent>
                       <DialogHeader>
                         <DialogTitle>Registro para: {classItem.title}</DialogTitle>
@@ -322,30 +562,35 @@ const Catalog = () => {
         )}
         {/* Modal pop-up para mostrar el link de la clase */}
         <Dialog open={showLinkModal} onOpenChange={(open) => !open && setShowLinkModal(false)}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Acceso a la clase virtual</DialogTitle>
-              <DialogDescription>
-                ¡Registro exitoso! Aquí tienes el link de acceso a la clase virtual:
-              </DialogDescription>
-            </DialogHeader>
-            <div className="flex flex-col gap-4 items-center py-2">
-              <a
-                href={classLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary underline break-all text-center"
-              >
-                {classLink}
-              </a>
-              <Button
-                onClick={() => window.open(classLink, "_blank", "noopener,noreferrer")}
-                className="w-full"
-              >
-                Abrir clase en nueva ventana
-              </Button>
-            </div>
-          </DialogContent>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Acceso a la clase virtual</DialogTitle>
+                <DialogDescription>
+                  ¡Registro exitoso! Aquí tienes el link de acceso a la clase virtual:
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex flex-col gap-4 items-stretch py-2">
+                <a
+                  href={classLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary underline break-all text-center"
+                >
+                  {classLink}
+                </a>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => window.open(classLink, "_blank", "noopener,noreferrer")}
+                    className="flex-1"
+                  >
+                    Abrir clase en nueva ventana
+                  </Button>
+                  <Button variant="outline" className="flex-1" onClick={handleCopyLink}>
+                    Copiar enlace
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
         </Dialog>
       </section>
 

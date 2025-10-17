@@ -4,8 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, Users, MapPin, BookOpen, Mail, Phone } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Search, Users, MapPin, BookOpen, Mail, Phone, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import { LiaChat } from "@/components/LiaChat";
 
@@ -30,8 +30,8 @@ const ProfessorOfferings = () => {
 
       if (error) throw error;
       setOfferings(data || []);
-    } catch (error) {
-      console.error("Error loading offerings:", error);
+    } catch (err) {
+      console.error("Error loading offerings:", err);
     } finally {
       setLoading(false);
     }
@@ -40,17 +40,54 @@ const ProfessorOfferings = () => {
   const filteredOfferings = offerings.filter((o) => {
     const searchLower = searchTerm.toLowerCase();
     const areasMatch = Array.isArray(o.knowledge_area)
-      ? o.knowledge_area.some((area) => area.toLowerCase().includes(searchLower))
+      ? o.knowledge_area.some((area: string) => area.toLowerCase().includes(searchLower))
       : o.knowledge_area?.toLowerCase().includes(searchLower);
 
     return (
-      o.title.toLowerCase().includes(searchLower) ||
+      o.title?.toLowerCase().includes(searchLower) ||
       areasMatch ||
-      o.profession.toLowerCase().includes(searchLower) ||
+      o.profession?.toLowerCase().includes(searchLower) ||
       o.udes_professor_name?.toLowerCase().includes(searchLower) ||
       o.udes_professor_program?.toLowerCase().includes(searchLower)
     );
   });
+
+  const renderAlliedProfessor = (offering: any) => {
+    const parts = (offering.allied_professor || "").split(" | ");
+    const name = parts[0] || "";
+    const phone = parts[1] || "";
+    const email = parts[2] || "";
+
+    const instParts = (offering.allied_institution || "").split(" | ");
+    const career = instParts[0] || "";
+    const campus = instParts[1] || "";
+
+    return (
+      <>
+        {name && <p className="font-medium text-lg">{name}</p>}
+        {(career || campus) && (
+          <div className="space-y-1 text-sm text-muted-foreground">
+            {career && <p><strong>Carrera:</strong> {career}</p>}
+            {campus && <p><strong>Campus:</strong> {campus}</p>}
+          </div>
+        )}
+        <div className="flex flex-col gap-2 mt-4">
+          {email && (
+            <Button variant="outline" className="w-full justify-start" onClick={() => (window.location.href = `mailto:${email}`)}>
+              <Mail className="h-4 w-4 mr-2" />
+              {email}
+            </Button>
+          )}
+          {phone && (
+            <Button variant="outline" className="w-full justify-start" onClick={() => (window.location.href = `tel:${phone}`)}>
+              <Phone className="h-4 w-4 mr-2" />
+              {phone}
+            </Button>
+          )}
+        </div>
+      </>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -58,9 +95,7 @@ const ProfessorOfferings = () => {
       <header className="bg-gradient-to-r from-primary to-accent text-white py-6 px-4">
         <div className="max-w-6xl mx-auto">
           <h1 className="text-2xl font-bold mb-2">Oferta para Profesores</h1>
-          <p className="text-white/80">
-            Cursos UDES disponibles para intercambio con otras Instituciones de Educación Superior
-          </p>
+          <p className="text-white/80">Cursos UDES disponibles para intercambio con otras Instituciones de Educación Superior</p>
           <div className="flex gap-2 mt-4">
             <Link to="/catalog">
               <Button variant="secondary">Ver Catálogo</Button>
@@ -89,9 +124,7 @@ const ProfessorOfferings = () => {
       <section className="max-w-6xl mx-auto px-4 pb-16">
         <div className="mb-6">
           <h2 className="text-2xl font-bold mb-2">Cursos Disponibles</h2>
-          <p className="text-muted-foreground">
-            Estos cursos están disponibles para establecer intercambios académicos con otras IES
-          </p>
+          <p className="text-muted-foreground">Estos cursos están disponibles para establecer intercambios académicos con otras IES</p>
         </div>
 
         {loading ? (
@@ -101,8 +134,8 @@ const ProfessorOfferings = () => {
         ) : (
           <div className="grid md:grid-cols-2 gap-6">
             {filteredOfferings.map((offering) => (
-              <Card 
-                key={offering.id} 
+              <Card
+                key={offering.id}
                 className="shadow-card hover:shadow-elegant transition-all cursor-pointer"
                 onClick={() => {
                   setSelectedOffering(offering);
@@ -143,7 +176,7 @@ const ProfessorOfferings = () => {
                   {/* Áreas de conocimiento */}
                   <div className="flex flex-wrap gap-2 pt-2">
                     {Array.isArray(offering.knowledge_area) ? (
-                      offering.knowledge_area.map((area, i) => (
+                      offering.knowledge_area.map((area: string, i: number) => (
                         <Badge key={i} variant="outline">
                           {area}
                         </Badge>
@@ -168,29 +201,32 @@ const ProfessorOfferings = () => {
 
       {/* Modal con detalles completos */}
       <Dialog open={showModal} onOpenChange={setShowModal}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="w-full max-w-5xl mx-4 sm:mx-auto rounded-lg p-6 sm:p-8 max-h-[85vh] overflow-y-auto">
           {selectedOffering && (
             <>
               <DialogHeader>
                 <div className="flex items-start justify-between">
                   <DialogTitle className="text-2xl pr-4">{selectedOffering.title}</DialogTitle>
-                  <Badge variant={selectedOffering.offering_type === "exchange" ? "default" : "secondary"}>
-                    {selectedOffering.offering_type === "exchange" ? "Exchange" : "Programada"}
-                  </Badge>
+                  <div className="flex items-center gap-3">
+                    <Badge variant={selectedOffering.offering_type === "exchange" ? "default" : "secondary"}>
+                      {selectedOffering.offering_type === "exchange" ? "Exchange" : "Programada"}
+                    </Badge>
+                    <Button variant="ghost" onClick={() => setShowModal(false)}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
                 <DialogDescription>
                   <strong>Programa:</strong> {selectedOffering.profession}
                 </DialogDescription>
               </DialogHeader>
 
-              <div className="space-y-6 mt-4">
-                {/* Descripción completa */}
-                <div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                <div className="md:col-span-2">
                   <h3 className="font-semibold mb-2">Descripción</h3>
                   <p className="text-sm text-muted-foreground text-justify">{selectedOffering.description}</p>
                 </div>
 
-                {/* Detalles del curso */}
                 <div>
                   <h3 className="font-semibold mb-2">Detalles del Curso</h3>
                   <div className="grid md:grid-cols-2 gap-4 text-sm">
@@ -209,16 +245,13 @@ const ProfessorOfferings = () => {
                   </div>
                 </div>
 
-                {/* Áreas de conocimiento */}
                 {selectedOffering.knowledge_area && (
                   <div>
                     <h3 className="font-semibold mb-2">Áreas de Conocimiento</h3>
                     <div className="flex flex-wrap gap-2">
                       {Array.isArray(selectedOffering.knowledge_area) ? (
-                        selectedOffering.knowledge_area.map((area, i) => (
-                          <Badge key={i} variant="outline">
-                            {area}
-                          </Badge>
+                        selectedOffering.knowledge_area.map((area: string, i: number) => (
+                          <Badge key={i} variant="outline">{area}</Badge>
                         ))
                       ) : (
                         <Badge variant="outline">{selectedOffering.knowledge_area}</Badge>
@@ -227,39 +260,35 @@ const ProfessorOfferings = () => {
                   </div>
                 )}
 
-                {/* Información del profesor UDES */}
-                {selectedOffering.udes_professor_name && (
-                  <div className="border-t pt-4">
-                    <h3 className="font-semibold mb-3">Profesor UDES a Cargo</h3>
+                {/* Profesor UDES o aliado */}
+                {(selectedOffering.udes_professor_name || selectedOffering.allied_professor || selectedOffering.allied_institution) && (
+                  <div className="border-t pt-4 md:col-span-2">
+                    <h3 className="font-semibold mb-3">Profesor a Cargo</h3>
                     <div className="space-y-3">
-                      <p className="font-medium text-lg">{selectedOffering.udes_professor_name}</p>
-                      {selectedOffering.udes_professor_program && (
-                        <p className="text-sm text-muted-foreground">
-                          <strong>Programa:</strong> {selectedOffering.udes_professor_program}
-                        </p>
+                      {selectedOffering.udes_professor_name ? (
+                        <>
+                          <p className="font-medium text-lg">{selectedOffering.udes_professor_name}</p>
+                          {selectedOffering.udes_professor_program && (
+                            <p className="text-sm text-muted-foreground"><strong>Programa:</strong> {selectedOffering.udes_professor_program}</p>
+                          )}
+                          <div className="flex flex-col gap-2 mt-4">
+                            {selectedOffering.udes_professor_email && (
+                              <Button variant="outline" className="w-full justify-start" onClick={() => (window.location.href = `mailto:${selectedOffering.udes_professor_email}`)}>
+                                <Mail className="h-4 w-4 mr-2" />
+                                {selectedOffering.udes_professor_email}
+                              </Button>
+                            )}
+                            {selectedOffering.udes_professor_phone && (
+                              <Button variant="outline" className="w-full justify-start" onClick={() => (window.location.href = `tel:${selectedOffering.udes_professor_phone}`)}>
+                                <Phone className="h-4 w-4 mr-2" />
+                                {selectedOffering.udes_professor_phone}
+                              </Button>
+                            )}
+                          </div>
+                        </>
+                      ) : (
+                        renderAlliedProfessor(selectedOffering)
                       )}
-                      <div className="flex flex-col gap-2 mt-4">
-                        {selectedOffering.udes_professor_email && (
-                          <Button 
-                            variant="outline" 
-                            className="w-full justify-start"
-                            onClick={() => window.location.href = `mailto:${selectedOffering.udes_professor_email}`}
-                          >
-                            <Mail className="h-4 w-4 mr-2" />
-                            {selectedOffering.udes_professor_email}
-                          </Button>
-                        )}
-                        {selectedOffering.udes_professor_phone && (
-                          <Button 
-                            variant="outline" 
-                            className="w-full justify-start"
-                            onClick={() => window.location.href = `tel:${selectedOffering.udes_professor_phone}`}
-                          >
-                            <Phone className="h-4 w-4 mr-2" />
-                            {selectedOffering.udes_professor_phone}
-                          </Button>
-                        )}
-                      </div>
                     </div>
                   </div>
                 )}
@@ -275,3 +304,4 @@ const ProfessorOfferings = () => {
 };
 
 export default ProfessorOfferings;
+ 

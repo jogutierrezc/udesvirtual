@@ -82,83 +82,85 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4">
-      <Card className="w-full max-w-md shadow-elegant">
-        <CardHeader className="space-y-4 text-center">
-          <div className="mx-auto w-16 h-16 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-            <GraduationCap className="w-8 h-8 text-white" />
-          </div>
-          <div>
-            <CardTitle className="text-2xl">UDES Link Internacional</CardTitle>
-            <CardDescription>
-              {isLogin ? "Inicia sesión en tu cuenta" : "Crea una cuenta nueva"}
-            </CardDescription>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {!isLogin && (
+    <div className="min-h-screen flex flex-col justify-between bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4">
+      <div className="flex items-center justify-center flex-1">
+        <Card className="w-full max-w-md shadow-elegant">
+          <CardHeader className="space-y-4 text-center">
+            <div className="mx-auto mb-2">
+              <img src="https://udes.edu.co/images/logo/logo-con-acreditada-color.png" alt="Logo UDES" className="h-16 object-contain" />
+            </div>
+            <div>
+              <CardTitle className="text-2xl">UDES Link Internacional</CardTitle>
+              <CardDescription>
+                {isLogin ? "Inicia sesión en tu cuenta" : "Crea una cuenta nueva"}
+              </CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {!isLogin && (
+                <div className="space-y-2">
+                  <Label htmlFor="fullName">Nombre completo</Label>
+                  <Input
+                    id="fullName"
+                    type="text"
+                    placeholder="Tu nombre completo"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    required={!isLogin}
+                  />
+                </div>
+              )}
               <div className="space-y-2">
-                <Label htmlFor="fullName">Nombre completo</Label>
+                <Label htmlFor="email">Correo electrónico</Label>
                 <Input
-                  id="fullName"
-                  type="text"
-                  placeholder="Tu nombre completo"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  required={!isLogin}
+                  id="email"
+                  type="email"
+                  placeholder="tu@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
                 />
               </div>
-            )}
-            
-            <div className="space-y-2">
-              <Label htmlFor="email">Correo electrónico</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="tu@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="password">Contraseña</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Tu contraseña"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Cargando...
-                </>
-              ) : isLogin ? (
-                "Iniciar sesión"
-              ) : (
-                "Crear cuenta"
-              )}
-            </Button>
-
-            <Button
-              type="button"
-              variant="ghost"
-              className="w-full"
-              onClick={() => setIsLogin(!isLogin)}
-            >
-              {isLogin ? "¿No tienes cuenta? Regístrate" : "¿Ya tienes cuenta? Inicia sesión"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+              <div className="space-y-2">
+                <Label htmlFor="password">Contraseña</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Tu contraseña"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Cargando...
+                  </>
+                ) : isLogin ? (
+                  "Iniciar sesión"
+                ) : (
+                  "Crear cuenta"
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full"
+                onClick={() => setIsLogin(!isLogin)}
+              >
+                {isLogin ? "¿No tienes cuenta? Regístrate" : "¿Ya tienes cuenta? Inicia sesión"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+      <footer className="w-full flex justify-between items-center text-xs text-muted-foreground mt-8 px-2">
+        <span>Creado por Estudiantes UDES</span>
+        <span>Licenciado para la Universidad de Santander</span>
+      </footer>
     </div>
   );
 };
