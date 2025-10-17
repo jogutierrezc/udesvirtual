@@ -6,6 +6,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageSquare, Send, Loader2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import ReactMarkdown from "react-markdown";
+import { Link } from "react-router-dom";
 
 interface Message {
   role: "user" | "assistant";
@@ -192,7 +194,22 @@ export const LiaChat = () => {
                       : "bg-muted text-foreground"
                   }`}
                 >
-                  <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">{message.content}</p>
+                  <div className="text-sm whitespace-pre-wrap break-words leading-relaxed prose prose-sm max-w-none prose-a:text-primary prose-a:no-underline hover:prose-a:underline">
+                    <ReactMarkdown
+                      components={{
+                        a: ({ node, ...props }) => (
+                          <Link
+                            to={props.href || "#"}
+                            className="font-medium underline-offset-4 hover:underline"
+                          >
+                            {props.children}
+                          </Link>
+                        ),
+                      }}
+                    >
+                      {message.content}
+                    </ReactMarkdown>
+                  </div>
                 </div>
               </div>
             ))}
