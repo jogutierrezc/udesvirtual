@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -13,16 +13,77 @@ interface Message {
   content: string;
 }
 
+interface CatalogContext {
+  classes: any[];
+  teachers: any[];
+  offerings: any[];
+  coilProposals: any[];
+}
+
 const Lia = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: "¡Hola! Soy LIA 🌟, tu asistente académica de UDES. Estoy aquí para ayudarte con información sobre clases, masterclasses y docentes investigadores. ¿Qué te gustaría saber?",
+      content: "¡Hola! Soy LIA 🌟, tu asistente del catálogo académico UDES. Puedo ayudarte a encontrar:\n\n📚 Clases Espejo y MasterClass\n👨‍🏫 Docentes Investigadores\n🎓 Ofertas Académicas (intercambio/programadas)\n🌐 Propuestas COIL\n\n¿Qué te gustaría conocer?",
     },
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [catalogContext, setCatalogContext] = useState<CatalogContext | null>(null);
   const { toast } = useToast();
+
+  // Cargar el contexto del catálogo cuando se monta el componente
+  useEffect(() => {
+    loadCatalogContext();
+  }, []);
+
+  const loadCatalogContext = async () => {
+    try {
+      console.log("🔄 Cargando contexto del catálogo...");
+      
+      // Cargar clases aprobadas
+      const { data: classesData } = await supabase
+        .from("classes")
+        .select("*")
+        .eq("status", "approved");
+
+      // Cargar docentes aprobados
+      const { data: teachersData } = await supabase
+        .from("teachers")
+        .select("*")
+        .eq("status", "approved");
+
+      // Cargar ofertas aprobadas
+      const { data: offeringsData } = await supabase
+        .from("course_offerings")
+        .select("*")
+        .eq("status", "approved");
+
+      // Cargar propuestas COIL aprobadas
+      const { data: coilData } = await supabase
+        .from("coil_proposals")
+        .select("*")
+        .eq("status", "approved");
+
+      const context = {
+        classes: classesData || [],
+        teachers: teachersData || [],
+        offerings: offeringsData || [],
+        coilProposals: coilData || [],
+      };
+      
+      console.log("✅ Contexto cargado:", {
+        clases: context.classes.length,
+        docentes: context.teachers.length,
+        ofertas: context.offerings.length,
+        coil: context.coilProposals.length,
+      });
+      
+      setCatalogContext(context);
+    } catch (error) {
+      console.error("❌ Error loading catalog context:", error);
+    }
+  };
 
   const sendMessage = async () => {
     if (!input.trim() || isLoading) return;
@@ -32,21 +93,33 @@ const Lia = () => {
     setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
     setIsLoading(true);
 
+    console.log("📤 Enviando mensaje con contexto:", {
+      mensaje: userMessage,
+      tieneContexto: !!catalogContext,
+      clases: catalogContext?.classes?.length || 0,
+      docentes: catalogContext?.teachers?.length || 0,
+      ofertas: catalogContext?.offerings?.length || 0,
+      coil: catalogContext?.coilProposals?.length || 0,
+    });
+
     try {
       const { data, error } = await supabase.functions.invoke("lia-chat", {
         body: {
           messages: [...messages, { role: "user", content: userMessage }],
           type: "chat",
+          catalogContext: catalogContext, // Enviar el contexto del catálogo
         },
       });
 
       if (error) throw error;
 
+      console.log("📥 Respuesta recibida:", data);
+
       const assistantMessage = data.choices?.[0]?.message?.content || "Lo siento, no pude procesar tu mensaje.";
       
       setMessages((prev) => [...prev, { role: "assistant", content: assistantMessage }]);
     } catch (error: any) {
-      console.error("Error calling LIA:", error);
+      console.error("❌ Error calling LIA:", error);
       toast({
         title: "Error",
         description: error.message || "No pude conectar con LIA. Intenta de nuevo.",
