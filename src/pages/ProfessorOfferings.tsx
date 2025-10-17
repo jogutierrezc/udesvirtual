@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Search, Users, MapPin, BookOpen, Mail, Phone, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { LiaChat } from "@/components/LiaChat";
+import { EmptyState } from "@/components/EmptyState";
 
 const ProfessorOfferings = () => {
   const [offerings, setOfferings] = useState<any[]>([]);
@@ -242,7 +243,13 @@ const ProfessorOfferings = () => {
         {loading ? (
           <p className="text-muted-foreground">Cargando...</p>
         ) : filteredOfferings.length === 0 ? (
-          <p className="text-muted-foreground">No se encontraron ofertas con los filtros aplicados</p>
+          <EmptyState 
+            type="professor-offerings" 
+            searchTerm={searchTerm || campusFilter !== "all" || programFilter !== "all" ? 
+              `${searchTerm} ${campusFilter !== "all" ? campusFilter : ''} ${programFilter !== "all" ? programFilter : ''}`.trim() : 
+              undefined
+            } 
+          />
         ) : (
           <>
             <div className="grid md:grid-cols-2 gap-6">

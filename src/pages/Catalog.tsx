@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { LiaChat } from "@/components/LiaChat";
+import { EmptyState } from "@/components/EmptyState";
 import { Search, Calendar, Users, MapPin, Video, BookOpen, UserPlus, MessageSquare, X, GraduationCap, Award, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -417,26 +418,13 @@ const Catalog = () => {
         {loading ? (
           <p className="text-muted-foreground">Cargando...</p>
         ) : filteredClasses.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground mb-2">
-              {searchTerm || selectedKnowledgeArea !== "all" || selectedProgram !== "all" || selectedCampus !== "all"
-                ? "No se encontraron clases con los filtros seleccionados"
-                : "No hay clases disponibles"}
-            </p>
-            {(searchTerm || selectedKnowledgeArea !== "all" || selectedProgram !== "all" || selectedCampus !== "all") && (
-              <Button
-                variant="link"
-                onClick={() => {
-                  setSelectedKnowledgeArea("all");
-                  setSelectedProgram("all");
-                  setSelectedCampus("all");
-                  setSearchTerm("");
-                }}
-              >
-                Limpiar todos los filtros
-              </Button>
-            )}
-          </div>
+          <EmptyState 
+            type="catalog" 
+            searchTerm={searchTerm || selectedKnowledgeArea !== "all" || selectedProgram !== "all" || selectedCampus !== "all" ? 
+              `${searchTerm} ${selectedKnowledgeArea !== "all" ? selectedKnowledgeArea : ''} ${selectedProgram !== "all" ? selectedProgram : ''} ${selectedCampus !== "all" ? selectedCampus : ''}`.trim() : 
+              undefined
+            } 
+          />
         ) : (
           <div className="grid md:grid-cols-2 gap-6">
             {filteredClasses.map((classItem) => (

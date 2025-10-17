@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Search, Users, BookOpen, Mail, GraduationCap, Globe, Target } from "lucide-react";
 import { Link } from "react-router-dom";
 import { LiaChat } from "@/components/LiaChat";
+import { EmptyState } from "@/components/EmptyState";
 
 const CoilOfferings = () => {
   const [proposals, setProposals] = useState<any[]>([]);
@@ -105,7 +106,7 @@ const CoilOfferings = () => {
         {loading ? (
           <p className="text-muted-foreground">Cargando...</p>
         ) : filteredProposals.length === 0 ? (
-          <p className="text-muted-foreground">No se encontraron propuestas</p>
+          <EmptyState type="coil" searchTerm={searchTerm || undefined} />
         ) : (
           <div className="grid md:grid-cols-2 gap-6">
             {filteredProposals.map((proposal) => (
