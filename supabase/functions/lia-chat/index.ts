@@ -124,10 +124,18 @@ serve(async (req) => {
     // Obtener información web si es necesaria
     let webContent = "";
     if (needsWebInfo && webTopic) {
+      console.log(`🌐 Se solicitó información web. Topic: ${webTopic}`);
       const url = UDES_URLS[webTopic as keyof typeof UDES_URLS];
+      console.log(`🔗 URL a consultar: ${url}`);
       if (url) {
         webContent = await fetchUDESWebContent(url);
+        console.log(`✅ Contenido web obtenido: ${webContent.length} caracteres`);
+        console.log(`📄 Primeros 200 chars: ${webContent.substring(0, 200)}`);
+      } else {
+        console.log(`❌ No se encontró URL para el topic: ${webTopic}`);
       }
+    } else {
+      console.log(`ℹ️ No se necesita información web. needsWebInfo: ${needsWebInfo}, webTopic: ${webTopic}`);
     }
 
     // Formatear el contexto del catálogo para el prompt
@@ -379,6 +387,13 @@ Si detectas estas palabras clave, puedes hacer referencia a la información inst
 ${catalogInfo}
 
 IMPORTANTE: Proporciona respuestas COMPLETAS y DETALLADAS usando TODA la información disponible del catálogo y la web oficial.`;
+
+    console.log("🤖 Prompt del sistema:", {
+      longitudPrompt: liaSystemPrompt.length,
+      tieneWebContent: webContent.length > 0,
+      longitudWebContent: webContent.length,
+      tieneCatalogInfo: catalogInfo.length > 0,
+    });
 
     const body: any = {
       model: "google/gemini-2.5-flash",
