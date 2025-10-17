@@ -98,7 +98,13 @@ const Lia = () => {
     const needsWebInfo = detectWebInfoNeeded(userMessage);
     const webTopic = needsWebInfo ? getWebTopic(userMessage) : null;
 
-    console.log("📤 Enviando mensaje con contexto:", {
+    console.log("� Detección web info:", {
+      userMessage,
+      needsWebInfo,
+      webTopic,
+    });
+
+    console.log("�📤 Enviando mensaje con contexto:", {
       mensaje: userMessage,
       tieneContexto: !!catalogContext,
       clases: catalogContext?.classes?.length || 0,
