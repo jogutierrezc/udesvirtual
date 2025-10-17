@@ -1,20 +1,27 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Search, Users, MapPin, BookOpen, Mail, Phone, X } from "lucide-react";
+import { Search, Users, MapPin, BookOpen, Mail, Phone, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { LiaChat } from "@/components/LiaChat";
 
 const ProfessorOfferings = () => {
   const [offerings, setOfferings] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [campusFilter, setCampusFilter] = useState<string>("all");
+  const [programFilter, setProgramFilter] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const [selectedOffering, setSelectedOffering] = useState<any | null>(null);
   const [showModal, setShowModal] = useState(false);
+  
+  // Estados de paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   useEffect(() => {
     loadOfferings();
@@ -37,20 +44,58 @@ const ProfessorOfferings = () => {
     }
   };
 
-  const filteredOfferings = offerings.filter((o) => {
-    const searchLower = searchTerm.toLowerCase();
-    const areasMatch = Array.isArray(o.knowledge_area)
-      ? o.knowledge_area.some((area: string) => area.toLowerCase().includes(searchLower))
-      : o.knowledge_area?.toLowerCase().includes(searchLower);
+  // Obtener listas únicas de campus y programas
+  const campusList = useMemo(() => {
+    const uniqueCampus = new Set(offerings.map(o => o.campus));
+    return Array.from(uniqueCampus).sort();
+  }, [offerings]);
 
-    return (
-      o.title?.toLowerCase().includes(searchLower) ||
-      areasMatch ||
-      o.profession?.toLowerCase().includes(searchLower) ||
-      o.udes_professor_name?.toLowerCase().includes(searchLower) ||
-      o.udes_professor_program?.toLowerCase().includes(searchLower)
-    );
-  });
+  const programsList = useMemo(() => {
+    const uniquePrograms = new Set(offerings.map(o => o.profession));
+    return Array.from(uniquePrograms).sort();
+  }, [offerings]);
+
+  // Filtrar ofertas
+  const filteredOfferings = useMemo(() => {
+    return offerings.filter((o) => {
+      const searchLower = searchTerm.toLowerCase();
+      const areasMatch = Array.isArray(o.knowledge_area)
+        ? o.knowledge_area.some((area: string) => area.toLowerCase().includes(searchLower))
+        : o.knowledge_area?.toLowerCase().includes(searchLower);
+
+      const matchesSearch =
+        o.title?.toLowerCase().includes(searchLower) ||
+        areasMatch ||
+        o.profession?.toLowerCase().includes(searchLower) ||
+        o.udes_professor_name?.toLowerCase().includes(searchLower) ||
+        o.udes_professor_program?.toLowerCase().includes(searchLower);
+
+      const matchesCampus = campusFilter === "all" || o.campus === campusFilter;
+      const matchesProgram = programFilter === "all" || o.profession === programFilter;
+
+      return matchesSearch && matchesCampus && matchesProgram;
+    });
+  }, [offerings, searchTerm, campusFilter, programFilter]);
+
+  // Paginar ofertas
+  const paginatedOfferings = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredOfferings.slice(startIndex, endIndex);
+  }, [filteredOfferings, currentPage, itemsPerPage]);
+
+  const totalPages = Math.ceil(filteredOfferings.length / itemsPerPage);
+
+  // Reset página al cambiar filtros
+  const handleFilterChange = () => {
+    setCurrentPage(1);
+  };
+
+  // Reset página al cambiar items por página
+  const handleItemsPerPageChange = (value: string) => {
+    setItemsPerPage(Number(value));
+    setCurrentPage(1);
+  };
 
   const renderAlliedProfessor = (offering: any) => {
     const parts = (offering.allied_professor || "").split(" | ");
@@ -107,16 +152,83 @@ const ProfessorOfferings = () => {
         </div>
       </header>
 
-      {/* Search */}
+      {/* Search and Filters */}
       <div className="max-w-6xl mx-auto px-4 py-8">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-          <Input
-            placeholder="Buscar por título, área de conocimiento, programa..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
+        <div className="space-y-4">
+          {/* Barra de búsqueda */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              placeholder="Buscar por título, área de conocimiento, programa..."
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                handleFilterChange();
+              }}
+              className="pl-10"
+            />
+          </div>
+
+          {/* Filtros */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Select
+              value={campusFilter}
+              onValueChange={(value) => {
+                setCampusFilter(value);
+                handleFilterChange();
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Filtrar por campus" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los campus</SelectItem>
+                {campusList.map(campus => (
+                  <SelectItem key={campus} value={campus}>{campus}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select
+              value={programFilter}
+              onValueChange={(value) => {
+                setProgramFilter(value);
+                handleFilterChange();
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Filtrar por programa" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los programas</SelectItem>
+                {programsList.map(program => (
+                  <SelectItem key={program} value={program}>{program}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Resultados y selector de items por página */}
+          <div className="flex items-center justify-between text-sm text-muted-foreground">
+            <span>
+              Mostrando {paginatedOfferings.length} de {filteredOfferings.length} resultado(s)
+            </span>
+            <div className="flex items-center gap-2">
+              <span>Mostrar:</span>
+              <Select value={itemsPerPage.toString()} onValueChange={handleItemsPerPageChange}>
+                <SelectTrigger className="w-20">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="20">20</SelectItem>
+                  <SelectItem value="30">30</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -130,10 +242,11 @@ const ProfessorOfferings = () => {
         {loading ? (
           <p className="text-muted-foreground">Cargando...</p>
         ) : filteredOfferings.length === 0 ? (
-          <p className="text-muted-foreground">No se encontraron ofertas</p>
+          <p className="text-muted-foreground">No se encontraron ofertas con los filtros aplicados</p>
         ) : (
-          <div className="grid md:grid-cols-2 gap-6">
-            {filteredOfferings.map((offering) => (
+          <>
+            <div className="grid md:grid-cols-2 gap-6">
+              {paginatedOfferings.map((offering) => (
               <Card
                 key={offering.id}
                 className="shadow-card hover:shadow-elegant transition-all cursor-pointer"
@@ -196,6 +309,36 @@ const ProfessorOfferings = () => {
               </Card>
             ))}
           </div>
+
+          {/* Paginación */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-8 pt-6 border-t">
+              <div className="text-sm text-muted-foreground">
+                Página {currentPage} de {totalPages}
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Anterior
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  Siguiente
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
         )}
       </section>
 

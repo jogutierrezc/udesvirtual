@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useAdmin } from "@/contexts/AdminContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { PlusCircle, Edit2, Trash2, EyeOff, Loader2, Globe } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PlusCircle, Edit2, Trash2, EyeOff, Loader2, Globe, Upload, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { OfferingFormModal } from "./modals/OfferingFormModal";
 import { CoilFormModal } from "./modals/CoilFormModal";
+import { ImportModal } from "./modals/ImportModal";
 import { Tables } from "@/integrations/supabase/types";
 
 type Offering = Tables<"course_offerings">;
@@ -22,8 +25,20 @@ export const OfferingsPage = () => {
 
   const [showOfferingModal, setShowOfferingModal] = useState(false);
   const [showCoilModal, setShowCoilModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [editingOffering, setEditingOffering] = useState<Offering | null>(null);
   const [editingCoil, setEditingCoil] = useState<CoilProposal | null>(null);
+
+  // Estados para filtros y paginación de Ofertas
+  const [offeringSearchTerm, setOfferingSearchTerm] = useState("");
+  const [offeringCampusFilter, setOfferingCampusFilter] = useState<string>("all");
+  const [offeringProfessionFilter, setOfferingProfessionFilter] = useState<string>("all");
+  const [offeringPage, setOfferingPage] = useState(1);
+  const offeringsPerPage = 10;
+
+  // Estados para paginación de COIL
+  const [coilPage, setCoilPage] = useState(1);
+  const coilPerPage = 10;
 
   const handleEditOffering = (offering: Offering) => {
     setEditingOffering(offering);
@@ -60,6 +75,52 @@ export const OfferingsPage = () => {
     setEditingCoil(null);
   };
 
+  // Obtener listas únicas de campus y profesiones
+  const campusList = useMemo(() => {
+    const uniqueCampus = new Set(catalogOfferings.map(o => o.campus));
+    return Array.from(uniqueCampus).sort();
+  }, [catalogOfferings]);
+
+  const professionsList = useMemo(() => {
+    const uniqueProfessions = new Set(catalogOfferings.map(o => o.profession));
+    return Array.from(uniqueProfessions).sort();
+  }, [catalogOfferings]);
+
+  // Filtrar ofertas
+  const filteredOfferings = useMemo(() => {
+    return catalogOfferings.filter(offering => {
+      const matchesSearch = offering.title.toLowerCase().includes(offeringSearchTerm.toLowerCase()) ||
+                          offering.description.toLowerCase().includes(offeringSearchTerm.toLowerCase());
+      const matchesCampus = offeringCampusFilter === "all" || offering.campus === offeringCampusFilter;
+      const matchesProfession = offeringProfessionFilter === "all" || offering.profession === offeringProfessionFilter;
+      
+      return matchesSearch && matchesCampus && matchesProfession;
+    });
+  }, [catalogOfferings, offeringSearchTerm, offeringCampusFilter, offeringProfessionFilter]);
+
+  // Paginar ofertas
+  const paginatedOfferings = useMemo(() => {
+    const startIndex = (offeringPage - 1) * offeringsPerPage;
+    const endIndex = startIndex + offeringsPerPage;
+    return filteredOfferings.slice(startIndex, endIndex);
+  }, [filteredOfferings, offeringPage, offeringsPerPage]);
+
+  const totalOfferingPages = Math.ceil(filteredOfferings.length / offeringsPerPage);
+
+  // Paginar COIL
+  const paginatedCoil = useMemo(() => {
+    const startIndex = (coilPage - 1) * coilPerPage;
+    const endIndex = startIndex + coilPerPage;
+    return catalogCoilProposals.slice(startIndex, endIndex);
+  }, [catalogCoilProposals, coilPage, coilPerPage]);
+
+  const totalCoilPages = Math.ceil(catalogCoilProposals.length / coilPerPage);
+
+  // Reset página al cambiar filtros
+  const handleFilterChange = () => {
+    setOfferingPage(1);
+  };
+
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -81,6 +142,9 @@ export const OfferingsPage = () => {
           <Button onClick={() => setShowCoilModal(true)} variant="secondary" className="w-full sm:w-auto">
             <Globe className="h-4 w-4 mr-2" /> Crear COIL
           </Button>
+          <Button onClick={() => setShowImportModal(true)} variant="outline" className="w-full sm:w-auto">
+            <Upload className="h-4 w-4 mr-2" /> Importar Datos
+          </Button>
         </div>
 
         {/* Content Grid */}
@@ -89,14 +153,72 @@ export const OfferingsPage = () => {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-lg md:text-xl">Ofertas de Cursos</CardTitle>
-              <CardDescription className="text-xs md:text-sm">Ofertas académicas aprobadas</CardDescription>
+              <CardDescription className="text-xs md:text-sm">
+                {filteredOfferings.length} de {catalogOfferings.length} ofertas
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              {catalogOfferings.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8 text-sm">No hay ofertas publicadas</p>
+              {/* Filtros */}
+              <div className="space-y-3 mb-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por título o descripción..."
+                    value={offeringSearchTerm}
+                    onChange={(e) => {
+                      setOfferingSearchTerm(e.target.value);
+                      handleFilterChange();
+                    }}
+                    className="pl-9"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Select
+                    value={offeringCampusFilter}
+                    onValueChange={(value) => {
+                      setOfferingCampusFilter(value);
+                      handleFilterChange();
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Campus" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos los campus</SelectItem>
+                      {campusList.map(campus => (
+                        <SelectItem key={campus} value={campus}>{campus}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    value={offeringProfessionFilter}
+                    onValueChange={(value) => {
+                      setOfferingProfessionFilter(value);
+                      handleFilterChange();
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Profesión" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas las profesiones</SelectItem>
+                      {professionsList.map(profession => (
+                        <SelectItem key={profession} value={profession}>{profession}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Lista */}
+              {filteredOfferings.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8 text-sm">
+                  {catalogOfferings.length === 0 ? "No hay ofertas publicadas" : "No se encontraron ofertas con los filtros aplicados"}
+                </p>
               ) : (
-                <div className="space-y-2">
-                  {catalogOfferings.map((offering) => (
+                <>
+                  <div className="space-y-2 mb-4">
+                    {paginatedOfferings.map((offering) => (
                     <div
                       key={offering.id}
                       className="flex flex-col sm:flex-row sm:items-center sm:justify-between border rounded p-3 hover:bg-muted/50 transition-colors gap-3"
@@ -136,6 +258,34 @@ export const OfferingsPage = () => {
                     </div>
                   ))}
                 </div>
+
+                  {/* Paginación de Ofertas */}
+                  {totalOfferingPages > 1 && (
+                    <div className="flex items-center justify-between pt-4 border-t">
+                      <p className="text-sm text-muted-foreground">
+                        Página {offeringPage} de {totalOfferingPages}
+                      </p>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setOfferingPage(prev => Math.max(1, prev - 1))}
+                          disabled={offeringPage === 1}
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setOfferingPage(prev => Math.min(totalOfferingPages, prev + 1))}
+                          disabled={offeringPage === totalOfferingPages}
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>
@@ -144,14 +294,17 @@ export const OfferingsPage = () => {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-lg md:text-xl">Propuestas COIL</CardTitle>
-              <CardDescription className="text-xs md:text-sm">Proyectos COIL aprobados</CardDescription>
+              <CardDescription className="text-xs md:text-sm">
+                {catalogCoilProposals.length} proyecto(s) COIL
+              </CardDescription>
             </CardHeader>
             <CardContent>
               {catalogCoilProposals.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8 text-sm">No hay propuestas COIL</p>
               ) : (
-                <div className="space-y-2">
-                  {catalogCoilProposals.map((coil) => (
+                <>
+                  <div className="space-y-2 mb-4">
+                    {paginatedCoil.map((coil) => (
                     <div
                       key={coil.id}
                       className="flex flex-col sm:flex-row sm:items-center sm:justify-between border rounded p-3 hover:bg-muted/50 transition-colors gap-3"
@@ -178,6 +331,34 @@ export const OfferingsPage = () => {
                     </div>
                   ))}
                 </div>
+
+                  {/* Paginación de COIL */}
+                  {totalCoilPages > 1 && (
+                    <div className="flex items-center justify-between pt-4 border-t">
+                      <p className="text-sm text-muted-foreground">
+                        Página {coilPage} de {totalCoilPages}
+                      </p>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCoilPage(prev => Math.max(1, prev - 1))}
+                          disabled={coilPage === 1}
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCoilPage(prev => Math.min(totalCoilPages, prev + 1))}
+                          disabled={coilPage === totalCoilPages}
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>
@@ -194,6 +375,10 @@ export const OfferingsPage = () => {
         open={showCoilModal}
         onOpenChange={handleCloseCoilModal}
         editingCoil={editingCoil}
+      />
+      <ImportModal
+        open={showImportModal}
+        onClose={() => setShowImportModal(false)}
       />
     </div>
   );
