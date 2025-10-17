@@ -9,11 +9,85 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { messages, type = "chat" } = await req.json();
+    const { messages, type = "chat", catalogContext } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
+    }
+
+    // Formatear el contexto del catálogo para el prompt
+    let catalogInfo = "";
+    
+    if (catalogContext) {
+      catalogInfo = `
+
+INFORMACIÓN ACTUALIZADA DEL CATÁLOGO UDES:
+
+📚 CLASES DISPONIBLES (${catalogContext.classes?.length || 0} clases):
+${catalogContext.classes?.map((c: any, i: number) => `
+${i + 1}. "${c.title}"
+   - Tipo: ${c.class_type === 'mirror' ? 'Clase Espejo' : 'MasterClass'}
+   - Profesor Aliado: ${c.allied_professor}
+   - Institución: ${c.allied_institution}
+   - Campus: ${c.campus}
+   - Capacidad: ${c.capacity} estudiantes
+   - Horas: ${c.hours}
+   - Fecha: ${c.class_date}
+   - Área de Conocimiento: ${Array.isArray(c.knowledge_area) ? c.knowledge_area.join(', ') : c.knowledge_area}
+   - Programa: ${c.profession}
+   - Descripción: ${c.description}
+   ${c.virtual_room_required ? '- 🌐 Modalidad Virtual' : ''}
+`).join('\n') || 'No hay clases disponibles actualmente.'}
+
+👨‍🏫 DOCENTES INVESTIGADORES (${catalogContext.teachers?.length || 0} docentes):
+${catalogContext.teachers?.map((t: any, i: number) => `
+${i + 1}. ${t.teacher_name}
+   - Campus: ${t.campus}
+   - Email: ${t.email}
+   - Teléfono: ${t.phone || 'No especificado'}
+   - Intereses: ${Array.isArray(t.interests) ? t.interests.join(', ') : t.interests || 'No especificados'}
+   - Perfil: ${t.profile_description || 'No disponible'}
+   ${t.cvlac_link ? `- CvLAC: ${t.cvlac_link}` : ''}
+   ${t.orcid_link ? `- ORCID: ${t.orcid_link}` : ''}
+`).join('\n') || 'No hay docentes registrados actualmente.'}
+
+🎓 OFERTAS ACADÉMICAS UDES (${catalogContext.offerings?.length || 0} ofertas):
+${catalogContext.offerings?.map((o: any, i: number) => `
+${i + 1}. "${o.title}"
+   - Tipo: ${o.offering_type === 'exchange' ? 'Intercambio' : 'Programada'}
+   - Campus: ${o.campus}
+   - Capacidad: ${o.capacity} estudiantes
+   - Horas: ${o.hours}
+   - Programa: ${o.profession}
+   - Área: ${Array.isArray(o.knowledge_area) ? o.knowledge_area.join(', ') : o.knowledge_area}
+   - Profesor UDES: ${o.udes_professor_name}
+   - Programa del Profesor: ${o.udes_professor_program}
+   - Contacto: ${o.udes_professor_email}
+   - Descripción: ${o.description}
+`).join('\n') || 'No hay ofertas disponibles actualmente.'}
+
+🌐 PROPUESTAS COIL (${catalogContext.coilProposals?.length || 0} propuestas):
+${catalogContext.coilProposals?.map((coil: any, i: number) => `
+${i + 1}. "${coil.course_name}"
+   - Profesor: ${coil.full_name}
+   - Email: ${coil.email}
+   - Programa Académico: ${coil.academic_program}
+   - Semestre: ${coil.academic_semester}
+   - Capacidad Externa: ${coil.external_capacity}
+   - Idiomas: ${Array.isArray(coil.languages) ? coil.languages.join(', ') : coil.languages || 'No especificados'}
+   - ODS: ${Array.isArray(coil.sustainable_development_goals) ? coil.sustainable_development_goals.join(', ') : 'No especificados'}
+   - Temas del Proyecto: ${coil.project_topics}
+`).join('\n') || 'No hay propuestas COIL actualmente.'}
+
+IMPORTANTE: Usa esta información actualizada para responder preguntas sobre:
+- Clases disponibles, horarios, profesores y modalidades
+- Docentes investigadores y sus áreas de interés
+- Ofertas académicas de UDES para estudiantes internacionales
+- Propuestas COIL y oportunidades de colaboración internacional
+
+Siempre proporciona información específica y actualizada basándote en estos datos.
+`;
     }
 
     // LIA personality prompt
@@ -26,12 +100,15 @@ serve(async (req) => {
 
 Tu función es asistir con:
 - Consultas sobre clases espejo y masterclasses
-- Búsqueda de clases por área de conocimiento
-- Información sobre docentes investigadores
+- Búsqueda de clases por área de conocimiento, campus o programa
+- Información sobre docentes investigadores y sus especialidades
+- Detalles sobre ofertas académicas de UDES
+- Información sobre propuestas COIL (Collaborative Online International Learning)
 - Resúmenes de perfiles académicos
 - Guía en movilidad e investigación académica
 
-Responde de manera profesional pero cercana, manteniendo un tono optimista y motivador.`;
+Responde de manera profesional pero cercana, manteniendo un tono optimista y motivador.
+${catalogInfo}`;
 
     const body: any = {
       model: "google/gemini-2.5-flash",

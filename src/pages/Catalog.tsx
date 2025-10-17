@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { LiaChat } from "@/components/LiaChat";
-import { Search, Calendar, Users, MapPin, Video, BookOpen, UserPlus, MessageSquare, X } from "lucide-react";
+import { Search, Calendar, Users, MapPin, Video, BookOpen, UserPlus, MessageSquare, X, GraduationCap, Award, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 
@@ -23,6 +23,15 @@ const Catalog = () => {
   const [selectedDetails, setSelectedDetails] = useState<any>(null);
   const [selectedOffering, setSelectedOffering] = useState<any>(null);
   const [registering, setRegistering] = useState(false);
+  
+  // Vista activa: 'courses' | 'teachers'
+  const [activeView, setActiveView] = useState<'courses' | 'teachers'>('courses');
+  
+  // Filtros
+  const [selectedKnowledgeArea, setSelectedKnowledgeArea] = useState<string>("all");
+  const [selectedProgram, setSelectedProgram] = useState<string>("all");
+  const [selectedCampus, setSelectedCampus] = useState<string>("all");
+  
   const [registrationForm, setRegistrationForm] = useState({
     full_name: "",
     phone: "",
@@ -74,14 +83,41 @@ const Catalog = () => {
       ? c.knowledge_area.some((area) => area.toLowerCase().includes(searchLower))
       : c.knowledge_area?.toLowerCase().includes(searchLower);
     
-    return (
+    const matchesSearch = (
       c.title.toLowerCase().includes(searchLower) ||
       areasMatch ||
       c.profession.toLowerCase().includes(searchLower) ||
       c.allied_professor?.toLowerCase().includes(searchLower) ||
       c.allied_institution?.toLowerCase().includes(searchLower)
     );
+
+    // Filtro por área de conocimiento
+    const matchesKnowledgeArea = selectedKnowledgeArea === "all" || (
+      Array.isArray(c.knowledge_area)
+        ? c.knowledge_area.includes(selectedKnowledgeArea)
+        : c.knowledge_area === selectedKnowledgeArea
+    );
+
+    // Filtro por programa (profession)
+    const matchesProgram = selectedProgram === "all" || c.profession === selectedProgram;
+
+    // Filtro por campus
+    const matchesCampus = selectedCampus === "all" || c.campus === selectedCampus;
+
+    return matchesSearch && matchesKnowledgeArea && matchesProgram && matchesCampus;
   });
+
+  // Obtener valores únicos para los filtros
+  const knowledgeAreas = Array.from(
+    new Set(
+      classes.flatMap((c) => 
+        Array.isArray(c.knowledge_area) ? c.knowledge_area : c.knowledge_area ? [c.knowledge_area] : []
+      )
+    )
+  ).sort();
+
+  const programs = Array.from(new Set(classes.map((c) => c.profession).filter(Boolean))).sort();
+  const campuses = Array.from(new Set(classes.map((c) => c.campus).filter(Boolean))).sort();
 
   const filteredTeachers = teachers.filter(
     (t) =>
@@ -157,47 +193,250 @@ const Catalog = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="bg-gradient-to-r from-primary to-accent text-white py-6 px-4">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Catálogo Académico</h1>
-            <p className="text-white/80">Clases Espejo, MasterClass y Docentes</p>
+      {/* Hero Header */}
+      <header className="bg-gradient-to-r from-primary via-primary/90 to-accent text-white">
+        <div className="max-w-6xl mx-auto px-4 py-6">
+          {/* Title Section */}
+          <div className="text-center mb-6">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <Sparkles className="h-6 w-6" />
+              <h1 className="text-2xl md:text-3xl font-bold">Catálogo Académico UDES</h1>
+              <Sparkles className="h-6 w-6" />
+            </div>
+            <p className="text-white/90 text-sm md:text-base">
+              Explora nuestras opciones de internacionalización y desarrollo académico
+            </p>
           </div>
-          <div className="flex gap-2">
-            <Link to="/lia">
-              <Button variant="secondary">
-                <MessageSquare className="h-4 w-4 mr-2" />
-                Hablar con LIA
-              </Button>
-            </Link>
-            <Link to="/">
-              <Button variant="secondary">Inicio</Button>
+
+          {/* Navigation Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* Catálogo de Cursos */}
+            <Card 
+              className={`bg-white/10 backdrop-blur-sm border-white/20 hover:bg-white/20 transition-all cursor-pointer group ${
+                activeView === 'courses' ? 'ring-2 ring-white shadow-lg' : ''
+              }`}
+              onClick={() => setActiveView('courses')}
+            >
+              <CardContent className="p-4">
+                <div className="flex flex-col sm:flex-row items-center gap-3">
+                  <div className="h-12 w-12 rounded-full bg-white/20 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
+                    <BookOpen className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="text-center sm:text-left flex-1">
+                    <h3 className="font-semibold text-base text-white mb-0.5">Catálogo de Cursos</h3>
+                    <p className="text-xs text-white/80 mb-1">Clases Espejo y MasterClass</p>
+                    <Badge variant="secondary" className="bg-white/90 text-primary text-xs">
+                      {classes.length} cursos
+                    </Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Docentes Investigadores */}
+            <Card 
+              className={`bg-white/10 backdrop-blur-sm border-white/20 hover:bg-white/20 transition-all cursor-pointer group ${
+                activeView === 'teachers' ? 'ring-2 ring-white shadow-lg' : ''
+              }`}
+              onClick={() => setActiveView('teachers')}
+            >
+              <CardContent className="p-4">
+                <div className="flex flex-col sm:flex-row items-center gap-3">
+                  <div className="h-12 w-12 rounded-full bg-white/20 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
+                    <GraduationCap className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="text-center sm:text-left flex-1">
+                    <h3 className="font-semibold text-base text-white mb-0.5">Docentes Investigadores</h3>
+                    <p className="text-xs text-white/80 mb-1">Expertos UDES</p>
+                    <Badge variant="secondary" className="bg-white/90 text-primary text-xs">
+                      {teachers.length} docentes
+                    </Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* LIA - Asistente Virtual */}
+            <Link to="/lia" className="block">
+              <Card className="bg-white/10 backdrop-blur-sm border-white/20 hover:bg-white/20 transition-all cursor-pointer group h-full">
+                <CardContent className="p-4">
+                  <div className="flex flex-col sm:flex-row items-center gap-3">
+                    <div className="h-12 w-12 rounded-full bg-white/20 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
+                      <MessageSquare className="h-6 w-6 text-white" />
+                    </div>
+                    <div className="text-center sm:text-left flex-1">
+                      <h3 className="font-semibold text-base text-white mb-0.5">Hablar con LIA</h3>
+                      <p className="text-xs text-white/80 mb-1">Asistente Virtual UDES</p>
+                      <Badge variant="secondary" className="bg-accent text-white text-xs">
+                        IA 24/7
+                      </Badge>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </Link>
           </div>
         </div>
       </header>
 
-      {/* Search */}
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-          <Input
-            placeholder="Buscar por título, área de conocimiento, campus..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
+      {/* Search and Filters - Only for Courses */}
+      {activeView === 'courses' && (
+        <div className="max-w-6xl mx-auto px-4 py-6">
+          <div className="space-y-3">
+          {/* Search Bar */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              placeholder="Buscar por título, área de conocimiento, campus..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+
+          {/* Filters */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {/* Knowledge Area Filter */}
+            <div>
+              <Label className="text-xs mb-1.5 block">Área de Conocimiento</Label>
+              <Select value={selectedKnowledgeArea} onValueChange={setSelectedKnowledgeArea}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Todas las áreas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas las áreas</SelectItem>
+                  {knowledgeAreas.map((area) => (
+                    <SelectItem key={area} value={area}>
+                      {area}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Program Filter */}
+            <div>
+              <Label className="text-xs mb-1.5 block">Programa</Label>
+              <Select value={selectedProgram} onValueChange={setSelectedProgram}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Todos los programas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos los programas</SelectItem>
+                  {programs.map((program) => (
+                    <SelectItem key={program} value={program}>
+                      {program}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Campus Filter */}
+            <div>
+              <Label className="text-xs mb-1.5 block">Campus</Label>
+              <Select value={selectedCampus} onValueChange={setSelectedCampus}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Todos los campus" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos los campus</SelectItem>
+                  {campuses.map((campus) => (
+                    <SelectItem key={campus} value={campus}>
+                      {campus}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Reset Filters Button */}
+            <div className="flex items-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSelectedKnowledgeArea("all");
+                  setSelectedProgram("all");
+                  setSelectedCampus("all");
+                  setSearchTerm("");
+                }}
+                className="w-full"
+              >
+                <X className="h-4 w-4 mr-2" />
+                Limpiar Filtros
+              </Button>
+            </div>
+          </div>
+
+          {/* Active Filters Summary */}
+          {(selectedKnowledgeArea !== "all" || selectedProgram !== "all" || selectedCampus !== "all") && (
+            <div className="flex flex-wrap gap-2">
+              <span className="text-sm text-muted-foreground">Filtros activos:</span>
+              {selectedKnowledgeArea !== "all" && (
+                <Badge variant="secondary" className="gap-1">
+                  {selectedKnowledgeArea}
+                  <X
+                    className="h-3 w-3 cursor-pointer"
+                    onClick={() => setSelectedKnowledgeArea("all")}
+                  />
+                </Badge>
+              )}
+              {selectedProgram !== "all" && (
+                <Badge variant="secondary" className="gap-1">
+                  {selectedProgram}
+                  <X
+                    className="h-3 w-3 cursor-pointer"
+                    onClick={() => setSelectedProgram("all")}
+                  />
+                </Badge>
+              )}
+              {selectedCampus !== "all" && (
+                <Badge variant="secondary" className="gap-1">
+                  {selectedCampus}
+                  <X
+                    className="h-3 w-3 cursor-pointer"
+                    onClick={() => setSelectedCampus("all")}
+                  />
+                </Badge>
+              )}
+            </div>
+          )}
         </div>
-      </div>
+        </div>
+      )}
 
       {/* Classes Section */}
+      {activeView === 'courses' && (
       <section className="max-w-6xl mx-auto px-4 pb-8">
-        <h2 className="text-2xl font-bold mb-6">Clases y MasterClasses</h2>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold">Clases y MasterClasses</h2>
+          <span className="text-sm text-muted-foreground">
+            {filteredClasses.length} {filteredClasses.length === 1 ? 'clase encontrada' : 'clases encontradas'}
+          </span>
+        </div>
         {loading ? (
           <p className="text-muted-foreground">Cargando...</p>
         ) : filteredClasses.length === 0 ? (
-          <p className="text-muted-foreground">No se encontraron clases</p>
+          <div className="text-center py-12">
+            <p className="text-muted-foreground mb-2">
+              {searchTerm || selectedKnowledgeArea !== "all" || selectedProgram !== "all" || selectedCampus !== "all"
+                ? "No se encontraron clases con los filtros seleccionados"
+                : "No hay clases disponibles"}
+            </p>
+            {(searchTerm || selectedKnowledgeArea !== "all" || selectedProgram !== "all" || selectedCampus !== "all") && (
+              <Button
+                variant="link"
+                onClick={() => {
+                  setSelectedKnowledgeArea("all");
+                  setSelectedProgram("all");
+                  setSelectedCampus("all");
+                  setSearchTerm("");
+                }}
+              >
+                Limpiar todos los filtros
+              </Button>
+            )}
+          </div>
         ) : (
           <div className="grid md:grid-cols-2 gap-6">
             {filteredClasses.map((classItem) => (
@@ -593,9 +832,11 @@ const Catalog = () => {
             </DialogContent>
         </Dialog>
       </section>
+      )}
 
       {/* Teachers Section */}
-      <section className="max-w-6xl mx-auto px-4 pb-16">
+      {activeView === 'teachers' && (
+      <section className="max-w-6xl mx-auto px-4 pb-16 pt-8">
         <h2 className="text-2xl font-bold mb-6">Docentes Investigadores</h2>
         
         {loading ? (
@@ -660,6 +901,7 @@ const Catalog = () => {
           </div>
         )}
       </section>
+      )}
 
       <LiaChat />
     </div>

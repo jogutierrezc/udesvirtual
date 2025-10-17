@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,17 +12,69 @@ interface Message {
   content: string;
 }
 
+interface CatalogContext {
+  classes: any[];
+  teachers: any[];
+  offerings: any[];
+  coilProposals: any[];
+}
+
 export const LiaChat = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: "¡Hola! Soy LIA 🌟, tu asistente académica de UDES. ¿En qué puedo ayudarte hoy?",
+      content: "¡Hola! Soy LIA 🌟, tu asistente académica de UDES. Puedo ayudarte con información sobre nuestro catálogo de clases, docentes investigadores, ofertas académicas y propuestas COIL. ¿En qué puedo ayudarte hoy?",
     },
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [catalogContext, setCatalogContext] = useState<CatalogContext | null>(null);
   const { toast } = useToast();
+
+  // Cargar el contexto del catálogo cuando se abre el chat
+  useEffect(() => {
+    if (isOpen && !catalogContext) {
+      loadCatalogContext();
+    }
+  }, [isOpen]);
+
+  const loadCatalogContext = async () => {
+    try {
+      // Cargar clases aprobadas
+      const { data: classesData } = await supabase
+        .from("classes")
+        .select("*")
+        .eq("status", "approved");
+
+      // Cargar docentes aprobados
+      const { data: teachersData } = await supabase
+        .from("teachers")
+        .select("*")
+        .eq("status", "approved");
+
+      // Cargar ofertas aprobadas
+      const { data: offeringsData } = await supabase
+        .from("course_offerings")
+        .select("*")
+        .eq("status", "approved");
+
+      // Cargar propuestas COIL aprobadas
+      const { data: coilData } = await supabase
+        .from("coil_proposals")
+        .select("*")
+        .eq("status", "approved");
+
+      setCatalogContext({
+        classes: classesData || [],
+        teachers: teachersData || [],
+        offerings: offeringsData || [],
+        coilProposals: coilData || [],
+      });
+    } catch (error) {
+      console.error("Error loading catalog context:", error);
+    }
+  };
 
   const sendMessage = async () => {
     if (!input.trim() || isLoading) return;
@@ -37,6 +89,7 @@ export const LiaChat = () => {
         body: {
           messages: [...messages, { role: "user", content: userMessage }],
           type: "chat",
+          catalogContext: catalogContext, // Enviar el contexto del catálogo
         },
       });
 
