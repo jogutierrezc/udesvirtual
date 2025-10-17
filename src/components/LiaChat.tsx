@@ -52,6 +52,8 @@ export const LiaChat = () => {
 
   const loadCatalogContext = async () => {
     try {
+      console.log("🔄 Cargando contexto del catálogo...");
+      
       // Cargar clases aprobadas
       const { data: classesData } = await supabase
         .from("classes")
@@ -76,14 +78,23 @@ export const LiaChat = () => {
         .select("*")
         .eq("status", "approved");
 
-      setCatalogContext({
+      const context = {
         classes: classesData || [],
         teachers: teachersData || [],
         offerings: offeringsData || [],
         coilProposals: coilData || [],
+      };
+      
+      console.log("✅ Contexto cargado:", {
+        clases: context.classes.length,
+        docentes: context.teachers.length,
+        ofertas: context.offerings.length,
+        coil: context.coilProposals.length,
       });
+      
+      setCatalogContext(context);
     } catch (error) {
-      console.error("Error loading catalog context:", error);
+      console.error("❌ Error loading catalog context:", error);
     }
   };
 
@@ -95,6 +106,15 @@ export const LiaChat = () => {
     setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
     setIsLoading(true);
 
+    console.log("📤 Enviando mensaje con contexto:", {
+      mensaje: userMessage,
+      tieneContexto: !!catalogContext,
+      clases: catalogContext?.classes?.length || 0,
+      docentes: catalogContext?.teachers?.length || 0,
+      ofertas: catalogContext?.offerings?.length || 0,
+      coil: catalogContext?.coilProposals?.length || 0,
+    });
+
     try {
       const { data, error } = await supabase.functions.invoke("lia-chat", {
         body: {
@@ -104,13 +124,18 @@ export const LiaChat = () => {
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("❌ Error en Edge Function:", error);
+        throw error;
+      }
+
+      console.log("📥 Respuesta recibida:", data);
 
       const assistantMessage = data.choices?.[0]?.message?.content || "Lo siento, no pude procesar tu mensaje.";
       
       setMessages((prev) => [...prev, { role: "assistant", content: assistantMessage }]);
     } catch (error: any) {
-      console.error("Error calling LIA:", error);
+      console.error("❌ Error calling LIA:", error);
       toast({
         title: "Error",
         description: error.message || "No pude conectar con LIA. Intenta de nuevo.",
