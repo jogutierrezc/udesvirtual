@@ -124,18 +124,10 @@ serve(async (req) => {
     // Obtener información web si es necesaria
     let webContent = "";
     if (needsWebInfo && webTopic) {
-      console.log(`🌐 Se solicitó información web. Topic: ${webTopic}`);
       const url = UDES_URLS[webTopic as keyof typeof UDES_URLS];
-      console.log(`🔗 URL a consultar: ${url}`);
       if (url) {
         webContent = await fetchUDESWebContent(url);
-        console.log(`✅ Contenido web obtenido: ${webContent.length} caracteres`);
-        console.log(`📄 Primeros 200 chars: ${webContent.substring(0, 200)}`);
-      } else {
-        console.log(`❌ No se encontró URL para el topic: ${webTopic}`);
       }
-    } else {
-      console.log(`ℹ️ No se necesita información web. needsWebInfo: ${needsWebInfo}, webTopic: ${webTopic}`);
     }
 
     // Formatear el contexto del catálogo para el prompt
@@ -253,53 +245,23 @@ REGLAS FUNDAMENTALES:
 3. **Si no tienes datos, dilo claramente**: "No tengo esa información en el catálogo actual"
 4. **NUNCA inventes información** - solo usa los datos proporcionados
 5. **Sé ESPECÍFICA Y DETALLADA**: Incluye todos los detalles relevantes
-6. ${webContent ? '**PRIORIDAD MÁXIMA**: DEBES usar la información web oficial que se te proporciona a continuación para responder preguntas institucionales' : ''}
 
 ${
   webContent
     ? `
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🌐 INFORMACIÓN OFICIAL DE LA WEB DE UDES 🌐
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🌐 INFORMACIÓN DE LA WEB OFICIAL DE UDES:
 
 ${webContent}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-⚠️ INSTRUCCIONES CRÍTICAS PARA USO DE INFORMACIÓN WEB:
-1. **DEBES USAR** la información anterior para responder preguntas sobre:
-   - Equipo directivo, rector, vicerrectores, directores
-   - Equipo de Relaciones Internacionales (DRNI)
-   - Misión, visión y valores institucionales
-   - Historia y trayectoria de la universidad
-   - Sedes, campus y ubicaciones
-   - Acreditación y calidad académica
-   - Programas académicos generales
-   - Investigación y grupos de investigación
-
-2. **FORMATO DE RESPUESTA CON INFORMACIÓN WEB:**
-   - Presenta la información de forma organizada y clara
-   - Si hay secciones por campus o tabs, menciónalos
-   - Incluye TODOS los nombres y cargos que aparecen
-   - Agrega información de contacto si está disponible
-   - Cita que la información viene del sitio oficial de UDES
-
-3. **EJEMPLO DE RESPUESTA CORRECTA:**
-   Usuario: "¿Quiénes son del equipo internacional?"
-   LIA: "🌍 **Equipo de Relaciones Internacionales de UDES (DRNI)**
-   
-   Según la información oficial del sitio web de UDES, el equipo está organizado por campus:
-   
-   **Campus Bucaramanga:**
-   - [Nombres y cargos del equipo]
-   
-   **Campus Cúcuta:**
-   - [Nombres y cargos del equipo]
-   
-   **Campus Valledupar:**
-   - [Nombres y cargos del equipo]
-   
-   Esta información está actualizada desde el sitio oficial de UDES."
+Usa esta información para responder preguntas sobre:
+- Equipo directivo y administrativo de UDES
+- Misión, visión y valores institucionales
+- Historia y trayectoria de la universidad
+- Sedes y ubicaciones
+- Acreditación y calidad académica
+- Programas académicos
+- Investigación
+- Relaciones internacionales
 
 `
     : ""
@@ -387,13 +349,6 @@ Si detectas estas palabras clave, puedes hacer referencia a la información inst
 ${catalogInfo}
 
 IMPORTANTE: Proporciona respuestas COMPLETAS y DETALLADAS usando TODA la información disponible del catálogo y la web oficial.`;
-
-    console.log("🤖 Prompt del sistema:", {
-      longitudPrompt: liaSystemPrompt.length,
-      tieneWebContent: webContent.length > 0,
-      longitudWebContent: webContent.length,
-      tieneCatalogInfo: catalogInfo.length > 0,
-    });
 
     const body: any = {
       model: "google/gemini-2.5-flash",
