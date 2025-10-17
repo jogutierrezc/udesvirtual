@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, CheckCircle, XCircle, LogOut, Users, BookOpen, GraduationCap, PlusCircle, Package, Globe, Edit2, Trash2, EyeOff } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
 import { TagInput } from "@/components/TagInput";
+import { ImportTeachersDialog } from "@/components/ImportTeachersDialog";
 
 type Class = Tables<"classes">;
 type Teacher = Tables<"teachers">;
@@ -1240,8 +1241,13 @@ const Admin = () => {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Docentes (Catálogo)</CardTitle>
-                  <CardDescription>Docentes investigadores aprobados</CardDescription>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <div>
+                      <CardTitle>Docentes (Catálogo)</CardTitle>
+                      <CardDescription>Docentes investigadores aprobados</CardDescription>
+                    </div>
+                    <ImportTeachersDialog onImportComplete={loadData} />
+                  </div>
                 </CardHeader>
                 <CardContent>
                   {catalogTeachers.length === 0 ? (
