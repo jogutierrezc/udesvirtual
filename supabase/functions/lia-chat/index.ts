@@ -125,12 +125,6 @@ Siempre proporciona información específica y actualizada basándote en estos d
     
     console.log("📝 Contexto formateado:", {
       longitudContexto: catalogInfo.length,
-      tieneClases: catalogInfo.includes('CLASES DISPONIBLES'),
-      tieneDocentes: catalogInfo.includes('DOCENTES INVESTIGADORES'),
-    });
-
-    console.log("📝 Contexto formateado:", {
-      longitudContexto: catalogInfo.length,
       tieneClases: catalogInfo.includes("CLASES DISPONIBLES"),
       tieneDocentes: catalogInfo.includes("DOCENTES INVESTIGADORES"),
     });
