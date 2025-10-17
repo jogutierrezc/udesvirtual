@@ -94,6 +94,10 @@ const Lia = () => {
     setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
     setIsLoading(true);
 
+    // Detectar si se necesita información de la web de UDES
+    const needsWebInfo = detectWebInfoNeeded(userMessage);
+    const webTopic = needsWebInfo ? getWebTopic(userMessage) : null;
+
     console.log("📤 Enviando mensaje con contexto:", {
       mensaje: userMessage,
       tieneContexto: !!catalogContext,
@@ -101,6 +105,8 @@ const Lia = () => {
       docentes: catalogContext?.teachers?.length || 0,
       ofertas: catalogContext?.offerings?.length || 0,
       coil: catalogContext?.coilProposals?.length || 0,
+      needsWebInfo,
+      webTopic,
     });
 
     try {
@@ -109,6 +115,8 @@ const Lia = () => {
           messages: [...messages, { role: "user", content: userMessage }],
           type: "chat",
           catalogContext: catalogContext, // Enviar el contexto del catálogo
+          needsWebInfo,
+          webTopic,
         },
       });
 
@@ -129,6 +137,60 @@ const Lia = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Función para detectar si se necesita información de la web
+  const detectWebInfoNeeded = (message: string): boolean => {
+    const webKeywords = [
+      'equipo', 'directivo', 'rector', 'vicerrector', 'director',
+      'misión', 'visión', 'valores', 'institucional',
+      'historia', 'fundación', 'trayectoria',
+      'sedes', 'campus', 'ubicación', 'ubicacion',
+      'acreditación', 'acreditacion', 'calidad',
+      'programas académicos', 'carreras', 'pregrado', 'posgrado',
+      'investigación', 'investigacion', 'grupos de investigación',
+      'internacional', 'relaciones internacionales', 'drni', 
+      'movilidad', 'intercambio'
+    ];
+    
+    const lowerMessage = message.toLowerCase();
+    return webKeywords.some(keyword => lowerMessage.includes(keyword));
+  };
+
+  // Función para determinar qué tema web consultar
+  const getWebTopic = (message: string): string => {
+    const lowerMessage = message.toLowerCase();
+    
+    // Priorizar equipo de relaciones internacionales
+    if (lowerMessage.match(/equipo.*internacional|internacional.*equipo|relaciones internacionales|drni|equipo.*drni/)) {
+      return 'equipoInternacional';
+    }
+    if (lowerMessage.match(/equipo|directivo|rector|vicerrector|director/) && !lowerMessage.includes('internacional')) {
+      return 'equipo';
+    }
+    if (lowerMessage.match(/misión|visión|valores|institucional/)) {
+      return 'misionVision';
+    }
+    if (lowerMessage.match(/historia|fundación|trayectoria/)) {
+      return 'historia';
+    }
+    if (lowerMessage.match(/sedes|campus|ubicación|ubicacion/)) {
+      return 'campus';
+    }
+    if (lowerMessage.match(/acreditación|acreditacion|calidad/)) {
+      return 'acreditacion';
+    }
+    if (lowerMessage.match(/programas|carreras|pregrado|posgrado/)) {
+      return 'programas';
+    }
+    if (lowerMessage.match(/investigación|investigacion|grupos/)) {
+      return 'investigacion';
+    }
+    if (lowerMessage.match(/internacional|movilidad|intercambio/)) {
+      return 'internacional';
+    }
+    
+    return 'equipo'; // Default
   };
 
   return (

@@ -1,15 +1,111 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { DOMParser } from "https://deno.land/x/deno_dom@v0.1.38/deno-dom-wasm.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Función para obtener contenido de la web de UDES
+async function fetchUDESWebContent(url: string): Promise<string> {
+  try {
+    console.log(`🌐 Fetching UDES web content from: ${url}`);
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; UDES-LIA-Bot/1.0)',
+      },
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const html = await response.text();
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    
+    if (!doc) {
+      throw new Error('Failed to parse HTML');
+    }
+    
+    // Extraer texto relevante del documento
+    let text = '';
+    
+    // Para páginas con tabs (como equipo-drni), extraer todo el contenido de tabs
+    const tabPanels = doc.querySelectorAll('[role="tabpanel"], .tab-pane, .tabs-content, .tab-content');
+    if (tabPanels && tabPanels.length > 0) {
+      console.log(`📑 Found ${tabPanels.length} tab panels`);
+      tabPanels.forEach((panel, index) => {
+        const panelText = panel.textContent || '';
+        if (panelText.trim()) {
+          // Intentar extraer el nombre del tab/campus
+          const tabLabel = panel.getAttribute('aria-label') || 
+                          panel.getAttribute('data-tab') || 
+                          `Tab ${index + 1}`;
+          text += `\n\n=== ${tabLabel} ===\n${panelText.trim()}\n`;
+        }
+      });
+    }
+    
+    // Si no hay tabs, extraer el contenido del body
+    if (!text || text.trim().length === 0) {
+      const body = doc.querySelector('body');
+      text = body?.textContent || '';
+    }
+    
+    // También extraer información de elementos específicos útiles
+    const teamMembers = doc.querySelectorAll('.team-member, .person, .staff-member, .equipo-item');
+    if (teamMembers && teamMembers.length > 0) {
+      console.log(`👥 Found ${teamMembers.length} team members`);
+      text += '\n\n=== MIEMBROS DEL EQUIPO ===\n';
+      teamMembers.forEach((member) => {
+        const name = member.querySelector('.name, .person-name, h3, h4')?.textContent?.trim();
+        const title = member.querySelector('.title, .position, .cargo')?.textContent?.trim();
+        const email = member.querySelector('.email, a[href^="mailto:"]')?.textContent?.trim();
+        const phone = member.querySelector('.phone, .telefono')?.textContent?.trim();
+        
+        if (name) {
+          text += `\n- ${name}`;
+          if (title) text += ` - ${title}`;
+          if (email) text += ` | Email: ${email}`;
+          if (phone) text += ` | Tel: ${phone}`;
+        }
+      });
+    }
+    
+    // Limpiar el texto
+    text = text.replace(/\s+/g, ' ').replace(/\n\s+/g, '\n').trim();
+    
+    // Limitar a 5000 caracteres para no sobrecargar el contexto
+    if (text.length > 5000) {
+      text = text.substring(0, 5000) + '...\n[Contenido truncado por longitud]';
+    }
+    
+    console.log(`✅ Successfully fetched content (${text.length} chars)`);
+    return text;
+  } catch (error) {
+    console.error(`❌ Error fetching web content:`, error);
+    return '';
+  }
+}
+
+// URLs importantes de UDES
+const UDES_URLS = {
+  equipo: 'https://udes.edu.co/nuestra-universidad/quienes-somos/equipo-directivo',
+  equipoInternacional: 'https://udes.edu.co/internacional/quienes-somos/equipo-drni',
+  misionVision: 'https://udes.edu.co/nuestra-universidad/quienes-somos/mision-vision',
+  historia: 'https://udes.edu.co/nuestra-universidad/quienes-somos/historia',
+  campus: 'https://udes.edu.co/nuestra-universidad/sedes-ubicacion',
+  acreditacion: 'https://udes.edu.co/nuestra-universidad/acreditacion',
+  programas: 'https://udes.edu.co/programas-academicos',
+  investigacion: 'https://udes.edu.co/investigacion',
+  internacional: 'https://udes.edu.co/relacionamiento-internacional',
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { messages, type = "chat", catalogContext } = await req.json();
+    const { messages, type = "chat", catalogContext, needsWebInfo = false, webTopic } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
     console.log("🔍 Edge Function recibió:", {
@@ -19,10 +115,21 @@ serve(async (req) => {
       docentes: catalogContext?.teachers?.length || 0,
       ofertas: catalogContext?.offerings?.length || 0,
       coil: catalogContext?.coilProposals?.length || 0,
+      needsWebInfo,
+      webTopic,
     });
 
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
+    }
+
+    // Obtener información web si es necesaria
+    let webContent = "";
+    if (needsWebInfo && webTopic) {
+      const url = UDES_URLS[webTopic as keyof typeof UDES_URLS];
+      if (url) {
+        webContent = await fetchUDESWebContent(url);
+      }
     }
 
     // Formatear el contexto del catálogo para el prompt
@@ -132,17 +239,34 @@ Siempre proporciona información específica y actualizada basándote en estos d
     // LIA personality prompt
     const liaSystemPrompt = `Eres LIA (Link Internacional Avanzado), la asistente académica de la Universidad de Santander (UDES).
 
-🎯 TU FUNCIÓN: Proporcionar información completa y detallada sobre el catálogo académico de UDES.
+🎯 TU FUNCIÓN: Proporcionar información completa y detallada sobre el catálogo académico de UDES y la universidad en general.
 
 REGLAS FUNDAMENTALES:
-1. **USA TODOS LOS DATOS DISPONIBLES** del catálogo actualizado
+1. **USA TODOS LOS DATOS DISPONIBLES** del catálogo actualizado y de la web oficial de UDES
 2. **Proporciona información COMPLETA**: nombres, fechas, contactos, descripciones
 3. **Si no tienes datos, dilo claramente**: "No tengo esa información en el catálogo actual"
-4. **NUNCA inventes información** - solo usa los datos proporcionados en "INFORMACIÓN ACTUALIZADA DEL CATÁLOGO UDES"
-5. **Sé ESPECÍFICA Y DETALLADA**: Incluye todos los detalles relevantes (profesores, campus, fechas, capacidades, contactos)
+4. **NUNCA inventes información** - solo usa los datos proporcionados
+5. **Sé ESPECÍFICA Y DETALLADA**: Incluye todos los detalles relevantes
+
+${webContent ? `
+🌐 INFORMACIÓN DE LA WEB OFICIAL DE UDES:
+
+${webContent}
+
+Usa esta información para responder preguntas sobre:
+- Equipo directivo y administrativo de UDES
+- Misión, visión y valores institucionales
+- Historia y trayectoria de la universidad
+- Sedes y ubicaciones
+- Acreditación y calidad académica
+- Programas académicos
+- Investigación
+- Relaciones internacionales
+
+` : ''}
 
 ESTRUCTURA DE RESPUESTAS:
-📊 **Preguntas generales** ("¿Qué clases hay?"):
+📊 **Preguntas generales** ("¿Qué clases hay?", "¿Quién es el rector?"):
    - Lista TODAS las opciones disponibles con detalles clave
    - Organiza por categorías si es apropiado
    - Incluye información de contacto cuando sea relevante
@@ -205,10 +329,24 @@ LIA: "👨‍🏫 **Prof. Juan Pérez**
 - 👨‍🏫 Docentes Investigadores (nombre completo, campus, contacto, intereses, perfil profesional, enlaces académicos)
 - 🎓 Ofertas Académicas UDES (tipo, campus, capacidad, programa, profesor UDES, contacto, descripción detallada)
 - 🌐 Propuestas COIL (curso, profesor, programa, idiomas, ODS, temas del proyecto, capacidad)
+- 🏛️ Información Institucional UDES (equipo directivo, misión/visión, historia, sedes, acreditación)
+- 🔬 Investigación y programas académicos
+- 🌍 Relaciones internacionales y movilidad académica
+
+PALABRAS CLAVE PARA CONSULTA WEB:
+- "equipo directivo", "rector", "vicerrector", "director" → Información del equipo
+- "misión", "visión", "valores" → Misión y visión institucional
+- "historia", "fundación", "trayectoria" → Historia de UDES
+- "sedes", "campus", "ubicación" → Ubicaciones y sedes
+- "acreditación", "calidad" → Información de acreditación
+- "programas académicos", "carreras" → Oferta académica general
+- "investigación" → Grupos y proyectos de investigación
+
+Si detectas estas palabras clave, puedes hacer referencia a la información institucional oficial de UDES.
 
 ${catalogInfo}
 
-IMPORTANTE: Proporciona respuestas COMPLETAS y DETALLADAS usando TODA la información disponible del catálogo.`;
+IMPORTANTE: Proporciona respuestas COMPLETAS y DETALLADAS usando TODA la información disponible del catálogo y la web oficial.`;
 
     const body: any = {
       model: "google/gemini-2.5-flash",
