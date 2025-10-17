@@ -12,6 +12,15 @@ serve(async (req) => {
     const { messages, type = "chat", catalogContext } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
+    console.log("🔍 Edge Function recibió:", {
+      mensajes: messages?.length,
+      tieneContexto: !!catalogContext,
+      clases: catalogContext?.classes?.length || 0,
+      docentes: catalogContext?.teachers?.length || 0,
+      ofertas: catalogContext?.offerings?.length || 0,
+      coil: catalogContext?.coilProposals?.length || 0,
+    });
+
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
@@ -113,6 +122,12 @@ IMPORTANTE: Usa esta información actualizada para responder preguntas sobre:
 Siempre proporciona información específica y actualizada basándote en estos datos.
 `;
     }
+
+    console.log("📝 Contexto formateado:", {
+      longitudContexto: catalogInfo.length,
+      tieneClases: catalogInfo.includes("CLASES DISPONIBLES"),
+      tieneDocentes: catalogInfo.includes("DOCENTES INVESTIGADORES"),
+    });
 
     // LIA personality prompt
     const liaSystemPrompt = `Eres LIA (Link Internacional Avanzado), la embajadora digital de la Universidad de Santander (UDES). Tu personalidad es:
