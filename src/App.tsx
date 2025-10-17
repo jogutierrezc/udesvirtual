@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AdminProvider } from "./contexts/AdminContext";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import Unauthorized from "./pages/Unauthorized";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Catalog from "./pages/Catalog";
@@ -14,6 +15,7 @@ import Lia from "./pages/Lia";
 import ProfessorOfferings from "./pages/ProfessorOfferings";
 import CoilOfferings from "./pages/CoilOfferings";
 import Navbar from "./components/Navbar";
+import ProtectedRoute from "./components/ProtectedRoute";
 import { CatalogPage } from "./pages/admin/catalog/CatalogPage";
 import { OfferingsPage } from "./pages/admin/offerings/OfferingsPage";
 import { RegistrationsPage } from "./pages/admin/registrations/RegistrationsPage";
@@ -31,16 +33,45 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/unauthorized" element={<Unauthorized />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/catalog" element={<Catalog />} />
             <Route path="/professor-offerings" element={<ProfessorOfferings />} />
             <Route path="/coil-offerings" element={<CoilOfferings />} />
             
-            {/* Admin Routes */}
-            <Route path="/admin/catalog" element={<CatalogPage />} />
-            <Route path="/admin/offerings" element={<OfferingsPage />} />
-            <Route path="/admin/registrations" element={<RegistrationsPage />} />
-            <Route path="/admin" element={<CatalogPage />} />
+            {/* Admin Routes - Protected */}
+            <Route 
+              path="/admin/catalog" 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <CatalogPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/offerings" 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <OfferingsPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/registrations" 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <RegistrationsPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin" 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <CatalogPage />
+                </ProtectedRoute>
+              } 
+            />
             
             <Route path="/professor" element={<Professor />} />
             <Route path="/lia" element={<Lia />} />
