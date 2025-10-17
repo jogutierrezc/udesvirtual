@@ -34,7 +34,7 @@ async function fetchUDESWebContent(url: string): Promise<string> {
     const tabPanels = doc.querySelectorAll('[role="tabpanel"], .tab-pane, .tabs-content, .tab-content');
     if (tabPanels && tabPanels.length > 0) {
       console.log(`📑 Found ${tabPanels.length} tab panels`);
-      tabPanels.forEach((panel, index) => {
+      tabPanels.forEach((panel: any, index: number) => {
         const panelText = panel.textContent || "";
         if (panelText.trim()) {
           // Intentar extraer el nombre del tab/campus
@@ -55,7 +55,7 @@ async function fetchUDESWebContent(url: string): Promise<string> {
     if (teamMembers && teamMembers.length > 0) {
       console.log(`👥 Found ${teamMembers.length} team members`);
       text += "\n\n=== MIEMBROS DEL EQUIPO ===\n";
-      teamMembers.forEach((member) => {
+      teamMembers.forEach((member: any) => {
         const name = member.querySelector(".name, .person-name, h3, h4")?.textContent?.trim();
         const title = member.querySelector(".title, .position, .cargo")?.textContent?.trim();
         const email = member.querySelector('.email, a[href^="mailto:"]')?.textContent?.trim();
