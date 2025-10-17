@@ -11,74 +11,98 @@ serve(async (req) => {
   try {
     const { messages, type = "chat", catalogContext } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    
+
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
     // Formatear el contexto del catálogo para el prompt
     let catalogInfo = "";
-    
+
     if (catalogContext) {
       catalogInfo = `
 
 INFORMACIÓN ACTUALIZADA DEL CATÁLOGO UDES:
 
 📚 CLASES DISPONIBLES (${catalogContext.classes?.length || 0} clases):
-${catalogContext.classes?.map((c: any, i: number) => `
+${
+  catalogContext.classes
+    ?.map(
+      (c: any, i: number) => `
 ${i + 1}. "${c.title}"
-   - Tipo: ${c.class_type === 'mirror' ? 'Clase Espejo' : 'MasterClass'}
+   - Tipo: ${c.class_type === "mirror" ? "Clase Espejo" : "MasterClass"}
    - Profesor Aliado: ${c.allied_professor}
    - Institución: ${c.allied_institution}
    - Campus: ${c.campus}
    - Capacidad: ${c.capacity} estudiantes
    - Horas: ${c.hours}
    - Fecha: ${c.class_date}
-   - Área de Conocimiento: ${Array.isArray(c.knowledge_area) ? c.knowledge_area.join(', ') : c.knowledge_area}
+   - Área de Conocimiento: ${Array.isArray(c.knowledge_area) ? c.knowledge_area.join(", ") : c.knowledge_area}
    - Programa: ${c.profession}
    - Descripción: ${c.description}
-   ${c.virtual_room_required ? '- 🌐 Modalidad Virtual' : ''}
-`).join('\n') || 'No hay clases disponibles actualmente.'}
+   ${c.virtual_room_required ? "- 🌐 Modalidad Virtual" : ""}
+`,
+    )
+    .join("\n") || "No hay clases disponibles actualmente."
+}
 
 👨‍🏫 DOCENTES INVESTIGADORES (${catalogContext.teachers?.length || 0} docentes):
-${catalogContext.teachers?.map((t: any, i: number) => `
+${
+  catalogContext.teachers
+    ?.map(
+      (t: any, i: number) => `
 ${i + 1}. ${t.teacher_name}
    - Campus: ${t.campus}
    - Email: ${t.email}
-   - Teléfono: ${t.phone || 'No especificado'}
-   - Intereses: ${Array.isArray(t.interests) ? t.interests.join(', ') : t.interests || 'No especificados'}
-   - Perfil: ${t.profile_description || 'No disponible'}
-   ${t.cvlac_link ? `- CvLAC: ${t.cvlac_link}` : ''}
-   ${t.orcid_link ? `- ORCID: ${t.orcid_link}` : ''}
-`).join('\n') || 'No hay docentes registrados actualmente.'}
+   - Teléfono: ${t.phone || "No especificado"}
+   - Intereses: ${Array.isArray(t.interests) ? t.interests.join(", ") : t.interests || "No especificados"}
+   - Perfil: ${t.profile_description || "No disponible"}
+   ${t.cvlac_link ? `- CvLAC: ${t.cvlac_link}` : ""}
+   ${t.orcid_link ? `- ORCID: ${t.orcid_link}` : ""}
+`,
+    )
+    .join("\n") || "No hay docentes registrados actualmente."
+}
 
 🎓 OFERTAS ACADÉMICAS UDES (${catalogContext.offerings?.length || 0} ofertas):
-${catalogContext.offerings?.map((o: any, i: number) => `
+${
+  catalogContext.offerings
+    ?.map(
+      (o: any, i: number) => `
 ${i + 1}. "${o.title}"
-   - Tipo: ${o.offering_type === 'exchange' ? 'Intercambio' : 'Programada'}
+   - Tipo: ${o.offering_type === "exchange" ? "Intercambio" : "Programada"}
    - Campus: ${o.campus}
    - Capacidad: ${o.capacity} estudiantes
    - Horas: ${o.hours}
    - Programa: ${o.profession}
-   - Área: ${Array.isArray(o.knowledge_area) ? o.knowledge_area.join(', ') : o.knowledge_area}
+   - Área: ${Array.isArray(o.knowledge_area) ? o.knowledge_area.join(", ") : o.knowledge_area}
    - Profesor UDES: ${o.udes_professor_name}
    - Programa del Profesor: ${o.udes_professor_program}
    - Contacto: ${o.udes_professor_email}
    - Descripción: ${o.description}
-`).join('\n') || 'No hay ofertas disponibles actualmente.'}
+`,
+    )
+    .join("\n") || "No hay ofertas disponibles actualmente."
+}
 
 🌐 PROPUESTAS COIL (${catalogContext.coilProposals?.length || 0} propuestas):
-${catalogContext.coilProposals?.map((coil: any, i: number) => `
+${
+  catalogContext.coilProposals
+    ?.map(
+      (coil: any, i: number) => `
 ${i + 1}. "${coil.course_name}"
    - Profesor: ${coil.full_name}
    - Email: ${coil.email}
    - Programa Académico: ${coil.academic_program}
    - Semestre: ${coil.academic_semester}
    - Capacidad Externa: ${coil.external_capacity}
-   - Idiomas: ${Array.isArray(coil.languages) ? coil.languages.join(', ') : coil.languages || 'No especificados'}
-   - ODS: ${Array.isArray(coil.sustainable_development_goals) ? coil.sustainable_development_goals.join(', ') : 'No especificados'}
+   - Idiomas: ${Array.isArray(coil.languages) ? coil.languages.join(", ") : coil.languages || "No especificados"}
+   - ODS: ${Array.isArray(coil.sustainable_development_goals) ? coil.sustainable_development_goals.join(", ") : "No especificados"}
    - Temas del Proyecto: ${coil.project_topics}
-`).join('\n') || 'No hay propuestas COIL actualmente.'}
+`,
+    )
+    .join("\n") || "No hay propuestas COIL actualmente."
+}
 
 IMPORTANTE: Usa esta información actualizada para responder preguntas sobre:
 - Clases disponibles, horarios, profesores y modalidades
@@ -127,18 +151,9 @@ ${catalogInfo}`;
 
     const body: any = {
       model: "google/gemini-2.5-flash",
-      messages: [
-        { role: "system", content: liaSystemPrompt },
-        ...messages
-      ],
+      messages: [{ role: "system", content: liaSystemPrompt }, ...messages],
       temperature: 0.7, // Hacer respuestas más naturales
       max_tokens: 300, // Limitar longitud de respuestas
-    };
-      model: "google/gemini-2.5-flash",
-      messages: [
-        { role: "system", content: liaSystemPrompt },
-        ...messages
-      ],
     };
 
     // Handle different request types
@@ -155,14 +170,14 @@ ${catalogInfo}`;
                 summary: { type: "string" },
                 highlights: {
                   type: "array",
-                  items: { type: "string" }
-                }
+                  items: { type: "string" },
+                },
               },
               required: ["summary", "highlights"],
-              additionalProperties: false
-            }
-          }
-        }
+              additionalProperties: false,
+            },
+          },
+        },
       ];
       body.tool_choice = { type: "function", function: { name: "generate_summary" } };
     }
@@ -180,14 +195,14 @@ ${catalogInfo}`;
       if (response.status === 429) {
         return new Response(
           JSON.stringify({ error: "Límite de solicitudes alcanzado. Por favor intenta más tarde." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
       if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "Se requiere pago. Por favor contacta al administrador." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return new Response(JSON.stringify({ error: "Se requiere pago. Por favor contacta al administrador." }), {
+          status: 402,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
       const errorText = await response.text();
       console.error("AI gateway error:", response.status, errorText);
@@ -202,9 +217,9 @@ ${catalogInfo}`;
     });
   } catch (error) {
     console.error("Error in lia-chat function:", error);
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Error desconocido" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Error desconocido" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
