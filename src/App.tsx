@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { AdminProvider } from "./contexts/AdminContext";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
@@ -22,22 +22,32 @@ import { RegistrationsPage } from "./pages/admin/registrations/RegistrationsPage
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AdminProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Navbar />
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/unauthorized" element={<Unauthorized />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/catalog" element={<Catalog />} />
-            <Route path="/professor-offerings" element={<ProfessorOfferings />} />
-            <Route path="/coil-offerings" element={<CoilOfferings />} />
+const AppContent = () => {
+  const location = useLocation();
+  
+  // Rutas donde se debe ocultar el Navbar
+  const hideNavbarRoutes = ['/unauthorized'];
+  
+  // Verificar si es una ruta 404
+  const is404 = !['/', '/auth', '/unauthorized', '/dashboard', '/catalog', '/professor-offerings', 
+    '/coil-offerings', '/admin/catalog', '/admin/offerings', '/admin/registrations', 
+    '/admin', '/professor', '/lia'].includes(location.pathname) && 
+    !location.pathname.startsWith('/admin/');
+
+  // Ocultar navbar en 404 o en rutas específicas
+  const shouldHideNavbar = is404 || hideNavbarRoutes.includes(location.pathname);
+
+  return (
+    <>
+      {!shouldHideNavbar && <Navbar />}
+      <Routes>
+        <Route path="/" element={<Index />} />
+        <Route path="/auth" element={<Auth />} />
+        <Route path="/unauthorized" element={<Unauthorized />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/catalog" element={<Catalog />} />
+        <Route path="/professor-offerings" element={<ProfessorOfferings />} />
+        <Route path="/coil-offerings" element={<CoilOfferings />} />
             
             {/* Admin Routes - Protected */}
             <Route 
@@ -78,6 +88,18 @@ const App = () => (
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+    </>
+  );
+};
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <AdminProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AppContent />
         </BrowserRouter>
       </TooltipProvider>
     </AdminProvider>
