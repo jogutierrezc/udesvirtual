@@ -24,7 +24,7 @@ export const LiaChat = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: "¡Hola! Soy LIA 🌟, tu asistente académica de UDES. Puedo ayudarte con información sobre nuestro catálogo de clases, docentes investigadores, ofertas académicas y propuestas COIL. ¿En qué puedo ayudarte hoy?",
+      content: "¡Hola! Soy LIA 🌟, tu asistente del catálogo académico UDES. Puedo ayudarte a encontrar:\n\n📚 Clases Espejo y MasterClass\n👨‍🏫 Docentes Investigadores\n🎓 Ofertas Académicas (intercambio/programadas)\n🌐 Propuestas COIL\n\n¿Qué te gustaría conocer?",
     },
   ]);
   const [input, setInput] = useState("");
