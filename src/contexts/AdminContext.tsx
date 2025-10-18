@@ -5,7 +5,9 @@ import { Tables } from "@/integrations/supabase/types";
 
 type Class = Tables<"classes">;
 type Teacher = Tables<"teachers">;
-type Registration = Tables<"class_registrations">;
+type Registration = Tables<"class_registrations"> & {
+  classes?: Tables<"classes">;
+};
 type Offering = Tables<"course_offerings">;
 type CoilProposal = Tables<"coil_proposals">;
 
