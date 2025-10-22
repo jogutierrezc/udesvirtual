@@ -12,6 +12,10 @@ import Dashboard from "./pages/Dashboard";
 import Catalog from "./pages/Catalog";
 import Professor from "./pages/Professor";
 import Lia from "./pages/Lia";
+import Mooc from "./pages/Mooc";
+import MoocDetail from "./pages/MoocDetail";
+import ProfileSetup from "./pages/ProfileSetup";
+import Welcome from "./pages/Welcome";
 import ProfessorOfferings from "./pages/ProfessorOfferings";
 import CoilOfferings from "./pages/CoilOfferings";
 import Navbar from "./components/Navbar";
@@ -26,13 +30,14 @@ const AppContent = () => {
   const location = useLocation();
   
   // Rutas donde se debe ocultar el Navbar
-  const hideNavbarRoutes = ['/unauthorized'];
+  const hideNavbarRoutes = ['/unauthorized', '/profile-setup', '/welcome'];
   
   // Verificar si es una ruta 404
   const is404 = !['/', '/auth', '/unauthorized', '/dashboard', '/catalog', '/professor-offerings', 
-    '/coil-offerings', '/admin/catalog', '/admin/offerings', '/admin/registrations', 
-    '/admin', '/professor', '/lia'].includes(location.pathname) && 
-    !location.pathname.startsWith('/admin/');
+    '/coil-offerings', '/mooc', '/profile-setup', '/welcome', '/admin/catalog', '/admin/offerings', 
+    '/admin/registrations', '/admin', '/professor', '/lia'].includes(location.pathname) && 
+    !location.pathname.startsWith('/admin/') &&
+    !location.pathname.startsWith('/mooc/');
 
   // Ocultar navbar en 404 o en rutas específicas
   const shouldHideNavbar = is404 || hideNavbarRoutes.includes(location.pathname);
@@ -43,11 +48,15 @@ const AppContent = () => {
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/auth" element={<Auth />} />
+        <Route path="/profile-setup" element={<ProfileSetup />} />
+        <Route path="/welcome" element={<Welcome />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/catalog" element={<Catalog />} />
         <Route path="/professor-offerings" element={<ProfessorOfferings />} />
         <Route path="/coil-offerings" element={<CoilOfferings />} />
+        <Route path="/mooc" element={<Mooc />} />
+        <Route path="/mooc/:id" element={<MoocDetail />} />
             
             {/* Admin Routes - Protected */}
             <Route 

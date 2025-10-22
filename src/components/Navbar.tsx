@@ -88,6 +88,7 @@ export const Navbar = () => {
       { to: "/catalog", label: "Catálogo" },
       { to: "/professor-offerings", label: "Oferta" },
       { to: "/coil-offerings", label: "COIL" },
+      { to: "/mooc", label: "MOOC" },
       { to: "/lia", label: "LIA" },
     ];
     
