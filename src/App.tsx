@@ -23,6 +23,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import { CatalogPage } from "./pages/admin/catalog/CatalogPage";
 import { OfferingsPage } from "./pages/admin/offerings/OfferingsPage";
 import { RegistrationsPage } from "./pages/admin/registrations/RegistrationsPage";
+import { MoocPage } from "./pages/admin/mooc/MoocPage";
 
 const queryClient = new QueryClient();
 
@@ -35,7 +36,7 @@ const AppContent = () => {
   // Verificar si es una ruta 404
   const is404 = !['/', '/auth', '/unauthorized', '/dashboard', '/catalog', '/professor-offerings', 
     '/coil-offerings', '/mooc', '/profile-setup', '/welcome', '/admin/catalog', '/admin/offerings', 
-    '/admin/registrations', '/admin', '/professor', '/lia'].includes(location.pathname) && 
+    '/admin/registrations', '/admin/mooc', '/admin', '/professor', '/lia'].includes(location.pathname) && 
     !location.pathname.startsWith('/admin/') &&
     !location.pathname.startsWith('/mooc/');
 
@@ -80,6 +81,14 @@ const AppContent = () => {
               element={
                 <ProtectedRoute requireAdmin={true}>
                   <RegistrationsPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/mooc" 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <MoocPage />
                 </ProtectedRoute>
               } 
             />

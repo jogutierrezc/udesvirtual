@@ -5,14 +5,17 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { 
   Clock, 
   BookOpen, 
   Award, 
   PlayCircle, 
   Target,
+  Users,
+  CheckCircle,
   ArrowLeft,
   Video,
   Loader2
@@ -54,59 +57,12 @@ export default function MoocDetail() {
   const [showIntroVideo, setShowIntroVideo] = useState(false);
   const [course, setCourse] = useState<CourseDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [currentUser, setCurrentUser] = useState<any>(null);
-  const [userRole, setUserRole] = useState<string | null>(null);
 
   useEffect(() => {
-    checkUser();
     if (id) {
       loadCourse(id);
     }
   }, [id]);
-
-  const checkUser = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    setCurrentUser(user);
-
-    if (user) {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .single();
-      
-      setUserRole(profile?.role || null);
-    }
-  };
-
-  const handleTakeCourse = () => {
-    if (!currentUser) {
-      // Usuario no autenticado - redirigir a crear cuenta
-      toast({
-        title: "Inicia sesión",
-        description: "Debes crear una cuenta para tomar este curso",
-      });
-      navigate("/auth");
-      return;
-    }
-
-    if (userRole !== "student") {
-      // Usuario autenticado pero no es estudiante
-      toast({
-        title: "Acceso restringido",
-        description: "Solo los estudiantes pueden tomar cursos",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Usuario es estudiante - aquí puedes implementar la lógica para inscribirse al curso
-    toast({
-      title: "¡Bienvenido al curso!",
-      description: "Comenzando el curso...",
-    });
-    // TODO: Implementar inscripción y redirigir a la primera lección
-  };
 
   const loadCourse = async (courseId: string) => {
     try {
@@ -138,16 +94,11 @@ export default function MoocDetail() {
       console.log("Curso cargado:", courseData);
 
       // Obtener información del creador
-      const { data: profileData, error: profileError } = await supabase
+      const { data: profileData } = await supabase
         .from("profiles")
         .select("full_name, email")
         .eq("id", courseData.created_by)
         .single();
-
-      if (profileError) {
-        console.error("Error loading profile:", profileError);
-      }
-      console.log("Perfil del creador:", profileData);
 
       // Obtener lecciones
       const { data: lessonsData } = await supabase
@@ -161,10 +112,7 @@ export default function MoocDetail() {
 
       const courseDetail: CourseDetail = {
         ...courseData,
-        creator: profileData ? { 
-          full_name: profileData.full_name || "Instructor", 
-          email: profileData.email || "" 
-        } : { full_name: "Instructor", email: "" },
+        creator: profileData ? { full_name: profileData.full_name, email: profileData.email } : undefined,
         lessons: lessonsData || [],
         total_duration: totalDuration,
         lesson_count: lessonCount,
@@ -197,7 +145,6 @@ export default function MoocDetail() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center space-y-4">
           <h2 className="text-2xl font-bold">Curso no encontrado</h2>
-          <p className="text-muted-foreground">Este curso no está disponible o no existe</p>
           <Button onClick={() => navigate("/mooc")}>Volver a cursos</Button>
         </div>
       </div>
@@ -205,18 +152,14 @@ export default function MoocDetail() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+    <div className="min-h-screen">
       {/* Hero Section con imagen de fondo */}
       <div className="relative h-[400px] md:h-[500px] overflow-hidden">
         {/* Imagen de fondo */}
-        {course.course_image_url ? (
-          <div 
-            className="absolute inset-0 bg-cover bg-center"
-            style={{ backgroundImage: `url(${course.course_image_url})` }}
-          />
-        ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-purple-600" />
-        )}
+        <div 
+          className="absolute inset-0 bg-cover bg-center bg-gradient-to-br from-indigo-100 to-purple-100"
+          style={{ backgroundImage: course.course_image_url ? `url(${course.course_image_url})` : undefined }}
+        />
         
         {/* Degradado blanco desde abajo */}
         <div className="absolute inset-0 bg-gradient-to-t from-white via-white/80 to-transparent" />
@@ -259,12 +202,7 @@ export default function MoocDetail() {
           <div className="lg:col-span-2 space-y-6">
             {/* Título y descripción */}
             <div>
-              <h1 className="text-3xl md:text-4xl font-bold mb-2">{course.title}</h1>
-              {course.creator && (
-                <p className="text-base text-muted-foreground mb-4">
-                  Por <span className="font-semibold text-indigo-600">{course.creator.full_name}</span>
-                </p>
-              )}
+              <h1 className="text-3xl md:text-4xl font-bold mb-4">{course.title}</h1>
               <p className="text-lg text-muted-foreground leading-relaxed">
                 {course.description}
               </p>
@@ -284,12 +222,11 @@ export default function MoocDetail() {
                 </Button>
               )}
               <Button 
-                onClick={handleTakeCourse}
                 size="lg"
                 className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all"
               >
                 <BookOpen className="h-5 w-5 mr-2" />
-                {currentUser ? (userRole === "student" ? "Tomar Curso" : "Solo para Estudiantes") : "Crear Cuenta para Tomar"}
+                Tomar Curso
               </Button>
             </div>
 
@@ -371,28 +308,42 @@ export default function MoocDetail() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm leading-relaxed">{course.objective}</p>
+                  <p className="text-sm">{course.objective}</p>
                 </CardContent>
               </Card>
             )}
+                      <span>{objective}</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
 
-            {/* Tags del curso */}
-            {course.tags && course.tags.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Temas</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-wrap gap-2">
-                    {course.tags.map((tag, index) => (
-                      <Badge key={index} variant="outline" className="text-sm">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            {/* Colaboradores */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Users className="h-5 w-5 text-indigo-600" />
+                  Colaboradores
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {course.collaborators.map((collaborator, index) => (
+                    <div key={index} className="flex items-center gap-3">
+                      <Avatar className="h-12 w-12">
+                        <AvatarImage src={collaborator.avatar} alt={collaborator.name} />
+                        <AvatarFallback>{collaborator.name[0]}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <div className="text-sm font-medium">{collaborator.name}</div>
+                        <div className="text-xs text-muted-foreground">{collaborator.role}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Información adicional */}
             <Card>
@@ -401,20 +352,24 @@ export default function MoocDetail() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Programa</span>
-                  <span className="font-medium text-right">{course.profession}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Lecciones</span>
-                  <span className="font-medium">{course.lesson_count || 0}</span>
+                  <span className="text-muted-foreground">Nivel</span>
+                  <Badge variant="outline">{course.level}</Badge>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Duración</span>
-                  <span className="font-medium">{course.total_duration || 0} horas</span>
+                  <span className="font-medium">{course.duration}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Certificado</span>
-                  <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Sí</Badge>
+                  <span className="text-muted-foreground">Estudiantes</span>
+                  <span className="font-medium">{course.students.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Categoría</span>
+                  <span className="font-medium">{course.category}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Rating</span>
+                  <span className="font-medium">⭐ {course.rating}/5</span>
                 </div>
               </CardContent>
             </Card>
@@ -423,23 +378,22 @@ export default function MoocDetail() {
       </div>
 
       {/* Modal de video de introducción */}
-      {course.intro_video_url && (
-        <Dialog open={showIntroVideo} onOpenChange={setShowIntroVideo}>
-          <DialogContent className="max-w-4xl">
-            <DialogHeader>
-              <DialogTitle>Video de Introducción</DialogTitle>
-            </DialogHeader>
-            <div className="aspect-video">
-              <iframe
-                src={course.intro_video_url}
-                className="w-full h-full rounded-lg"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
+      <Dialog open={showIntroVideo} onOpenChange={setShowIntroVideo}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Video de Introducción</DialogTitle>
+          </DialogHeader>
+          <div className="aspect-video w-full bg-black rounded-lg overflow-hidden">
+            <iframe
+              className="w-full h-full"
+              src={course.introVideo}
+              title="Video de introducción"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

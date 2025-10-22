@@ -11,9 +11,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, LogOut, PlusCircle, BookOpen, GraduationCap, Package } from "lucide-react";
+import { Loader2, LogOut, PlusCircle, BookOpen, GraduationCap, Package, Video } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { TagInput } from "@/components/TagInput";
+import { ProfessorMoocPage } from "@/pages/professor/ProfessorMoocPage";
 
 const Professor = () => {
   const navigate = useNavigate();
@@ -296,7 +297,7 @@ const Professor = () => {
 
       <div className="max-w-5xl mx-auto px-4 py-8">
         <Tabs defaultValue="class" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="class">
               <BookOpen className="h-4 w-4 mr-2" />
               Crear Clase
@@ -308,6 +309,10 @@ const Professor = () => {
             <TabsTrigger value="teacher">
               <GraduationCap className="h-4 w-4 mr-2" />
               Perfil Investigador
+            </TabsTrigger>
+            <TabsTrigger value="mooc">
+              <Video className="h-4 w-4 mr-2" />
+              Cursos MOOC
             </TabsTrigger>
             <TabsTrigger value="myclasses">
               <Package className="h-4 w-4 mr-2" />
@@ -871,6 +876,10 @@ const Professor = () => {
                 </form>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="mooc">
+            <ProfessorMoocPage />
           </TabsContent>
         </Tabs>
       </div>

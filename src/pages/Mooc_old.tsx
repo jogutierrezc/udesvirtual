@@ -9,6 +9,8 @@ import { useToast } from "@/hooks/use-toast";
 import { 
   BookOpen, 
   PlayCircle, 
+  FileText, 
+  CheckCircle, 
   Clock, 
   Users, 
   Star,
@@ -41,6 +43,7 @@ export default function Mooc() {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedLevel, setSelectedLevel] = useState("all");
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -117,6 +120,7 @@ export default function Mooc() {
                          course.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          course.profession.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === "all" || course.tags?.includes(selectedCategory);
+    // Como no tenemos nivel en la BD, lo ignoramos por ahora
     return matchesSearch && matchesCategory;
   });
 
@@ -131,7 +135,7 @@ export default function Mooc() {
           <div className="max-w-4xl mx-auto text-center space-y-6">
             <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full text-sm">
               <TrendingUp className="h-4 w-4" />
-              <span>Plataforma de Aprendizaje UDES</span>
+              <span>Más de 5,000 estudiantes aprendiendo</span>
             </div>
             <h1 className="text-4xl md:text-6xl font-bold">
               Aprende a tu ritmo
@@ -262,6 +266,65 @@ export default function Mooc() {
                 </div>
               </section>
             )}
+                      <Star className="h-3 w-3 mr-1 fill-current" />
+                      Destacado
+                    </Badge>
+                  </div>
+                  <div className="absolute bottom-3 left-3">
+                    <Badge variant="secondary">{course.category}</Badge>
+                  </div>
+                </div>
+                <CardHeader>
+                  <CardTitle className="line-clamp-2 text-lg group-hover:text-indigo-600 transition-colors">
+                    {course.title}
+                  </CardTitle>
+                  <CardDescription className="line-clamp-2">
+                    {course.description}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Users className="h-4 w-4" />
+                    <span>{course.instructor}</span>
+                  </div>
+                  
+                  <div className="grid grid-cols-3 gap-2 text-sm">
+                    <div className="flex items-center gap-1">
+                      <PlayCircle className="h-4 w-4 text-indigo-600" />
+                      <span>{course.videos}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <FileText className="h-4 w-4 text-purple-600" />
+                      <span>{course.activities}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Clock className="h-4 w-4 text-pink-600" />
+                      <span>{course.duration}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 border-t">
+                    <div className="flex items-center gap-1">
+                      <Star className="h-4 w-4 fill-yellow-500 text-yellow-500" />
+                      <span className="font-semibold">{course.rating}</span>
+                      <span className="text-sm text-muted-foreground">({course.students})</span>
+                    </div>
+                    <Badge variant="outline">{course.level}</Badge>
+                  </div>
+
+                  <Button 
+                    className="w-full" 
+                    size="lg"
+                    onClick={() => navigate(`/mooc/${course.id}`)}
+                  >
+                    <BookOpen className="h-4 w-4 mr-2" />
+                    Ver Curso
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </section>
 
             {/* Filters */}
             <section className="mb-8">
@@ -388,6 +451,57 @@ export default function Mooc() {
             </section>
           </>
         )}
+      </div>
+                      {course.title}
+                    </CardTitle>
+                    <CardDescription className="line-clamp-2">
+                      {course.description}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Users className="h-4 w-4" />
+                      <span>{course.instructor}</span>
+                    </div>
+                    
+                    <div className="grid grid-cols-3 gap-2 text-sm">
+                      <div className="flex items-center gap-1">
+                        <PlayCircle className="h-4 w-4 text-indigo-600" />
+                        <span>{course.videos}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <FileText className="h-4 w-4 text-purple-600" />
+                        <span>{course.activities}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-4 w-4 text-pink-600" />
+                        <span>{course.duration}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2 border-t">
+                      <div className="flex items-center gap-1">
+                        <Star className="h-4 w-4 fill-yellow-500 text-yellow-500" />
+                        <span className="font-semibold">{course.rating}</span>
+                        <span className="text-sm text-muted-foreground">({course.students})</span>
+                      </div>
+                      <Badge variant="outline">{course.level}</Badge>
+                    </div>
+
+                    <Button 
+                      className="w-full" 
+                      variant="outline"
+                      onClick={() => navigate(`/mooc/${course.id}`)}
+                    >
+                      <BookOpen className="h-4 w-4 mr-2" />
+                      Ver Curso
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </section>
       </div>
     </div>
   );
