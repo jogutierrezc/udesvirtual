@@ -12,6 +12,7 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [profileCompleted, setProfileCompleted] = useState(false);
 
   useEffect(() => {
     checkAuth();
@@ -29,6 +30,15 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
       }
 
       setIsAuthenticated(true);
+
+      // Check if profile is completed
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("profile_completed")
+        .eq("id", session.user.id)
+        .single();
+
+      setProfileCompleted(profile?.profile_completed || false);
 
       // Si se requiere admin, verificar el rol
       if (requireAdmin) {
@@ -67,9 +77,14 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
     );
   }
 
-  // Si no está autenticado, redirigir a Unauthorized
+  // Si no está autenticado, redirigir a Auth
   if (!isAuthenticated) {
-    return <Navigate to="/unauthorized" replace />;
+    return <Navigate to="/auth" replace />;
+  }
+
+  // Si el perfil no está completo, redirigir a ProfileSetup
+  if (!profileCompleted) {
+    return <Navigate to="/profile-setup" replace />;
   }
 
   // Si se requiere admin y no lo es, redirigir a Unauthorized
