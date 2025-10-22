@@ -249,29 +249,218 @@ export type Database = {
         }
         Relationships: []
       }
-      profiles: {
+      mooc_course_teachers: {
         Row: {
+          course_id: string
           created_at: string | null
-          email: string
-          full_name: string
           id: string
-          phone: string | null
+          teacher_id: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string | null
+          id?: string
+          teacher_id: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string | null
+          id?: string
+          teacher_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mooc_course_teachers_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "mooc_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mooc_courses: {
+        Row: {
+          course_image_url: string | null
+          created_at: string | null
+          created_by: string
+          description: string
+          id: string
+          intro_video_url: string | null
+          objective: string
+          profession: string
+          status: Database["public"]["Enums"]["request_status"] | null
+          tags: string[] | null
+          title: string
           updated_at: string | null
         }
         Insert: {
+          course_image_url?: string | null
           created_at?: string | null
-          email: string
-          full_name: string
-          id: string
-          phone?: string | null
+          created_by: string
+          description: string
+          id?: string
+          intro_video_url?: string | null
+          objective: string
+          profession: string
+          status?: Database["public"]["Enums"]["request_status"] | null
+          tags?: string[] | null
+          title: string
           updated_at?: string | null
         }
         Update: {
+          course_image_url?: string | null
           created_at?: string | null
+          created_by?: string
+          description?: string
+          id?: string
+          intro_video_url?: string | null
+          objective?: string
+          profession?: string
+          status?: Database["public"]["Enums"]["request_status"] | null
+          tags?: string[] | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      mooc_enrollments: {
+        Row: {
+          completed: boolean | null
+          course_id: string
+          enrolled_at: string | null
+          id: string
+          progress: number | null
+          user_id: string
+        }
+        Insert: {
+          completed?: boolean | null
+          course_id: string
+          enrolled_at?: string | null
+          id?: string
+          progress?: number | null
+          user_id: string
+        }
+        Update: {
+          completed?: boolean | null
+          course_id?: string
+          enrolled_at?: string | null
+          id?: string
+          progress?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mooc_enrollments_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "mooc_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mooc_lessons: {
+        Row: {
+          content: string | null
+          course_id: string
+          created_at: string | null
+          description: string | null
+          duration_hours: number
+          id: string
+          order_index: number
+          title: string
+          updated_at: string | null
+          video_url: string | null
+        }
+        Insert: {
+          content?: string | null
+          course_id: string
+          created_at?: string | null
+          description?: string | null
+          duration_hours: number
+          id?: string
+          order_index: number
+          title: string
+          updated_at?: string | null
+          video_url?: string | null
+        }
+        Update: {
+          content?: string | null
+          course_id?: string
+          created_at?: string | null
+          description?: string | null
+          duration_hours?: number
+          id?: string
+          order_index?: number
+          title?: string
+          updated_at?: string | null
+          video_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mooc_lessons_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "mooc_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          address: string | null
+          city: string | null
+          country: string | null
+          created_at: string | null
+          department: string | null
+          document_number: string | null
+          document_type: string | null
+          email: string
+          full_name: string
+          id: string
+          is_international_student: boolean | null
+          is_other_university: boolean | null
+          is_private_student: boolean | null
+          phone: string | null
+          profile_completed: boolean | null
+          university_name: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          country?: string | null
+          created_at?: string | null
+          department?: string | null
+          document_number?: string | null
+          document_type?: string | null
+          email: string
+          full_name: string
+          id: string
+          is_international_student?: boolean | null
+          is_other_university?: boolean | null
+          is_private_student?: boolean | null
+          phone?: string | null
+          profile_completed?: boolean | null
+          university_name?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          country?: string | null
+          created_at?: string | null
+          department?: string | null
+          document_number?: string | null
+          document_type?: string | null
           email?: string
           full_name?: string
           id?: string
+          is_international_student?: boolean | null
+          is_other_university?: boolean | null
+          is_private_student?: boolean | null
           phone?: string | null
+          profile_completed?: boolean | null
+          university_name?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -366,6 +555,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_course_duration: {
+        Args: { course_id_param: string }
+        Returns: number
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
