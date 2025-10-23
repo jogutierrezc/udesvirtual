@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Menu } from "lucide-react";
@@ -14,6 +14,7 @@ interface UserInfo {
   name: string;
   role: AppRole;
   email: string;
+  avatarUrl?: string;
 }
 
 export const Navbar = () => {
@@ -41,9 +42,10 @@ export const Navbar = () => {
         const name = profileRes.data?.full_name || session.user.user_metadata?.full_name || session.user.email || "Usuario";
         const email = profileRes.data?.email || session.user.email || "";
         const role = (roleRes.data?.role as AppRole) || "student";
+        const avatarUrl = session.user.user_metadata?.avatar_url;
 
         if (mounted) {
-          setUser({ id: userId, name, email, role });
+         setUser({ id: userId, name, email, role, avatarUrl });
         }
       } catch (e) {
         console.error("Navbar auth load error", e);
@@ -83,7 +85,16 @@ export const Navbar = () => {
       ];
     }
     
-    // Navegación normal para otros usuarios
+    // Si es estudiante, mostrar navegación personalizada
+    if (user?.role === "student") {
+      return [
+        { to: "/mooc", label: "Oferta de Cursos" },
+        { to: "/dashboard", label: "Mis Cursos" },
+        { to: "/profile", label: "Mi Perfil" },
+      ];
+    }
+    
+    // Navegación para profesores y otros usuarios
     const base = [
       { to: "/", label: "Inicio" },
       { to: "/catalog", label: "Catálogo" },
@@ -151,10 +162,15 @@ export const Navbar = () => {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Avatar className="h-9 w-9 cursor-pointer">
+                      {user.avatarUrl && <AvatarImage src={user.avatarUrl} alt={user.name} />}
                     <AvatarFallback>{initials}</AvatarFallback>
                   </Avatar>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  <DropdownMenuItem asChild>
+                    <Link to="/profile">Mi Perfil</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
                     <Link to="/dashboard">Panel</Link>
                   </DropdownMenuItem>
@@ -163,6 +179,7 @@ export const Navbar = () => {
                       <Link to="/professor">Profesor</Link>
                     </DropdownMenuItem>
                   )}
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout}>Cerrar sesión</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -188,6 +205,7 @@ export const Navbar = () => {
                   {user ? (
                     <div className="flex items-center gap-3">
                       <Avatar className="h-12 w-12">
+                          {user.avatarUrl && <AvatarImage src={user.avatarUrl} alt={user.name} />}
                         <AvatarFallback>{initials}</AvatarFallback>
                       </Avatar>
                       <div className="text-left">
@@ -221,6 +239,13 @@ export const Navbar = () => {
                   <>
                     <DropdownMenuSeparator />
                     <div className="flex flex-col gap-2">
+                      <Link
+                        to="/profile"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="px-4 py-3 rounded-md text-sm font-medium hover:bg-muted transition-colors"
+                      >
+                        Mi Perfil
+                      </Link>
                       <Link
                         to="/dashboard"
                         onClick={() => setMobileMenuOpen(false)}

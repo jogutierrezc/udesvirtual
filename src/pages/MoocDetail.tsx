@@ -56,6 +56,8 @@ export default function MoocDetail() {
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [isEnrolled, setIsEnrolled] = useState(false);
+  const [enrolling, setEnrolling] = useState(false);
 
   useEffect(() => {
     checkUser();
@@ -64,22 +66,39 @@ export default function MoocDetail() {
     }
   }, [id]);
 
+  useEffect(() => {
+    if (currentUser && id && userRole === "student") {
+      checkEnrollment();
+    }
+  }, [currentUser, id, userRole]);
+
+  const checkEnrollment = async () => {
+    if (!currentUser || !id) return;
+    const { data } = await supabase
+      .from("mooc_enrollments")
+      .select("id")
+      .eq("course_id", id)
+      .eq("user_id", currentUser.id)
+      .single();
+    setIsEnrolled(!!data);
+  };
+
   const checkUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     setCurrentUser(user);
 
     if (user) {
-      const { data: profile } = await supabase
-        .from("profiles")
+      const { data: roleData } = await supabase
+        .from("user_roles")
         .select("role")
-        .eq("id", user.id)
+        .eq("user_id", user.id)
         .single();
       
-      setUserRole(profile?.role || null);
+      setUserRole(roleData?.role || null);
     }
   };
 
-  const handleTakeCourse = () => {
+  const handleTakeCourse = async () => {
     if (!currentUser) {
       // Usuario no autenticado - redirigir a crear cuenta
       toast({
@@ -100,12 +119,57 @@ export default function MoocDetail() {
       return;
     }
 
-    // Usuario es estudiante - aquí puedes implementar la lógica para inscribirse al curso
-    toast({
-      title: "¡Bienvenido al curso!",
-      description: "Comenzando el curso...",
-    });
-    // TODO: Implementar inscripción y redirigir a la primera lección
+    if (!id) return;
+
+    try {
+      setEnrolling(true);
+      
+      // Verificar si ya está inscrito
+      const { data: existing } = await supabase
+        .from("mooc_enrollments")
+        .select("id")
+        .eq("course_id", id)
+        .eq("user_id", currentUser.id)
+        .single();
+
+      if (existing) {
+        toast({
+          title: "Ya estás inscrito",
+          description: "Continuarás desde donde lo dejaste",
+        });
+        navigate("/dashboard");
+        return;
+      }
+
+      // Crear inscripción
+      const { error } = await supabase
+        .from("mooc_enrollments")
+        .insert({
+          course_id: id,
+          user_id: currentUser.id,
+          progress: 0,
+          completed: false,
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "¡Inscrito exitosamente!",
+        description: "Puedes ver tus cursos en el panel de estudiante",
+      });
+      
+      setIsEnrolled(true);
+      navigate("/dashboard");
+    } catch (error: any) {
+      console.error("Error enrolling:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo inscribir al curso. Intenta de nuevo.",
+        variant: "destructive",
+      });
+    } finally {
+      setEnrolling(false);
+    }
   };
 
   const loadCourse = async (courseId: string) => {
@@ -286,10 +350,37 @@ export default function MoocDetail() {
               <Button 
                 onClick={handleTakeCourse}
                 size="lg"
+                disabled={enrolling || (userRole === "student" && isEnrolled) || (currentUser && userRole !== "student")}
                 className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all"
               >
-                <BookOpen className="h-5 w-5 mr-2" />
-                {currentUser ? (userRole === "student" ? "Tomar Curso" : "Solo para Estudiantes") : "Crear Cuenta para Tomar"}
+                {enrolling ? (
+                  <>
+                    <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                    Inscribiendo...
+                  </>
+                ) : isEnrolled && userRole === "student" ? (
+                  <>
+                    <Award className="h-5 w-5 mr-2" />
+                    Ya estás inscrito
+                  </>
+                ) : currentUser ? (
+                  userRole === "student" ? (
+                    <>
+                      <BookOpen className="h-5 w-5 mr-2" />
+                      Tomar Curso
+                    </>
+                  ) : (
+                    <>
+                      <BookOpen className="h-5 w-5 mr-2" />
+                      Solo para Estudiantes
+                    </>
+                  )
+                ) : (
+                  <>
+                    <BookOpen className="h-5 w-5 mr-2" />
+                    Crear Cuenta para Tomar
+                  </>
+                )}
               </Button>
             </div>
 

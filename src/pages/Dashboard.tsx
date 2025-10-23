@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import StudentDashboard from "./student/StudentDashboard";
 
 const Dashboard = () => {
-  const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string | null>(null);
@@ -16,7 +15,7 @@ const Dashboard = () => {
         const { data: { session } } = await supabase.auth.getSession();
         
         if (!session) {
-          navigate("/auth");
+          window.location.href = "/auth";
           return;
         }
 
@@ -29,16 +28,16 @@ const Dashboard = () => {
 
         if (error) throw error;
 
-        setUserRole(roles?.role || "student");
+        const role = roles?.role || "student";
+        setUserRole(role);
 
         // Redirect based on role
-        if (roles?.role === "admin") {
-          navigate("/admin");
-        } else if (roles?.role === "professor") {
-          navigate("/professor");
-        } else {
-          navigate("/catalog");
+        if (role === "admin") {
+          window.location.href = "/admin";
+        } else if (role === "professor") {
+          window.location.href = "/professor";
         }
+        // Si es student, se renderiza StudentDashboard en lugar de redirigir
       } catch (error: any) {
         console.error("Error checking auth:", error);
         toast({
@@ -52,7 +51,7 @@ const Dashboard = () => {
     };
 
     checkAuth();
-  }, [navigate, toast]);
+  }, [toast]);
 
   if (loading) {
     return (
@@ -62,6 +61,12 @@ const Dashboard = () => {
     );
   }
 
+  // Si es estudiante, mostrar el StudentDashboard
+  if (userRole === "student") {
+    return <StudentDashboard />;
+  }
+
+  // Para admin y professor ya fueron redirigidos
   return null;
 };
 

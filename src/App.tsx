@@ -14,12 +14,15 @@ import Professor from "./pages/Professor";
 import Lia from "./pages/Lia";
 import Mooc from "./pages/Mooc";
 import MoocDetail from "./pages/MoocDetail";
+import Profile from "./pages/Profile";
 import ProfileSetup from "./pages/ProfileSetup";
 import Welcome from "./pages/Welcome";
 import ProfessorOfferings from "./pages/ProfessorOfferings";
 import CoilOfferings from "./pages/CoilOfferings";
 import Navbar from "./components/Navbar";
 import ProtectedRoute from "./components/ProtectedRoute";
+import StudentDashboard from "./pages/student/StudentDashboard";
+import CourseLearning from "./pages/student/CourseLearning";
 import { CatalogPage } from "./pages/admin/catalog/CatalogPage";
 import { OfferingsPage } from "./pages/admin/offerings/OfferingsPage";
 import { RegistrationsPage } from "./pages/admin/registrations/RegistrationsPage";
@@ -35,10 +38,11 @@ const AppContent = () => {
   
   // Verificar si es una ruta 404
   const is404 = !['/', '/auth', '/unauthorized', '/dashboard', '/catalog', '/professor-offerings', 
-    '/coil-offerings', '/mooc', '/profile-setup', '/welcome', '/admin/catalog', '/admin/offerings', 
+    '/coil-offerings', '/mooc', '/profile', '/profile-setup', '/welcome', '/admin/catalog', '/admin/offerings', 
     '/admin/registrations', '/admin/mooc', '/admin', '/professor', '/lia'].includes(location.pathname) && 
     !location.pathname.startsWith('/admin/') &&
-    !location.pathname.startsWith('/mooc/');
+    !location.pathname.startsWith('/mooc/') &&
+    !location.pathname.startsWith('/courses/');
 
   // Ocultar navbar en 404 o en rutas específicas
   const shouldHideNavbar = is404 || hideNavbarRoutes.includes(location.pathname);
@@ -52,12 +56,35 @@ const AppContent = () => {
         <Route path="/profile-setup" element={<ProfileSetup />} />
         <Route path="/welcome" element={<Welcome />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
-        <Route path="/dashboard" element={<Dashboard />} />
+        <Route 
+          path="/dashboard" 
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          } 
+        />
         <Route path="/catalog" element={<Catalog />} />
         <Route path="/professor-offerings" element={<ProfessorOfferings />} />
         <Route path="/coil-offerings" element={<CoilOfferings />} />
         <Route path="/mooc" element={<Mooc />} />
         <Route path="/mooc/:id" element={<MoocDetail />} />
+        <Route 
+          path="/courses/:courseId/learn" 
+          element={
+            <ProtectedRoute>
+              <CourseLearning />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/profile" 
+          element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          } 
+        />
             
             {/* Admin Routes - Protected */}
             <Route 
