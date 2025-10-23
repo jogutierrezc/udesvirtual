@@ -330,6 +330,7 @@ export type Database = {
           enrolled_at: string | null
           id: string
           progress: number | null
+          updated_at: string | null
           user_id: string
         }
         Insert: {
@@ -338,6 +339,7 @@ export type Database = {
           enrolled_at?: string | null
           id?: string
           progress?: number | null
+          updated_at?: string | null
           user_id: string
         }
         Update: {
@@ -346,6 +348,7 @@ export type Database = {
           enrolled_at?: string | null
           id?: string
           progress?: number | null
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: [
@@ -354,6 +357,44 @@ export type Database = {
             columns: ["course_id"]
             isOneToOne: false
             referencedRelation: "mooc_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mooc_lesson_progress: {
+        Row: {
+          completed: boolean | null
+          completed_at: string | null
+          created_at: string | null
+          id: string
+          lesson_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          completed?: boolean | null
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          lesson_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          completed?: boolean | null
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          lesson_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mooc_lesson_progress_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "mooc_lessons"
             referencedColumns: ["id"]
           },
         ]
