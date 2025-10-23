@@ -360,6 +360,45 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      ]
+      }
+      mooc_certificates: {
+        Row: {
+          id: string
+          course_id: string
+          user_id: string
+          hours: number
+          verification_code: string
+          issued_at: string
+          md5_hash: string | null
+        }
+        Insert: {
+          id?: string
+          course_id: string
+          user_id: string
+          hours?: number
+          verification_code: string
+          issued_at?: string
+          md5_hash?: string | null
+        }
+        Update: {
+          id?: string
+          course_id?: string
+          user_id?: string
+          hours?: number
+          verification_code?: string
+          issued_at?: string
+          md5_hash?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mooc_certificates_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "mooc_courses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       mooc_enrollments: {
         Row: {

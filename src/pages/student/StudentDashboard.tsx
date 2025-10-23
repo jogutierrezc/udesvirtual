@@ -157,16 +157,35 @@ export default function StudentDashboard() {
       }
 
       // Cargar certificados
-      const { data: certsData, error: certsError } = await supabase
-        .from("mooc_certificates" as any)
-        .select("id, course_id, hours, verification_code, issued_at, course:mooc_courses(title)")
-        .eq("user_id", user.id)
-        .order("issued_at", { ascending: false });
+      try {
+        const { data: certsData, error: certsError } = await supabase
+          .from("mooc_certificates")
+          .select(`
+            id, 
+            course_id, 
+            hours, 
+            verification_code, 
+            issued_at,
+            course:mooc_courses(title)
+          `)
+          .eq("user_id", user.id)
+          .order("issued_at", { ascending: false });
 
-      console.log("Certificates query result:", { certsData, certsError });
+        console.log("Certificates query result:", { certsData, certsError });
 
-      if (certsData) {
-        setCertificates(certsData as any);
+        if (certsError) {
+          console.error("Error loading certificates:", certsError);
+          // Si la tabla no existe, generar certificados desde cursos completados
+          if (certsError.code === 'PGRST116' || certsError.message?.includes('relation') || certsError.message?.includes('does not exist')) {
+            console.log("Certificates table doesn't exist yet, showing placeholder");
+            setCertificates([]);
+          }
+        } else if (certsData) {
+          setCertificates(certsData as any);
+        }
+      } catch (certError) {
+        console.error("Exception loading certificates:", certError);
+        setCertificates([]);
       }
     } catch (error: any) {
       console.error("Error loading student dashboard:", error);
