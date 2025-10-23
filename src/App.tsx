@@ -27,6 +27,8 @@ import { CatalogPage } from "./pages/admin/catalog/CatalogPage";
 import { OfferingsPage } from "./pages/admin/offerings/OfferingsPage";
 import { RegistrationsPage } from "./pages/admin/registrations/RegistrationsPage";
 import { MoocPage } from "./pages/admin/mooc/MoocPage";
+import Certificates from "./pages/Certificates";
+import CertificateView from "./pages/CertificateView";
 
 const queryClient = new QueryClient();
 
@@ -42,7 +44,8 @@ const AppContent = () => {
     '/admin/registrations', '/admin/mooc', '/admin', '/professor', '/lia'].includes(location.pathname) && 
     !location.pathname.startsWith('/admin/') &&
     !location.pathname.startsWith('/mooc/') &&
-    !location.pathname.startsWith('/courses/');
+    !location.pathname.startsWith('/courses/') &&
+    !location.pathname.startsWith('/certificado');
 
   // Ocultar navbar en 404 o en rutas específicas
   const shouldHideNavbar = is404 || hideNavbarRoutes.includes(location.pathname);
@@ -84,6 +87,22 @@ const AppContent = () => {
               <Profile />
             </ProtectedRoute>
           } 
+        />
+        <Route 
+          path="/certificaciones" 
+          element={
+            <ProtectedRoute>
+              <Certificates />
+            </ProtectedRoute>
+          }
+        />
+        <Route 
+          path="/certificado/:id" 
+          element={
+            <ProtectedRoute>
+              <CertificateView />
+            </ProtectedRoute>
+          }
         />
             
             {/* Admin Routes - Protected */}

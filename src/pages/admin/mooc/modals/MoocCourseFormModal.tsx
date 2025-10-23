@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Plus, X } from "lucide-react";
+import { ExamList } from "@/pages/professor/components/ExamList";
+import { MoocExamForm } from "@/pages/professor/components/MoocExamForm";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -42,7 +44,11 @@ export const MoocCourseFormModal = ({ open, onOpenChange, editingCourse, onSave 
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [currentTab, setCurrentTab] = useState("course");
-  
+
+  // Modal state for exam form
+  const [showExamForm, setShowExamForm] = useState(false);
+  const [editingExam, setEditingExam] = useState<any>(null);
+
   // Datos del curso
   const [formData, setFormData] = useState({
     title: "",
@@ -274,6 +280,12 @@ export const MoocCourseFormModal = ({ open, onOpenChange, editingCourse, onSave 
           <DialogTitle>
             {editingCourse ? "Editar Curso MOOC" : "Crear Curso MOOC"}
           </DialogTitle>
+          {editingCourse && (
+            <div className="flex gap-4 mt-2">
+              <span className="text-sm font-medium">No. de estudiantes inscritos: {/* TODO: fetch count */} </span>
+              <span className="text-sm font-medium">No. de estudiantes que han terminado el curso: {/* TODO: fetch count */} </span>
+            </div>
+          )}
         </DialogHeader>
 
         <Tabs value={currentTab} onValueChange={setCurrentTab}>
@@ -382,15 +394,44 @@ export const MoocCourseFormModal = ({ open, onOpenChange, editingCourse, onSave 
             </div>
           </TabsContent>
 
-          {/* Tab de lecciones */}
+
+          {/* Tab de lecciones y exámenes */}
           <TabsContent value="lessons" className="space-y-4">
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center gap-2">
               <Label>Lecciones del Curso ({lessons.length})</Label>
-              <Button type="button" onClick={handleAddLesson} size="sm">
-                <Plus className="h-4 w-4 mr-1" />
-                Agregar Lección
-              </Button>
+              <div className="flex gap-2">
+                <Button type="button" onClick={handleAddLesson} size="sm">
+                  <Plus className="h-4 w-4 mr-1" />
+                  Agregar Lección
+                </Button>
+                <Button type="button" onClick={() => { setEditingExam(null); setShowExamForm(true); }} size="sm" variant="secondary">
+                  <Plus className="h-4 w-4 mr-1" />
+                  Agregar Examen
+                </Button>
+              </div>
             </div>
+
+            {/* Lista de exámenes creados */}
+            <ExamList
+              courseId={editingCourse?.id}
+              onEdit={(exam: any) => {
+                setEditingExam(exam);
+                setShowExamForm(true);
+              }}
+            />
+
+            {/* Modal para crear/editar examen */}
+            {showExamForm && (
+              <Dialog open={showExamForm} onOpenChange={setShowExamForm}>
+                <DialogContent className="max-w-2xl">
+                  <MoocExamForm
+                    courseId={editingCourse?.id}
+                    exam={editingExam}
+                    onClose={() => { setShowExamForm(false); setEditingExam(null); }}
+                  />
+                </DialogContent>
+              </Dialog>
+            )}
 
             {lessons.length === 0 ? (
               <Card>
@@ -405,14 +446,6 @@ export const MoocCourseFormModal = ({ open, onOpenChange, editingCourse, onSave 
                     <CardContent className="pt-6 space-y-3">
                       <div className="flex justify-between items-center">
                         <Label>Lección {index + 1}</Label>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRemoveLesson(index)}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

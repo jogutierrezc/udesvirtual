@@ -16,7 +16,9 @@ import {
   Loader2,
   GraduationCap,
   Clock,
-  PlayCircle
+  PlayCircle,
+  Printer,
+  FileDown
 } from "lucide-react";
 
 type UserProfile = {
@@ -46,12 +48,24 @@ type EnrolledCourse = {
   total_duration?: number;
 };
 
+type Certificate = {
+  id: string;
+  course_id: string;
+  hours: number;
+  verification_code: string;
+  issued_at: string;
+  course?: {
+    title: string;
+  };
+};
+
 export default function StudentDashboard() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [enrolledCourses, setEnrolledCourses] = useState<EnrolledCourse[]>([]);
+  const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [stats, setStats] = useState({
     totalCourses: 0,
     completedCourses: 0,
@@ -140,6 +154,19 @@ export default function StudentDashboard() {
           inProgressCourses: inProgress,
           totalHours,
         });
+      }
+
+      // Cargar certificados
+      const { data: certsData, error: certsError } = await supabase
+        .from("mooc_certificates" as any)
+        .select("id, course_id, hours, verification_code, issued_at, course:mooc_courses(title)")
+        .eq("user_id", user.id)
+        .order("issued_at", { ascending: false });
+
+      console.log("Certificates query result:", { certsData, certsError });
+
+      if (certsData) {
+        setCertificates(certsData as any);
       }
     } catch (error: any) {
       console.error("Error loading student dashboard:", error);
@@ -361,24 +388,76 @@ export default function StudentDashboard() {
           </TabsContent>
 
           {/* Certificaciones */}
-          <TabsContent value="certificates">
-            <Card>
-              <CardHeader>
-                <CardTitle>Mis Certificaciones</CardTitle>
-                <CardDescription>
-                  Aquí verás tus certificados una vez completes los cursos
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <Award className="h-16 w-16 text-muted-foreground mb-4" />
-                <p className="text-muted-foreground text-center">
-                  Completa cursos para obtener certificaciones
-                </p>
-                <p className="text-sm text-muted-foreground mt-2">
-                  {stats.completedCourses} certificación{stats.completedCourses !== 1 ? 'es' : ''} disponible{stats.completedCourses !== 1 ? 's' : ''}
-                </p>
-              </CardContent>
-            </Card>
+          <TabsContent value="certificates" className="space-y-4">
+            {certificates.length === 0 ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Mis Certificaciones</CardTitle>
+                  <CardDescription>
+                    Aquí verás tus certificados una vez completes los cursos
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <Award className="h-16 w-16 text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground text-center">
+                    Completa cursos para obtener certificaciones
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    {stats.completedCourses} certificación{stats.completedCourses !== 1 ? 'es' : ''} disponible{stats.completedCourses !== 1 ? 's' : ''}
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {certificates.map((cert) => (
+                  <Card key={cert.id} className="hover:shadow-lg transition-shadow">
+                    <CardHeader>
+                      <div className="flex items-start justify-between gap-2">
+                        <CardTitle className="line-clamp-2 text-base">
+                          {cert.course?.title || "Curso MOOC"}
+                        </CardTitle>
+                        <Award className="h-5 w-5 text-amber-600 flex-shrink-0" />
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Horas certificadas:</span>
+                          <span className="font-semibold">{cert.hours}h</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Emitido:</span>
+                          <span className="font-medium">{new Date(cert.issued_at).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex gap-2">
+                        <Button 
+                          onClick={() => {
+                            window.open(`/certificado/${cert.id}`, '_blank');
+                            setTimeout(() => window.print(), 500);
+                          }}
+                          variant="outline"
+                          className="flex-1"
+                          size="sm"
+                        >
+                          <Printer className="h-4 w-4 mr-2" />
+                          Imprimir
+                        </Button>
+                        <Button 
+                          onClick={() => window.open(`/certificado/${cert.id}`, '_blank')}
+                          className="flex-1"
+                          size="sm"
+                        >
+                          <FileDown className="h-4 w-4 mr-2" />
+                          Ver PDF
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </TabsContent>
 
           {/* Badges */}

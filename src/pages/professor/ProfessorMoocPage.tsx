@@ -1,11 +1,12 @@
-import { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo } from "react";
+import { MoocExamManager } from "./components/MoocExamManager";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, PlusCircle, Edit, Trash2, BookOpen, Clock } from "lucide-react";
+import { Loader2, PlusCircle, Edit, Trash2, BookOpen, Clock, User } from "lucide-react";
 import { MoocCourseFormModal } from "@/pages/admin/mooc/modals/MoocCourseFormModal";
 
 interface MoocCourse {
@@ -25,6 +26,8 @@ interface MoocCourse {
   } | null;
   total_duration?: number;
   lesson_count?: number;
+  enrolled_count?: number;
+  completed_count?: number;
 }
 
 export const ProfessorMoocPage = () => {
@@ -92,11 +95,25 @@ export const ProfessorMoocPage = () => {
           const total_duration = lessons?.reduce((sum, lesson) => sum + (lesson.duration_hours || 0), 0) || 0;
           const lesson_count = lessons?.length || 0;
 
+          // Obtener conteo de estudiantes inscritos y completados
+          const { count: enrolled_count } = await supabase
+            .from("mooc_enrollments")
+            .select("id", { count: "exact", head: true })
+            .eq("course_id", course.id);
+
+          const { count: completed_count } = await supabase
+            .from("mooc_enrollments")
+            .select("id", { count: "exact", head: true })
+            .eq("course_id", course.id)
+            .eq("completed", true);
+
           return {
             ...course,
             creator: profileData ? { full_name: profileData.full_name } : null,
             total_duration,
             lesson_count,
+            enrolled_count: enrolled_count || 0,
+            completed_count: completed_count || 0,
           } as MoocCourse;
         })
       );
@@ -316,6 +333,7 @@ export const ProfessorMoocPage = () => {
                   </div>
                 )}
 
+
                 {/* Stats */}
                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
                   <div className="flex items-center gap-1">
@@ -326,6 +344,12 @@ export const ProfessorMoocPage = () => {
                     <BookOpen className="h-4 w-4" />
                     <span>{course.lesson_count || 0} lecciones</span>
                   </div>
+                </div>
+
+                {/* Estudiantes: completado / matriculados */}
+                <div className="flex items-center gap-1 text-sm text-muted-foreground mt-2">
+                  <User className="h-4 w-4" />
+                  <span>{course.completed_count || 0} / {course.enrolled_count || 0}</span>
                 </div>
 
                 {/* Status info */}

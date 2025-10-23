@@ -96,6 +96,9 @@ export default function Mooc() {
       );
 
       console.log("Cursos con detalles:", coursesWithDetails);
+      coursesWithDetails.forEach((c, i) => {
+        console.log(`Curso[${i}]: id=${c.id}, title=${c.title}, status=${c.status}, tags=${JSON.stringify(c.tags)}, profession=${c.profession}`);
+      });
       setCourses(coursesWithDetails);
     } catch (error: any) {
       console.error("Error loading courses:", error);
