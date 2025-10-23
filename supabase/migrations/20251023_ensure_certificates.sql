@@ -74,7 +74,7 @@ BEGIN
     WHERE course_id = NEW.course_id;
 
     -- generate verification code
-    vcode := 'CERT-' || to_char(now(), 'YYYY') || '-' || substring(encode(gen_random_bytes(8),'hex') FROM 1 FOR 10);
+    vcode := 'CERT-' || to_char(now(), 'YYYY') || '-' || upper(substring(replace(gen_random_uuid()::text, '-', ''), 1, 10));
 
     -- md5 hash of user, course, issued_at
     md5val := md5(NEW.user_id::text || '-' || NEW.course_id::text || '-' || now()::text);

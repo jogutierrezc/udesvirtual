@@ -26,7 +26,7 @@ begin
       where course_id = enrollment_rec.course_id;
 
       -- generate verification code
-      vcode := 'CERT-' || to_char(now(), 'YYYY') || '-' || substring(encode(gen_random_bytes(8),'hex') from 1 for 10);
+      vcode := 'CERT-' || to_char(now(), 'YYYY') || '-' || upper(substring(replace(gen_random_uuid()::text, '-', ''), 1, 10));
 
       -- md5 hash
       md5val := md5(enrollment_rec.user_id::text || '-' || enrollment_rec.course_id::text || '-' || now()::text);

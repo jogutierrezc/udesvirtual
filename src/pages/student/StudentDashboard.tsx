@@ -158,6 +158,8 @@ export default function StudentDashboard() {
 
       // Cargar certificados
       try {
+        console.log("Loading certificates for user:", user.id);
+        
         const { data: certsData, error: certsError } = await supabase
           .from("mooc_certificates")
           .select(`
@@ -171,17 +173,23 @@ export default function StudentDashboard() {
           .eq("user_id", user.id)
           .order("issued_at", { ascending: false });
 
-        console.log("Certificates query result:", { certsData, certsError });
+        console.log("Certificates query result:", { 
+          data: certsData, 
+          error: certsError,
+          count: certsData?.length 
+        });
 
         if (certsError) {
           console.error("Error loading certificates:", certsError);
-          // Si la tabla no existe, generar certificados desde cursos completados
-          if (certsError.code === 'PGRST116' || certsError.message?.includes('relation') || certsError.message?.includes('does not exist')) {
-            console.log("Certificates table doesn't exist yet, showing placeholder");
-            setCertificates([]);
-          }
-        } else if (certsData) {
-          setCertificates(certsData as any);
+          toast({
+            title: "Aviso",
+            description: "No se pudieron cargar los certificados. Verifica que las migraciones estén aplicadas.",
+            variant: "destructive",
+          });
+          setCertificates([]);
+        } else {
+          console.log("Setting certificates:", certsData);
+          setCertificates(certsData || []);
         }
       } catch (certError) {
         console.error("Exception loading certificates:", certError);
