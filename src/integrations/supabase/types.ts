@@ -249,6 +249,44 @@ export type Database = {
         }
         Relationships: []
       }
+      mooc_certificates: {
+        Row: {
+          course_id: string
+          hours: number
+          id: string
+          issued_at: string
+          md5_hash: string | null
+          user_id: string
+          verification_code: string
+        }
+        Insert: {
+          course_id: string
+          hours?: number
+          id?: string
+          issued_at?: string
+          md5_hash?: string | null
+          user_id: string
+          verification_code: string
+        }
+        Update: {
+          course_id?: string
+          hours?: number
+          id?: string
+          issued_at?: string
+          md5_hash?: string | null
+          user_id?: string
+          verification_code?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mooc_certificates_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "mooc_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mooc_course_teachers: {
         Row: {
           course_id: string
@@ -357,6 +395,253 @@ export type Database = {
             columns: ["course_id"]
             isOneToOne: false
             referencedRelation: "mooc_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mooc_exam_answers: {
+        Row: {
+          attempt_id: string
+          created_at: string
+          id: string
+          question_id: string
+          selected_option_id: string | null
+          selected_option_ids: string[]
+          text_answer: string | null
+          updated_at: string
+        }
+        Insert: {
+          attempt_id: string
+          created_at?: string
+          id?: string
+          question_id: string
+          selected_option_id?: string | null
+          selected_option_ids?: string[]
+          text_answer?: string | null
+          updated_at?: string
+        }
+        Update: {
+          attempt_id?: string
+          created_at?: string
+          id?: string
+          question_id?: string
+          selected_option_id?: string | null
+          selected_option_ids?: string[]
+          text_answer?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mooc_exam_answers_attempt_id_fkey"
+            columns: ["attempt_id"]
+            isOneToOne: false
+            referencedRelation: "mooc_exam_attempts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mooc_exam_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "mooc_exam_questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mooc_exam_answers_selected_option_id_fkey"
+            columns: ["selected_option_id"]
+            isOneToOne: false
+            referencedRelation: "mooc_exam_options"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mooc_exam_attempts: {
+        Row: {
+          attempt_number: number
+          created_at: string
+          exam_id: string
+          id: string
+          passed: boolean | null
+          score_numeric: number | null
+          score_percent: number | null
+          started_at: string
+          submitted_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attempt_number: number
+          created_at?: string
+          exam_id: string
+          id?: string
+          passed?: boolean | null
+          score_numeric?: number | null
+          score_percent?: number | null
+          started_at?: string
+          submitted_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attempt_number?: number
+          created_at?: string
+          exam_id?: string
+          id?: string
+          passed?: boolean | null
+          score_numeric?: number | null
+          score_percent?: number | null
+          started_at?: string
+          submitted_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mooc_exam_attempts_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "mooc_exams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mooc_exam_options: {
+        Row: {
+          id: string
+          is_correct: boolean
+          order_index: number | null
+          question_id: string
+          text: string
+        }
+        Insert: {
+          id?: string
+          is_correct?: boolean
+          order_index?: number | null
+          question_id: string
+          text: string
+        }
+        Update: {
+          id?: string
+          is_correct?: boolean
+          order_index?: number | null
+          question_id?: string
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mooc_exam_options_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "mooc_exam_questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mooc_exam_questions: {
+        Row: {
+          created_at: string
+          exam_id: string
+          id: string
+          metadata: Json | null
+          order_index: number | null
+          points: number
+          prompt: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          exam_id: string
+          id?: string
+          metadata?: Json | null
+          order_index?: number | null
+          points?: number
+          prompt: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          exam_id?: string
+          id?: string
+          metadata?: Json | null
+          order_index?: number | null
+          points?: number
+          prompt?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mooc_exam_questions_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "mooc_exams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mooc_exams: {
+        Row: {
+          attempts_allowed: number
+          course_id: string
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          lesson_id: string | null
+          max_score: number
+          order_index: number | null
+          passing_score: number
+          status: string
+          time_limit_minutes: number | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          attempts_allowed?: number
+          course_id: string
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          lesson_id?: string | null
+          max_score?: number
+          order_index?: number | null
+          passing_score?: number
+          status?: string
+          time_limit_minutes?: number | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          attempts_allowed?: number
+          course_id?: string
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          lesson_id?: string | null
+          max_score?: number
+          order_index?: number | null
+          passing_score?: number
+          status?: string
+          time_limit_minutes?: number | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mooc_exams_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "mooc_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mooc_exams_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "mooc_lessons"
             referencedColumns: ["id"]
           },
         ]
@@ -600,6 +885,7 @@ export type Database = {
         Args: { course_id_param: string }
         Returns: number
       }
+      compute_exam_score: { Args: { p_attempt_id: string }; Returns: undefined }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
