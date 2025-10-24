@@ -75,7 +75,7 @@ export const Navbar = () => {
   }, []);
 
   const links = useMemo(() => {
-    // Si es admin, mostrar navegación de administrador
+        // Si es admin, mostrar navegación de administrador
     if (user?.role === "admin") {
       return [
         { to: "/admin/catalog", label: "Catálogo" },
