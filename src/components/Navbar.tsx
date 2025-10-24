@@ -82,6 +82,7 @@ export const Navbar = () => {
         { to: "/admin/offerings", label: "Oferta" },
         { to: "/admin/registrations", label: "Registros" },
         { to: "/admin/mooc", label: "MOOC" },
+        { to: "/admin/carousel", label: "Carrusel" },
       ];
     }
     

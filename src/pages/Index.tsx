@@ -5,6 +5,7 @@ import { GraduationCap, Users, BookOpen, MessageSquare, Globe, Sparkles, ArrowRi
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import { HeroCarousel } from "@/components/HeroCarousel";
 
 const Index = () => {
   const [stats, setStats] = useState({
@@ -93,6 +94,9 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 relative overflow-hidden">
+      {/* Carrusel Hero */}
+      <HeroCarousel />
+
       {/* Elementos decorativos de fondo */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-20 left-10 w-96 h-96 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>

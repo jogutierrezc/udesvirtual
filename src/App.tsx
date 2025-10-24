@@ -27,6 +27,7 @@ import { CatalogPage } from "./pages/admin/catalog/CatalogPage";
 import { OfferingsPage } from "./pages/admin/offerings/OfferingsPage";
 import { RegistrationsPage } from "./pages/admin/registrations/RegistrationsPage";
 import { MoocPage } from "./pages/admin/mooc/MoocPage";
+import CarouselManagement from "./pages/admin/CarouselManagement";
 import Certificates from "./pages/Certificates";
 import CertificateView from "./pages/CertificateView";
 
@@ -135,6 +136,14 @@ const AppContent = () => {
               element={
                 <ProtectedRoute requireAdmin={true}>
                   <MoocPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/carousel" 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <CarouselManagement />
                 </ProtectedRoute>
               } 
             />

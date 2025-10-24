@@ -249,6 +249,42 @@ export type Database = {
         }
         Relationships: []
       }
+      hero_carousel: {
+        Row: {
+          id: string
+          title: string
+          description: string | null
+          image_url: string
+          link_url: string | null
+          order_index: number
+          active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          title: string
+          description?: string | null
+          image_url: string
+          link_url?: string | null
+          order_index?: number
+          active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          title?: string
+          description?: string | null
+          image_url?: string
+          link_url?: string | null
+          order_index?: number
+          active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       mooc_certificates: {
         Row: {
           course_id: string
@@ -360,45 +396,6 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
-      ]
-      }
-      mooc_certificates: {
-        Row: {
-          id: string
-          course_id: string
-          user_id: string
-          hours: number
-          verification_code: string
-          issued_at: string
-          md5_hash: string | null
-        }
-        Insert: {
-          id?: string
-          course_id: string
-          user_id: string
-          hours?: number
-          verification_code: string
-          issued_at?: string
-          md5_hash?: string | null
-        }
-        Update: {
-          id?: string
-          course_id?: string
-          user_id?: string
-          hours?: number
-          verification_code?: string
-          issued_at?: string
-          md5_hash?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "mooc_certificates_course_id_fkey"
-            columns: ["course_id"]
-            isOneToOne: false
-            referencedRelation: "mooc_courses"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       mooc_enrollments: {
         Row: {
