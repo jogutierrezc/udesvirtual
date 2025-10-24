@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, GraduationCap } from "lucide-react";
+import { Loader2, GraduationCap, Globe, BookOpen, Users, Sparkles, ArrowRight, CheckCircle } from "lucide-react";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -126,22 +126,33 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-between bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4">
-      <div className="flex items-center justify-center flex-1">
-        <Card className="w-full max-w-md shadow-elegant">
-          <CardHeader className="space-y-4 text-center">
-            <div className="mx-auto mb-2">
-              <img src="https://udes.edu.co/images/logo/logo-con-acreditada-color.png" alt="Logo UDES" className="h-16 object-contain" />
-            </div>
-            <div>
-              <CardTitle className="text-2xl">UDES Link Internacional</CardTitle>
-              <CardDescription>
-                {isLogin ? "Inicia sesión en tu cuenta" : "Crea una cuenta nueva"}
-              </CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="min-h-screen flex overflow-hidden">
+      {/* Columna Izquierda - Formulario de Login */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-white relative overflow-hidden">
+        {/* Elementos decorativos */}
+        <div className="absolute top-0 left-0 w-72 h-72 bg-blue-100 rounded-full filter blur-3xl opacity-30 -translate-x-1/2 -translate-y-1/2"></div>
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-purple-100 rounded-full filter blur-3xl opacity-20 translate-x-1/3 translate-y-1/3"></div>
+        
+        <div className="w-full max-w-md z-10">
+          {/* Logo */}
+          <div className="mb-8 text-center">
+            <img 
+              src="https://udes.edu.co/images/logo/logo-con-acreditada-color.png" 
+              alt="Logo UDES" 
+              className="h-16 mx-auto mb-6 object-contain"
+            />
+            <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+              {isLogin ? "¡Bienvenido de nuevo!" : "Únete a UDES Virtual"}
+            </h1>
+            <p className="text-gray-600">
+              {isLogin ? "Inicia sesión para continuar" : "Crea tu cuenta y comienza tu viaje"}
+            </p>
+          </div>
+
+          {/* Formulario */}
+          <Card className="border-0 shadow-xl">
+            <CardContent className="pt-6">
+              <form onSubmit={handleSubmit} className="space-y-4">
               {!isLogin && (
                 <div className="space-y-2">
                   <Label htmlFor="fullName">Nombre completo</Label>
@@ -225,22 +236,110 @@ const Auth = () => {
                 {isLogin ? "Iniciar sesión" : "Registrarse"} con Google
               </Button>
 
-              <Button
-                type="button"
-                variant="ghost"
-                className="w-full"
-                onClick={() => setIsLogin(!isLogin)}
-              >
-                {isLogin ? "¿No tienes cuenta? Regístrate" : "¿Ya tienes cuenta? Inicia sesión"}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full text-sm"
+                  onClick={() => setIsLogin(!isLogin)}
+                >
+                  {isLogin ? "¿No tienes cuenta? Regístrate" : "¿Ya tienes cuenta? Inicia sesión"}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          {/* Footer */}
+          <div className="mt-8 text-center text-xs text-gray-500">
+            <p>Creado por Estudiantes UDES</p>
+            <p className="mt-1">Licenciado para la Universidad de Santander</p>
+          </div>
+        </div>
       </div>
-      <footer className="w-full flex justify-between items-center text-xs text-muted-foreground mt-8 px-2">
-        <span>Creado por Estudiantes UDES</span>
-        <span>Licenciado para la Universidad de Santander</span>
-      </footer>
+
+      {/* Columna Derecha - Panel de Bienvenida con Glassmorphism */}
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-gray-50 to-gray-100 relative overflow-hidden">
+        {/* Patrón de fondo con círculos */}
+        <div className="absolute inset-0">
+          <div className="absolute top-20 right-20 w-96 h-96 bg-blue-200/30 rounded-full filter blur-3xl"></div>
+          <div className="absolute bottom-20 left-20 w-80 h-80 bg-orange-200/30 rounded-full filter blur-3xl"></div>
+        </div>
+
+        {/* Contenido con efecto cristal */}
+        <div className="relative z-10 flex flex-col justify-center items-center px-12 w-full">
+          <div className="max-w-md">
+            {/* Card principal con glassmorphism */}
+            <div className="bg-white/60 backdrop-blur-lg rounded-3xl p-8 border border-white/80 shadow-2xl">
+              <div className="text-center mb-8">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-orange-500 rounded-2xl mb-4">
+                  <GraduationCap className="w-8 h-8 text-white" />
+                </div>
+                <h2 className="text-3xl font-bold text-gray-800 mb-3">
+                  UDES Virtual
+                </h2>
+                <p className="text-gray-600 text-lg leading-relaxed">
+                  Conectando el mundo a través de la educación internacional
+                </p>
+              </div>
+
+              {/* Características con efecto cristal */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 bg-white/50 backdrop-blur-sm rounded-xl p-3 border border-gray-200/50">
+                  <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg flex items-center justify-center">
+                    <Globe className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="text-gray-700">
+                    <div className="font-medium">Alcance Global</div>
+                    <div className="text-xs text-gray-500">Universidades internacionales</div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 bg-white/50 backdrop-blur-sm rounded-xl p-3 border border-gray-200/50">
+                  <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-orange-400 to-orange-600 rounded-lg flex items-center justify-center">
+                    <BookOpen className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="text-gray-700">
+                    <div className="font-medium">Cursos MOOC</div>
+                    <div className="text-xs text-gray-500">Certificados verificables</div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 bg-white/50 backdrop-blur-sm rounded-xl p-3 border border-gray-200/50">
+                  <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-purple-400 to-purple-600 rounded-lg flex items-center justify-center">
+                    <Sparkles className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="text-gray-700">
+                    <div className="font-medium">IA Integrada</div>
+                    <div className="text-xs text-gray-500">Asistente LIA disponible</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Stats minimalistas */}
+            <div className="grid grid-cols-3 gap-4 mt-8">
+              <div className="text-center">
+                <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-4 border border-white/80 shadow-lg">
+                  <div className="text-2xl font-bold text-gray-800">500+</div>
+                  <div className="text-xs text-gray-600 mt-1">Estudiantes</div>
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-4 border border-white/80 shadow-lg">
+                  <div className="text-2xl font-bold text-gray-800">50+</div>
+                  <div className="text-xs text-gray-600 mt-1">Cursos</div>
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-4 border border-white/80 shadow-lg">
+                  <div className="text-2xl font-bold text-gray-800">20+</div>
+                  <div className="text-xs text-gray-600 mt-1">Países</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
   );
 };
