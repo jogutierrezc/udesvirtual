@@ -41,6 +41,11 @@ const Professor = () => {
     class_type: "mirror" as "mirror" | "masterclass",
     knowledge_area: [] as string[],
     profession: "",
+    // Passport UDES fields
+    is_passport_activity: false,
+    passport_pathway: "" as "" | "conocimiento" | "descubrimiento" | "impacto_social",
+    passport_points: "",
+    passport_complexity: "" as "" | "basico" | "intermedio" | "avanzado",
   });
 
   // Teacher form state
@@ -71,6 +76,11 @@ const Professor = () => {
     udes_professor_campus: "",
     udes_professor_phone: "",
     udes_professor_email: "",
+    // Passport UDES fields
+    is_passport_activity: false,
+    passport_pathway: "" as "" | "conocimiento" | "descubrimiento" | "impacto_social",
+    passport_points: "",
+    passport_complexity: "" as "" | "basico" | "intermedio" | "avanzado",
   });
 
   useEffect(() => {
@@ -123,6 +133,7 @@ const Professor = () => {
         ...classForm,
         capacity: parseInt(classForm.capacity),
         hours: parseInt(classForm.hours),
+        passport_points: classForm.passport_points ? parseInt(classForm.passport_points) : null,
         created_by: userId,
       });
 
@@ -147,6 +158,11 @@ const Professor = () => {
         class_type: "mirror",
         knowledge_area: [],
         profession: "",
+        // Passport UDES fields
+        is_passport_activity: false,
+        passport_pathway: "",
+        passport_points: "",
+        passport_complexity: "",
       });
     } catch (error: any) {
       toast({
@@ -217,6 +233,11 @@ const Professor = () => {
         campus: offeringForm.campus,
         allied_professor,
         allied_institution,
+        // Passport UDES fields
+        is_passport_activity: offeringForm.is_passport_activity,
+        passport_pathway: offeringForm.passport_pathway || null,
+        passport_points: offeringForm.passport_points ? parseInt(offeringForm.passport_points) : null,
+        passport_complexity: offeringForm.passport_complexity || null,
         created_by: userId,
       });
 
@@ -241,6 +262,11 @@ const Professor = () => {
         udes_professor_campus: "",
         udes_professor_phone: "",
         udes_professor_email: "",
+        // Passport UDES fields
+        is_passport_activity: false,
+        passport_pathway: "",
+        passport_points: "",
+        passport_complexity: "",
       });
     } catch (error: any) {
       toast({
@@ -366,6 +392,7 @@ const Professor = () => {
                           ...editClassForm,
                           capacity: parseInt(editClassForm.capacity),
                           hours: parseInt(editClassForm.hours),
+                          passport_points: editClassForm.passport_points ? parseInt(editClassForm.passport_points) : null,
                         })
                         .eq("id", editClassId);
                       setSubmitting(false);
@@ -428,6 +455,73 @@ const Professor = () => {
                       onChange={e => setEditClassForm({ ...editClassForm, description: e.target.value })}
                       rows={3}
                     />
+                    <div className="border-t pt-4 mt-4">
+                      <div className="flex items-center space-x-2 mb-4">
+                        <Switch
+                          id="edit_passport_activity"
+                          checked={editClassForm.is_passport_activity || false}
+                          onCheckedChange={(checked) =>
+                            setEditClassForm({ ...editClassForm, is_passport_activity: checked })
+                          }
+                        />
+                        <Label htmlFor="edit_passport_activity" className="font-semibold">
+                          Actividad del Programa Passport UDES
+                        </Label>
+                      </div>
+
+                      {editClassForm.is_passport_activity && (
+                        <div className="grid md:grid-cols-3 gap-4 p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border">
+                          <div className="space-y-2">
+                            <Label>Ruta Passport *</Label>
+                            <Select
+                              value={editClassForm.passport_pathway || ""}
+                              onValueChange={(value: "conocimiento" | "descubrimiento" | "impacto_social") =>
+                                setEditClassForm({ ...editClassForm, passport_pathway: value })
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Seleccionar ruta" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="conocimiento">Conocimiento</SelectItem>
+                                <SelectItem value="descubrimiento">Descubrimiento</SelectItem>
+                                <SelectItem value="impacto_social">Impacto Social</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>Puntos Passport *</Label>
+                            <Input
+                              type="number"
+                              min="1"
+                              value={editClassForm.passport_points || ""}
+                              onChange={(e) => setEditClassForm({ ...editClassForm, passport_points: e.target.value })}
+                              placeholder="Ej: 10"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>Complejidad *</Label>
+                            <Select
+                              value={editClassForm.passport_complexity || ""}
+                              onValueChange={(value: "basico" | "intermedio" | "avanzado") =>
+                                setEditClassForm({ ...editClassForm, passport_complexity: value })
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Seleccionar complejidad" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="basico">Básico</SelectItem>
+                                <SelectItem value="intermedio">Intermedio</SelectItem>
+                                <SelectItem value="avanzado">Avanzado</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                     <div className="flex gap-2">
                       <Button type="submit" disabled={submitting}>Guardar</Button>
                       <Button type="button" variant="outline" onClick={() => { setEditClassId(null); setEditClassForm(null); }}>Cancelar</Button>
@@ -589,6 +683,75 @@ const Professor = () => {
                       />
                     </div>
                   )}
+
+                  <div className="border-t pt-4 mt-4">
+                    <div className="flex items-center space-x-2 mb-4">
+                      <Switch
+                        id="passport_activity"
+                        checked={classForm.is_passport_activity}
+                        onCheckedChange={(checked) =>
+                          setClassForm({ ...classForm, is_passport_activity: checked })
+                        }
+                      />
+                      <Label htmlFor="passport_activity" className="font-semibold">
+                        Actividad del Programa Passport UDES
+                      </Label>
+                    </div>
+
+                    {classForm.is_passport_activity && (
+                      <div className="grid md:grid-cols-3 gap-4 p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border">
+                        <div className="space-y-2">
+                          <Label htmlFor="passport_pathway">Ruta Passport *</Label>
+                          <Select
+                            value={classForm.passport_pathway}
+                            onValueChange={(value: "conocimiento" | "descubrimiento" | "impacto_social") =>
+                              setClassForm({ ...classForm, passport_pathway: value })
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Seleccionar ruta" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="conocimiento">Conocimiento</SelectItem>
+                              <SelectItem value="descubrimiento">Descubrimiento</SelectItem>
+                              <SelectItem value="impacto_social">Impacto Social</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="passport_points">Puntos Passport *</Label>
+                          <Input
+                            id="passport_points"
+                            type="number"
+                            min="1"
+                            value={classForm.passport_points}
+                            onChange={(e) => setClassForm({ ...classForm, passport_points: e.target.value })}
+                            placeholder="Ej: 10"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="passport_complexity">Complejidad *</Label>
+                          <Select
+                            value={classForm.passport_complexity}
+                            onValueChange={(value: "basico" | "intermedio" | "avanzado") =>
+                              setClassForm({ ...classForm, passport_complexity: value })
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Seleccionar complejidad" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="basico">Básico</SelectItem>
+                              <SelectItem value="intermedio">Intermedio</SelectItem>
+                              <SelectItem value="avanzado">Avanzado</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
                   <Button type="submit" disabled={submitting} className="w-full">
                     {submitting ? (
@@ -756,6 +919,75 @@ const Professor = () => {
                         />
                       </div>
                     </div>
+                  </div>
+
+                  <div className="border-t pt-4 mt-4">
+                    <div className="flex items-center space-x-2 mb-4">
+                      <Switch
+                        id="offering_passport_activity"
+                        checked={offeringForm.is_passport_activity}
+                        onCheckedChange={(checked) =>
+                          setOfferingForm({ ...offeringForm, is_passport_activity: checked })
+                        }
+                      />
+                      <Label htmlFor="offering_passport_activity" className="font-semibold">
+                        Actividad del Programa Passport UDES
+                      </Label>
+                    </div>
+
+                    {offeringForm.is_passport_activity && (
+                      <div className="grid md:grid-cols-3 gap-4 p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border">
+                        <div className="space-y-2">
+                          <Label htmlFor="offering_passport_pathway">Ruta Passport *</Label>
+                          <Select
+                            value={offeringForm.passport_pathway}
+                            onValueChange={(value: "conocimiento" | "descubrimiento" | "impacto_social") =>
+                              setOfferingForm({ ...offeringForm, passport_pathway: value })
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Seleccionar ruta" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="conocimiento">Conocimiento</SelectItem>
+                              <SelectItem value="descubrimiento">Descubrimiento</SelectItem>
+                              <SelectItem value="impacto_social">Impacto Social</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="offering_passport_points">Puntos Passport *</Label>
+                          <Input
+                            id="offering_passport_points"
+                            type="number"
+                            min="1"
+                            value={offeringForm.passport_points}
+                            onChange={(e) => setOfferingForm({ ...offeringForm, passport_points: e.target.value })}
+                            placeholder="Ej: 10"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="offering_passport_complexity">Complejidad *</Label>
+                          <Select
+                            value={offeringForm.passport_complexity}
+                            onValueChange={(value: "basico" | "intermedio" | "avanzado") =>
+                              setOfferingForm({ ...offeringForm, passport_complexity: value })
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Seleccionar complejidad" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="basico">Básico</SelectItem>
+                              <SelectItem value="intermedio">Intermedio</SelectItem>
+                              <SelectItem value="avanzado">Avanzado</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <Button type="submit" disabled={submitting} className="w-full">

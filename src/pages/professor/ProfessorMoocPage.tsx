@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, PlusCircle, Edit, Trash2, BookOpen, Clock, User } from "lucide-react";
+import { Loader2, PlusCircle, Edit, Trash2, BookOpen, Clock, User, Award } from "lucide-react";
 import { MoocCourseFormModal } from "@/pages/admin/mooc/modals/MoocCourseFormModal";
 
 interface MoocCourse {
@@ -28,6 +28,10 @@ interface MoocCourse {
   lesson_count?: number;
   enrolled_count?: number;
   completed_count?: number;
+  is_passport_activity?: boolean;
+  passport_pathway?: string;
+  passport_points?: number;
+  passport_complexity?: string;
 }
 
 export const ProfessorMoocPage = () => {
@@ -65,7 +69,7 @@ export const ProfessorMoocPage = () => {
       // Cargar cursos creados por el profesor
       const { data: coursesData, error: coursesError } = await supabase
         .from("mooc_courses")
-        .select("*")
+        .select("*, is_passport_activity, passport_pathway, passport_points, passport_complexity")
         .eq("created_by", professorId)
         .order("created_at", { ascending: false });
 
@@ -310,7 +314,15 @@ export const ProfessorMoocPage = () => {
               <CardHeader>
                 <div className="flex items-start justify-between gap-2">
                   <CardTitle className="line-clamp-2 text-lg">{course.title}</CardTitle>
-                  {getStatusBadge(course.status)}
+                  <div className="flex gap-2">
+                    {course.is_passport_activity && (
+                      <Badge variant="default" className="bg-blue-600">
+                        <Award className="h-3 w-3 mr-1" />
+                        Passport
+                      </Badge>
+                    )}
+                    {getStatusBadge(course.status)}
+                  </div>
                 </div>
                 <p className="text-sm text-muted-foreground">{course.profession}</p>
               </CardHeader>

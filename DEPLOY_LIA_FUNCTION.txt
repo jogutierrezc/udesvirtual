@@ -1,3 +1,29 @@
+=====================================================
+INSTRUCCIONES PARA DESPLEGAR LA FUNCIÓN LIA
+=====================================================
+
+PASO 1: Copiar el código de abajo (desde la línea "import { serve }" hasta el final)
+
+PASO 2: Ir a Supabase Dashboard
+URL: https://supabase.com/dashboard/project/ovdeaweddxafslbrflor/functions
+
+PASO 3: Hacer clic en la función "lia"
+
+PASO 4: Hacer clic en "Edit" o buscar el editor de código
+
+PASO 5: BORRAR TODO el código actual y PEGAR el código de abajo
+
+PASO 6: Hacer clic en "Deploy"
+
+PASO 7: Configurar el API Key
+- Ir a Settings → Edge Functions → Secrets
+- Agregar: GOOGLE_API_KEY = [tu API key de Gemini]
+- Obtener API key gratis en: https://aistudio.google.com/app/apikey
+
+=====================================================
+CÓDIGO PARA COPIAR (desde aquí hacia abajo):
+=====================================================
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { DOMParser } from "https://deno.land/x/deno_dom@v0.1.38/deno-dom-wasm.ts";
 
@@ -358,7 +384,7 @@ IMPORTANTE: Proporciona respuestas COMPLETAS y DETALLADAS usando TODA la informa
     const fullPrompt = `${liaSystemPrompt}\n\n---\n\nUsuario: ${userMessages}`;
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GOOGLE_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GOOGLE_API_KEY}`,
       {
         method: "POST",
         headers: {

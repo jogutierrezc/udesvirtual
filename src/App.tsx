@@ -27,9 +27,13 @@ import { CatalogPage } from "./pages/admin/catalog/CatalogPage";
 import { OfferingsPage } from "./pages/admin/offerings/OfferingsPage";
 import { RegistrationsPage } from "./pages/admin/registrations/RegistrationsPage";
 import { MoocPage } from "./pages/admin/mooc/MoocPage";
-import CarouselManagement from "./pages/admin/CarouselManagement";
+import { CarouselPage } from "./pages/admin/carousel/CarouselPage";
+import { PassportPage } from "./pages/admin/passport/PassportPage";
+import { AdminLayout } from "./pages/admin/layout/AdminLayout";
 import Certificates from "./pages/Certificates";
 import CertificateView from "./pages/CertificateView";
+import Passport from "./pages/Passport";
+import CelebrationTest from "./components/CelebrationTest";
 
 const queryClient = new QueryClient();
 
@@ -42,14 +46,14 @@ const AppContent = () => {
   // Verificar si es una ruta 404
   const is404 = !['/', '/auth', '/unauthorized', '/dashboard', '/catalog', '/professor-offerings', 
     '/coil-offerings', '/mooc', '/profile', '/profile-setup', '/welcome', '/admin/catalog', '/admin/offerings', 
-    '/admin/registrations', '/admin/mooc', '/admin', '/professor', '/lia'].includes(location.pathname) && 
+    '/admin/registrations', '/admin/mooc', '/admin/carousel', '/admin/passport', '/admin', '/professor', '/lia', '/passport', '/celebration-test'].includes(location.pathname) && 
     !location.pathname.startsWith('/admin/') &&
     !location.pathname.startsWith('/mooc/') &&
     !location.pathname.startsWith('/courses/') &&
     !location.pathname.startsWith('/certificado');
 
   // Ocultar navbar en 404 o en rutas específicas
-  const shouldHideNavbar = is404 || hideNavbarRoutes.includes(location.pathname);
+  const shouldHideNavbar = is404 || hideNavbarRoutes.includes(location.pathname) || location.pathname.startsWith('/admin');
 
   return (
     <>
@@ -90,6 +94,22 @@ const AppContent = () => {
           } 
         />
         <Route 
+          path="/passport" 
+          element={
+            <ProtectedRoute>
+              <Passport />
+            </ProtectedRoute>
+          }
+        />
+        <Route 
+          path="/celebration-test" 
+          element={
+            <ProtectedRoute>
+              <CelebrationTest />
+            </ProtectedRoute>
+          }
+        />
+        <Route 
           path="/certificaciones" 
           element={
             <ProtectedRoute>
@@ -111,7 +131,9 @@ const AppContent = () => {
               path="/admin/catalog" 
               element={
                 <ProtectedRoute requireAdmin={true}>
-                  <CatalogPage />
+                  <AdminLayout>
+                    <CatalogPage />
+                  </AdminLayout>
                 </ProtectedRoute>
               } 
             />
@@ -119,7 +141,9 @@ const AppContent = () => {
               path="/admin/offerings" 
               element={
                 <ProtectedRoute requireAdmin={true}>
-                  <OfferingsPage />
+                  <AdminLayout>
+                    <OfferingsPage />
+                  </AdminLayout>
                 </ProtectedRoute>
               } 
             />
@@ -127,7 +151,9 @@ const AppContent = () => {
               path="/admin/registrations" 
               element={
                 <ProtectedRoute requireAdmin={true}>
-                  <RegistrationsPage />
+                  <AdminLayout>
+                    <RegistrationsPage />
+                  </AdminLayout>
                 </ProtectedRoute>
               } 
             />
@@ -135,7 +161,9 @@ const AppContent = () => {
               path="/admin/mooc" 
               element={
                 <ProtectedRoute requireAdmin={true}>
-                  <MoocPage />
+                  <AdminLayout>
+                    <MoocPage />
+                  </AdminLayout>
                 </ProtectedRoute>
               } 
             />
@@ -143,7 +171,19 @@ const AppContent = () => {
               path="/admin/carousel" 
               element={
                 <ProtectedRoute requireAdmin={true}>
-                  <CarouselManagement />
+                  <AdminLayout>
+                    <CarouselPage />
+                  </AdminLayout>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/passport" 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <AdminLayout>
+                    <PassportPage />
+                  </AdminLayout>
                 </ProtectedRoute>
               } 
             />
@@ -151,7 +191,9 @@ const AppContent = () => {
               path="/admin" 
               element={
                 <ProtectedRoute requireAdmin={true}>
-                  <CatalogPage />
+                  <AdminLayout>
+                    <CatalogPage />
+                  </AdminLayout>
                 </ProtectedRoute>
               } 
             />

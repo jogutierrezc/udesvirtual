@@ -16,9 +16,11 @@ import {
   Loader2,
   BookOpen,
   Clock,
-  Eye
+  Eye,
+  Award
 } from "lucide-react";
 import { MoocCourseFormModal } from "./modals/MoocCourseFormModal";
+import { LinkPassportModal } from "./modals/LinkPassportModal";
 
 type MoocCourse = {
   id: string;
@@ -33,6 +35,8 @@ type MoocCourse = {
   status: string;
   created_at: string;
   updated_at: string;
+  passport_activity_id?: string | null;
+  passport_points?: number | null;
   creator?: {
     full_name: string;
     email: string;
@@ -50,6 +54,7 @@ export const MoocPage = () => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [showCourseModal, setShowCourseModal] = useState(false);
   const [editingCourse, setEditingCourse] = useState<MoocCourse | null>(null);
+  const [linkingCourse, setLinkingCourse] = useState<MoocCourse | null>(null);
 
   useEffect(() => {
     loadCourses();
@@ -68,8 +73,8 @@ export const MoocPage = () => {
       // Obtener cursos
       const { data: coursesData, error: coursesError } = await supabase
         .from("mooc_courses")
-        .select("*")
-        .order("created_at", { ascending: false });
+        .select("*, passport_activity_id, passport_points")
+        .order("created_at", { ascending: false});
 
       if (coursesError) {
         console.error("Error loading courses:", coursesError);
@@ -385,6 +390,15 @@ export const MoocPage = () => {
                         )}
                         <Button
                           size="sm"
+                          variant={course.passport_activity_id ? "default" : "outline"}
+                          onClick={() => setLinkingCourse(course)}
+                          title="Vincular con Pasaporte"
+                        >
+                          <Award className="h-4 w-4 mr-1" />
+                          {course.passport_activity_id ? `${course.passport_points} pts` : "Pasaporte"}
+                        </Button>
+                        <Button
+                          size="sm"
                           variant="outline"
                           onClick={() => handleEditCourse(course)}
                         >
@@ -416,6 +430,19 @@ export const MoocPage = () => {
         editingCourse={editingCourse}
         onSave={handleSaveCourse}
       />
+
+      {/* Modal de vinculación con Pasaporte */}
+      {linkingCourse && (
+        <LinkPassportModal
+          open={!!linkingCourse}
+          onClose={() => setLinkingCourse(null)}
+          courseId={linkingCourse.id}
+          courseTitle={linkingCourse.title}
+          currentActivityId={linkingCourse.passport_activity_id || undefined}
+          currentPoints={linkingCourse.passport_points || undefined}
+          onSuccess={loadCourses}
+        />
+      )}
     </div>
   );
 };

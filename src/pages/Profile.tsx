@@ -127,7 +127,12 @@ export default function Profile() {
         email,
         profile_completed: true,
       } as any;
-      const { error } = await supabase.from("profiles").upsert(update).eq("id", userId);
+
+      // Use upsert with onConflict to properly handle the update
+      const { error } = await supabase
+        .from("profiles")
+        .upsert(update, { onConflict: 'id' });
+
       if (error) throw error;
       toast({ title: "Perfil actualizado", description: "Tus cambios se han guardado." });
     } catch (e: any) {

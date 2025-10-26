@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Menu } from "lucide-react";
+import { useIsUdesEmail } from "@/hooks/useIsUdesEmail";
 
 type AppRole = "admin" | "professor" | "student";
 
@@ -21,6 +22,7 @@ export const Navbar = () => {
   const [user, setUser] = useState<UserInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { isUdesEmail, isLoading: emailLoading } = useIsUdesEmail();
 
   useEffect(() => {
     let mounted = true;
@@ -88,11 +90,23 @@ export const Navbar = () => {
     
     // Si es estudiante, mostrar navegación personalizada
     if (user?.role === "student") {
-      return [
+      const studentLinks = [
         { to: "/mooc", label: "Oferta de Cursos" },
         { to: "/dashboard", label: "Mis Cursos" },
         { to: "/profile", label: "Mi Perfil" },
       ];
+      
+      // Solo agregar Pasaporte si tiene email @mail.udes.edu.co
+      if (isUdesEmail) {
+        studentLinks.push({ to: "/passport", label: "Pasaporte" });
+      }
+      
+      // Agregar enlace de prueba para admins
+      if (user?.role === "admin") {
+        studentLinks.push({ to: "/celebration-test", label: "🧪 Test Celebraciones" });
+      }
+      
+      return studentLinks;
     }
     
     // Navegación para profesores y otros usuarios
@@ -107,7 +121,7 @@ export const Navbar = () => {
     
     if (user?.role === "professor") base.push({ to: "/professor", label: "Profesor" });
     return base;
-  }, [user?.role]);
+  }, [user?.role, isUdesEmail]);
 
   const initials = useMemo(() => {
     if (!user?.name) return "U";

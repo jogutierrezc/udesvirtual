@@ -116,7 +116,7 @@ const Lia = () => {
     });
 
     try {
-      const { data, error } = await supabase.functions.invoke("lia-chat", {
+      const { data, error } = await supabase.functions.invoke("lia", {
         body: {
           messages: [...messages, { role: "user", content: userMessage }],
           type: "chat",

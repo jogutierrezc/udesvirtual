@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Plus, X } from "lucide-react";
 import { ExamList } from "@/pages/professor/components/ExamList";
@@ -21,6 +22,10 @@ type MoocCourse = {
   description: string;
   course_image_url: string | null;
   intro_video_url: string | null;
+  is_passport_activity?: boolean;
+  passport_pathway?: string;
+  passport_points?: number;
+  passport_complexity?: string;
 };
 
 type Lesson = {
@@ -57,7 +62,11 @@ export const MoocCourseFormModal = ({ open, onOpenChange, editingCourse, onSave 
     objective: "",
     description: "",
     course_image_url: "",
-    intro_video_url: ""
+    intro_video_url: "",
+    is_passport_activity: false,
+    passport_pathway: "",
+    passport_points: 0,
+    passport_complexity: "basico"
   });
 
   const [tagInput, setTagInput] = useState("");
@@ -72,7 +81,11 @@ export const MoocCourseFormModal = ({ open, onOpenChange, editingCourse, onSave 
         objective: editingCourse.objective,
         description: editingCourse.description,
         course_image_url: editingCourse.course_image_url || "",
-        intro_video_url: editingCourse.intro_video_url || ""
+        intro_video_url: editingCourse.intro_video_url || "",
+        is_passport_activity: editingCourse.is_passport_activity || false,
+        passport_pathway: editingCourse.passport_pathway || "",
+        passport_points: editingCourse.passport_points || 0,
+        passport_complexity: editingCourse.passport_complexity || "basico"
       });
       loadLessons(editingCourse.id);
     } else {
@@ -103,7 +116,11 @@ export const MoocCourseFormModal = ({ open, onOpenChange, editingCourse, onSave 
       objective: "",
       description: "",
       course_image_url: "",
-      intro_video_url: ""
+      intro_video_url: "",
+      is_passport_activity: false,
+      passport_pathway: "",
+      passport_points: 0,
+      passport_complexity: "basico"
     });
     setLessons([]);
     setCurrentTab("course");
@@ -390,6 +407,74 @@ export const MoocCourseFormModal = ({ open, onOpenChange, editingCourse, onSave 
                   onChange={(e) => setFormData(prev => ({ ...prev, intro_video_url: e.target.value }))}
                   placeholder="https://youtube.com/..."
                 />
+              </div>
+            </div>
+
+            {/* Configuración de Passport UDES */}
+            <div className="border-t pt-4 mt-6">
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="is_passport_activity"
+                    checked={formData.is_passport_activity}
+                    onChange={(e) => setFormData(prev => ({ ...prev, is_passport_activity: e.target.checked }))}
+                    className="rounded"
+                  />
+                  <Label htmlFor="is_passport_activity" className="font-semibold">
+                    Este curso forma parte del Programa Passport UDES
+                  </Label>
+                </div>
+
+                {formData.is_passport_activity && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-blue-50 rounded-lg">
+                    <div className="space-y-2">
+                      <Label>Sendero del Pasaporte</Label>
+                      <Select
+                        value={formData.passport_pathway}
+                        onValueChange={(value) => setFormData(prev => ({ ...prev, passport_pathway: value }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar sendero" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="conocimiento">Conocimiento</SelectItem>
+                          <SelectItem value="descubrimiento">Descubrimiento</SelectItem>
+                          <SelectItem value="impacto_social">Impacto Social</SelectItem>
+                          <SelectItem value="multiple">Múltiple</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Puntos por Completar</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={formData.passport_points}
+                        onChange={(e) => setFormData(prev => ({ ...prev, passport_points: parseInt(e.target.value) || 0 }))}
+                        placeholder="Ej: 30"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Nivel de Complejidad</Label>
+                      <Select
+                        value={formData.passport_complexity}
+                        onValueChange={(value) => setFormData(prev => ({ ...prev, passport_complexity: value }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="basico">Básico</SelectItem>
+                          <SelectItem value="intermedio">Intermedio</SelectItem>
+                          <SelectItem value="avanzado">Avanzado</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </TabsContent>

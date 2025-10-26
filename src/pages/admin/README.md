@@ -35,8 +35,22 @@ src/
 - `/admin/catalog` → Catálogo (Clases + Profesores)
 - `/admin/offerings` → Ofertas (Cursos + COIL)
 - `/admin/registrations` → Registros de Estudiantes
+- `/admin/mooc` → Gestión de MOOC
+- `/admin/carousel` → Gestión de Carrusel Hero
+- `/admin/passport` → Pasaporte Académico (en desarrollo)
 
 ## 🎯 Características
+
+### AdminLayout (Navegación Simplificada con Dropdowns)
+- **Exchange Dropdown:** 
+  - Catálogo
+  - Oferta
+  - Registros
+- **MOOC:** Botón standalone para gestión de cursos MOOC
+- **Pasaporte:** Botón standalone para sistema de pasaportes académicos
+- **Configuración Dropdown:**
+  - Carrusel (Gestión del hero carousel)
+  - Más opciones de configuración en el futuro
 
 ### AdminContext (Estado Global)
 - **Datos:** Clases, Profesores, Ofertas, COIL, Registros

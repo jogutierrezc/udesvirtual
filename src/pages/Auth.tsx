@@ -6,8 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, GraduationCap, Globe, BookOpen, Users, Sparkles, ArrowRight, CheckCircle } from "lucide-react";
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import { Loader2, GraduationCap, Globe, BookOpen, Users, Sparkles, ArrowRight, CheckCircle, AlertTriangle, LogOut } from "lucide-react";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -17,40 +19,56 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [showBlockedModal, setShowBlockedModal] = useState(false);
+
+  const checkUserProfile = async (userId: string) => {
+    const { data: profile, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
+      .single();
+
+    if (error) {
+      console.error("Error fetching profile:", error);
+      return null;
+    }
+
+    return profile;
+  };
+
+  const handleUserAuthentication = async (userId: string) => {
+    const profile = await checkUserProfile(userId);
+
+    if (!profile) {
+      console.error("Profile not found");
+      return;
+    }
+
+    // Check if user account is active
+    if ((profile as any).active === false) {
+      setShowBlockedModal(true);
+      return;
+    }
+
+    // Check if profile is completed
+    if ((profile as any)?.profile_completed) {
+      navigate("/dashboard");
+    } else {
+      navigate("/profile-setup");
+    }
+  };
 
   useEffect(() => {
     // Check if user is already logged in
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session) {
-        // Verificar si el perfil está completo
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", session.user.id)
-          .single();
-
-        if ((profile as any)?.profile_completed) {
-          navigate("/dashboard");
-        } else {
-          navigate("/profile-setup");
-        }
+        await handleUserAuthentication(session.user.id);
       }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session) {
-        // Verificar si el perfil está completo
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", session.user.id)
-          .single();
-
-        if ((profile as any)?.profile_completed) {
-          navigate("/dashboard");
-        } else {
-          navigate("/profile-setup");
-        }
+        await handleUserAuthentication(session.user.id);
       }
     });
 
@@ -340,6 +358,61 @@ const Auth = () => {
         </div>
       </div>
 
+      {/* Blocked Account Modal */}
+      <Dialog open={showBlockedModal} onOpenChange={() => {}}>
+        <DialogContent className="sm:max-w-[500px]" onPointerDownOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600 justify-center">
+              <AlertTriangle className="h-5 w-5" />
+              Cuenta Bloqueada
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center space-y-4">
+            <DotLottieReact
+              src="https://lottie.host/c49f8a00-a423-45a0-9a04-d4e1a27f5144/JCCr4aCSkf.lottie"
+              loop
+              autoplay
+              style={{ height: '200px', width: '200px' }}
+            />
+            <DialogDescription className="text-center text-gray-700">
+              Su cuenta ha sido bloqueada por violación a las políticas institucionales de la Universidad.
+              <br /><br />
+              Para más información o para solicitar la reactivación de su cuenta, por favor contacte al Coordinador del Programa.
+              <br /><br />
+              Solo puede cerrar sesión desde esta pantalla.
+            </DialogDescription>
+            <Button
+              onClick={async () => {
+                try {
+                  await supabase.auth.signOut();
+                  setShowBlockedModal(false);
+                  navigate("/");
+                } catch (error) {
+                  console.error("Error signing out:", error);
+                  // Force navigation even if signOut fails
+                  setShowBlockedModal(false);
+                  navigate("/");
+                }
+              }}
+              variant="destructive"
+              className="flex items-center gap-2 w-full"
+              disabled={loading}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Cerrando sesión...
+                </>
+              ) : (
+                <>
+                  <LogOut className="h-4 w-4" />
+                  Cerrar Sesión
+                </>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
