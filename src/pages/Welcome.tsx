@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 
 export default function Welcome() {
   const navigate = useNavigate();
@@ -82,32 +83,38 @@ export default function Welcome() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-white flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Gaussian gradient background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-orange-50 opacity-80"></div>
+      <div className="absolute inset-0 bg-gradient-radial from-blue-100/30 via-transparent to-orange-100/30"></div>
+      
+      {/* Glassmorphism overlay */}
+      <div className="absolute inset-0 backdrop-blur-sm bg-white/10"></div>
+      
       {/* Contenido principal */}
       <div className="max-w-2xl w-full text-center space-y-8 relative z-10">
-        {/* Logo */}
-        <div className="flex justify-center mb-8 animate-bounce">
-          <div className="bg-white rounded-full p-6 shadow-2xl">
-            <img
-              src="https://udes.edu.co/images/logo/logo-con-acreditada-color.png"
-              alt="Logo UDES"
-              className="h-24 w-auto object-contain"
-            />
-          </div>
+        {/* Fixed UDES Logo at the top */}
+        <div className="flex justify-center mb-8">
+          <img
+            src="https://udes.edu.co/images/logo/logo-con-acreditada-color.png"
+            alt="Logo UDES"
+            className="w-48 h-48 object-contain"
+          />
         </div>
 
-        {/* Animación Lottie */}
+        {/* Lottie Animation in the center */}
         <div className="flex justify-center mb-8">
-          <iframe
-            src="https://lottie.host/embed/e0ad9025-42f8-43ed-9c0a-44888da72f63/0p1ckanY9n.json"
-            style={{ width: "300px", height: "300px", border: "none" }}
-            title="Welcome Animation"
+          <DotLottieReact
+            src="https://lottie.host/add1a583-9936-4d09-b55b-262322c0e1e7/3IRxCioo5B.lottie"
+            loop
+            autoplay
+            className="w-72 h-72"
           />
         </div>
 
         {/* Texto de bienvenida */}
-        <div className="space-y-4 text-white">
-          <h1 className="text-4xl md:text-6xl font-bold animate-fade-in">
+        <div className="space-y-4 text-gray-800">
+          <h1 className="text-4xl md:text-6xl font-bold">
             ¡Felicitaciones{userName ? `, ${userName.split(" ")[0]}` : ""}!
           </h1>
           <p className="text-xl md:text-2xl font-medium opacity-90">
@@ -123,17 +130,17 @@ export default function Welcome() {
           <Button
             onClick={handleContinue}
             size="lg"
-            className="bg-white text-indigo-600 hover:bg-gray-100 px-8 py-6 text-lg font-semibold shadow-2xl transform hover:scale-105 transition-all"
+            className="bg-gradient-to-r from-blue-500 to-orange-500 hover:from-blue-600 hover:to-orange-600 text-white px-8 py-6 text-lg font-semibold shadow-2xl transform hover:scale-105 transition-all"
           >
             Continuar al Portal
           </Button>
         </div>
 
-        {/* Decoración adicional */}
+        {/* Decoración adicional con glassmorphism */}
         <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
-          <div className="absolute top-10 left-10 w-20 h-20 bg-white/10 rounded-full animate-pulse" />
-          <div className="absolute bottom-10 right-10 w-32 h-32 bg-white/10 rounded-full animate-pulse delay-500" />
-          <div className="absolute top-1/2 right-20 w-16 h-16 bg-white/10 rounded-full animate-pulse delay-1000" />
+          <div className="absolute top-10 left-10 w-20 h-20 bg-white/20 backdrop-blur-sm rounded-full shadow-lg animate-pulse" />
+          <div className="absolute bottom-10 right-10 w-32 h-32 bg-white/20 backdrop-blur-sm rounded-full shadow-lg animate-pulse delay-500" />
+          <div className="absolute top-1/2 right-20 w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full shadow-lg animate-pulse delay-1000" />
         </div>
       </div>
     </div>
