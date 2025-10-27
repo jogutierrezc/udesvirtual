@@ -102,9 +102,49 @@ export const MoocCourseFormModal = ({ open, onOpenChange, editingCourse, onSave 
         .order("order_index");
 
       if (error) throw error;
-      setLessons(data || []);
+      // Normalizar las URLs de video al formato embebible para evitar problemas de X-Frame-Options
+      const normalized = (data || []).map((l: any) => ({
+        ...l,
+        video_url: getEmbedUrl(l.video_url) || l.video_url || "",
+      }));
+
+      setLessons(normalized);
     } catch (error) {
       console.error("Error loading lessons:", error);
+    }
+  };
+
+  // Convierte URLs de video a formato embebible (YouTube watch -> /embed, youtu.be -> /embed, Vimeo -> player)
+  const getEmbedUrl = (rawUrl?: string | null) => {
+    if (!rawUrl) return null;
+    try {
+      const url = new URL(rawUrl, window.location.origin);
+      const host = url.hostname.replace('www.', '').toLowerCase();
+
+      if (host.includes('youtube.com')) {
+        const v = url.searchParams.get('v');
+        if (v) return `https://www.youtube.com/embed/${v}`;
+        if (url.pathname.startsWith('/embed/')) return url.href;
+        const parts = url.pathname.split('/').filter(Boolean);
+        const maybeId = parts[parts.length - 1];
+        if (maybeId) return `https://www.youtube.com/embed/${maybeId}`;
+      }
+
+      if (host === 'youtu.be') {
+        const id = url.pathname.split('/').filter(Boolean)[0];
+        if (id) return `https://www.youtube.com/embed/${id}`;
+      }
+
+      if (host.includes('vimeo.com')) {
+        const parts = url.pathname.split('/').filter(Boolean);
+        const id = parts[parts.length - 1];
+        if (id) return `https://player.vimeo.com/video/${id}`;
+      }
+
+      return rawUrl;
+    } catch (e) {
+      console.warn('Invalid video URL', rawUrl, e);
+      return rawUrl;
     }
   };
 
@@ -259,6 +299,8 @@ export const MoocCourseFormModal = ({ open, onOpenChange, editingCourse, onSave 
         // Insertar nuevas lecciones
         const lessonsToInsert = lessons.map((lesson, index) => ({
           ...lesson,
+          // Asegurarse de guardar la URL en formato embebible
+          video_url: getEmbedUrl(lesson.video_url) || lesson.video_url,
           course_id: courseId,
           order_index: index + 1
         }));

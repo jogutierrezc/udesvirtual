@@ -208,6 +208,27 @@ export default function CourseLearning() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // Validaciones previas: asegurar que la lección existe en la base de datos
+      if (!currentLesson.id) {
+        toast({ title: 'Error', description: 'La lección actual no tiene identificador.', variant: 'destructive' });
+        return;
+      }
+
+      const { data: lessonRow, error: lessonErr } = await supabase
+        .from('mooc_lessons')
+        .select('id')
+        .eq('id', currentLesson.id)
+        .maybeSingle();
+
+      if (lessonErr) {
+        console.error('Error comprobando la lección existente', lessonErr);
+      }
+
+      if (!lessonRow) {
+        toast({ title: 'Error', description: 'La lección no existe en la base de datos. Contacta con un administrador.', variant: 'destructive' });
+        return;
+      }
+
       // Crear o actualizar progreso de lección
       const { error } = await supabase
         .from("mooc_lesson_progress" as any)
@@ -220,18 +241,23 @@ export default function CourseLearning() {
           onConflict: "user_id,lesson_id"
         });
 
-      if (error) throw error;
+      if (error) {
+        // Manejo específico de violaciones de FK (Postgres 23503)
+        console.error('Error upserting lesson progress', error);
+        if ((error as any)?.code === '23503' || (error as any)?.message?.includes?.('foreign key')) {
+          toast({ title: 'Error de integridad', description: 'No se pudo guardar el progreso porque falta una referencia (lección o usuario).', variant: 'destructive' });
+          return;
+        }
+        throw error;
+      }
 
-      // Actualizar estado local
-      setLessons(prev => prev.map(l => 
-        l.id === currentLesson.id ? { ...l, completed: true } : l
-      ));
+      // Actualizar estado local teniendo en cuenta la lección marcada ahora
+      const updatedLessons = lessons.map(l => l.id === currentLesson.id ? { ...l, completed: true } : l);
+      setLessons(updatedLessons);
 
-      // Calcular nuevo progreso
-      const completedCount = lessons.filter(l => 
-        l.id === currentLesson.id || l.completed
-      ).length;
-      const newProgress = Math.round((completedCount / lessons.length) * 100);
+      // Calcular nuevo progreso basándonos en el estado actualizado
+      const completedCount = updatedLessons.filter(l => l.completed).length;
+      const newProgress = Math.round((completedCount / Math.max(updatedLessons.length, 1)) * 100);
       setProgress(newProgress);
 
       toast({
@@ -239,20 +265,45 @@ export default function CourseLearning() {
         description: `Progreso: ${newProgress}%`,
       });
 
+      // Si todas las lecciones están completadas, verificar que se hayan visto los videos
+      const incompleteVideoLessons = updatedLessons.filter(l => l.video_url && !l.completed);
+
+      if (newProgress === 100) {
+        if (incompleteVideoLessons.length > 0) {
+          // No marcar la inscripción como completada si faltan videos por ver
+          toast({
+            title: "Revisión requerida",
+            description: "Debes completar la visualización de todos los videos antes de finalizar el curso.",
+            variant: "destructive"
+          });
+        } else {
+          // Marcar la inscripción como completada en la tabla mooc_enrollments
+          try {
+            const { error: enrollErr } = await supabase
+              .from('mooc_enrollments')
+              .update({ progress: 100, completed: true, updated_at: new Date().toISOString() })
+              .eq('course_id', courseId)
+              .eq('user_id', user.id);
+
+            if (enrollErr) throw enrollErr;
+
+            toast({
+              title: "¡Felicitaciones!",
+              description: "Has completado todo el curso",
+            });
+          } catch (e) {
+            console.error('Error marking enrollment complete', e);
+          }
+        }
+      }
+
       // Avanzar a la siguiente lección no completada
-      const currentIndex = lessons.findIndex(l => l.id === currentLesson.id);
-      const nextLesson = lessons
-        .slice(currentIndex + 1)
-        .find(l => !l.completed && l.id !== currentLesson.id);
+      const currentIndex = updatedLessons.findIndex(l => l.id === currentLesson.id);
+      const nextLesson = updatedLessons.slice(currentIndex + 1).find(l => !l.completed && l.id !== currentLesson.id);
 
       if (nextLesson) {
         setCurrentLesson(nextLesson);
         setVideoWatched(false);
-      } else if (newProgress === 100) {
-        toast({
-          title: "¡Felicitaciones!",
-          description: "Has completado todo el curso",
-        });
       }
     } catch (error: any) {
       console.error("Error marking lesson complete:", error);
