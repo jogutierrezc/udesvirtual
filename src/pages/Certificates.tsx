@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Award } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import { CertificateModal } from '@/components/CertificateModal';
 
 interface CertificateItem {
   id: string;
@@ -22,6 +23,7 @@ export default function Certificates() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<CertificateItem[]>([]);
+  const [selectedCertId, setSelectedCertId] = useState<string | null>(null);
 
   useEffect(() => {
     loadCertificates();
@@ -82,11 +84,14 @@ export default function Certificates() {
               <CardContent className="space-y-3">
                 <div className="text-sm text-muted-foreground">Horas certificadas: <span className="font-medium text-foreground">{cert.hours}</span></div>
                 <div className="text-xs text-muted-foreground">Emitido: {new Date(cert.issued_at).toLocaleDateString()}</div>
-                <Button onClick={() => navigate(`/certificado/${cert.id}`)} className="w-full">Generar certificado</Button>
+                <Button onClick={() => setSelectedCertId(cert.id)} className="w-full">Ver PDF</Button>
               </CardContent>
             </Card>
           ))}
         </div>
+      )}
+      {selectedCertId && (
+        <CertificateModal certificateId={selectedCertId} onClose={() => setSelectedCertId(null)} />
       )}
     </div>
   );

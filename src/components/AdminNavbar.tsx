@@ -184,6 +184,14 @@ export const AdminNavbar = () => {
                   <Image className="h-4 w-4 mr-2" />
                   Carrusel
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/admin/certificates")}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Configuración de Certificados
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/admin/mooc/certifications?open=settings")}>
+                  <Award className="h-4 w-4 mr-2" />
+                  Agregar Firma Manuscrita
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

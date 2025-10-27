@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -62,6 +63,13 @@ export const CertificationsPage = () => {
     loadCourses();
     loadCertSettings();
     loadSignatureProfiles();
+    // If opened with ?open=settings, show the settings modal automatically
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('open') === 'settings') setShowSettingsModal(true);
+    } catch (e) {
+      // ignore
+    }
   }, []);
 
   useEffect(() => {

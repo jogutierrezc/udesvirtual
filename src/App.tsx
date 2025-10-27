@@ -32,6 +32,7 @@ import { PassportPage } from "./pages/admin/passport/PassportPage";
 import { CertificationsPage } from "./pages/admin/mooc/CertificationsPage";
 import { StudentsPage } from "./pages/admin/mooc/StudentsPage";
 import { AdminLayout } from "./pages/admin/layout/AdminLayout";
+import { CertificateSettings } from "./pages/admin/CertificateSettings";
 import Certificates from "./pages/Certificates";
 import CertificateView from "./pages/CertificateView";
 import Passport from "./pages/Passport";
@@ -207,6 +208,16 @@ const AppContent = () => {
                 <ProtectedRoute requireAdmin={true}>
                   <AdminLayout>
                     <PassportPage />
+                  </AdminLayout>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/certificates" 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <AdminLayout>
+                    <CertificateSettings />
                   </AdminLayout>
                 </ProtectedRoute>
               } 

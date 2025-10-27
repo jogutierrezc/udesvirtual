@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,6 +38,7 @@ const Admin = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<string>("catalog");
+  const location = useLocation();
   const [userId, setUserId] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
   const [pendingClasses, setPendingClasses] = useState<Class[]>([]);
@@ -117,6 +118,10 @@ const Admin = () => {
   useEffect(() => {
     checkAuth();
     loadData();
+    // If a ?tab= query param is present, open that tab (useful for external links)
+    const params = new URLSearchParams(location.search);
+    const tabParam = params.get("tab");
+    if (tabParam) setActiveTab(tabParam);
   }, []);
 
   const checkAuth = async () => {
@@ -603,6 +608,16 @@ const Admin = () => {
     <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-4 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          {/* Top-level admin tabs */}
+          <TabsList className="mb-4 flex flex-wrap gap-2">
+            <TabsTrigger value="catalog">Catálogo</TabsTrigger>
+            <TabsTrigger value="create">Crear Clase</TabsTrigger>
+            <TabsTrigger value="create-teacher">Crear Docente</TabsTrigger>
+            <TabsTrigger value="create-offering">Crear Oferta</TabsTrigger>
+            <TabsTrigger value="carousel">Carrusel</TabsTrigger>
+            <TabsTrigger value="passport">Pasaporte</TabsTrigger>
+            <TabsTrigger value="certificates">Configuración de Certificados</TabsTrigger>
+          </TabsList>
 
           <TabsContent value="create">
             <Card>
