@@ -48,8 +48,7 @@ export const CertificationsPage = () => {
   const [signatureProfiles, setSignatureProfiles] = useState<any[]>([]);
   const [uploadingSignature, setUploadingSignature] = useState(false);
   const [newSignatureName, setNewSignatureName] = useState('');
-  const [createdSecret, setCreatedSecret] = useState<string | null>(null);
-  const [showSecretModal, setShowSecretModal] = useState(false);
+  // secrets and RPCs removed: we no longer generate or display secrets for signature profiles
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
@@ -200,36 +199,34 @@ export const CertificationsPage = () => {
       return;
     }
 
+    // Simpler client-side upload directly to Supabase Storage and create profile row.
     setUploadingSignature(true);
     try {
-      // Post to upload server which uses service_role key (avoid RLS issues)
-      const uploadServer = import.meta.env.VITE_UPLOAD_SERVER || 'http://localhost:3001';
-      const form = new FormData();
-      form.append('file', file);
-      form.append('name', newSignatureName);
-      form.append('created_by', session.user.id);
+      const bucket = certSettings?.signature_bucket || 'certificate-signatures';
+      const filename = `${Date.now()}_${Math.random().toString(36).slice(2)}_${file.name.replace(/\s+/g, '_')}`;
 
-      const resp = await fetch(`${uploadServer}/upload-signature`, {
-        method: 'POST',
-        body: form,
-      });
-
-      const json = await resp.json();
-      if (!resp.ok) {
-        console.error('Upload server error', json);
-        toast({ title: 'Error subiendo', description: json?.error?.message || JSON.stringify(json), variant: 'destructive' });
-        return;
+      // Upload file (uses current user's credentials). Bucket must allow uploads from authenticated users.
+      const { error: uploadError } = await supabase.storage.from(bucket).upload(filename, file, { cacheControl: '3600', upsert: false });
+      if (uploadError) {
+        console.error('Storage upload error', uploadError);
+        throw uploadError;
       }
 
-      const profile = json?.profile || null;
-      setCreatedSecret(profile?.secret || null);
-      setShowSecretModal(true);
+      // Insert signature profile row (simple, no secret generation)
+      const { data: profileData, error: insertErr } = await supabase.from('signature_profiles').insert({ name: newSignatureName, filename, created_by: session.user.id }).select().limit(1).maybeSingle();
+      if (insertErr) {
+        console.error('Error inserting signature profile', insertErr);
+        // attempt to cleanup uploaded file
+        try { await supabase.storage.from(bucket).remove([filename]); } catch(_){}
+        throw insertErr;
+      }
+
       setNewSignatureName('');
       loadSignatureProfiles();
-      toast({ title: 'Firma subida', description: 'Se creó el perfil de firma. Guarda el código secreto que se muestra.' });
+      toast({ title: 'Firma subida', description: 'La firma se subió correctamente.' });
     } catch (e: any) {
       console.error('Error uploading signature', e);
-      toast({ title: 'Error', description: 'No se pudo subir la firma', variant: 'destructive' });
+      toast({ title: 'Error', description: e?.message || 'No se pudo subir la firma', variant: 'destructive' });
     } finally {
       setUploadingSignature(false);
       // clear input value
@@ -257,20 +254,7 @@ export const CertificationsPage = () => {
     }
   };
 
-  const handleRotateSecret = async (profileId: string) => {
-    try {
-      const { data, error } = await supabase.rpc('rotate_signature_secret', { p_profile_id: profileId });
-      if (error) throw error;
-      const newSecret = Array.isArray(data) ? data[0] : data;
-      toast({ title: 'Se rotó el secreto', description: 'Copia el nuevo secreto ahora' });
-      setCreatedSecret(newSecret as string);
-      setShowSecretModal(true);
-      loadSignatureProfiles();
-    } catch (e) {
-      console.error('Error rotating secret', e);
-      toast({ title: 'Error', description: 'No se pudo rotar el secreto', variant: 'destructive' });
-    }
-  };
+  // rotate secret RPC removed — no-op; secret handling was intentionally removed
 
   const handleDeleteProfile = async (profile: any) => {
     try {
@@ -493,7 +477,7 @@ export const CertificationsPage = () => {
                         </div>
                         <div className="flex items-center gap-2">
                           <Button size="sm" variant="ghost" onClick={() => { const newName = window.prompt('Nuevo nombre de la firma', p.name); if (newName && newName.trim() !== '' ) { supabase.from('signature_profiles').update({ name: newName.trim() }).eq('id', p.id).then(res => { if (res.error) { toast({ title: 'Error', description: 'No se pudo renombrar', variant: 'destructive' }); } else { toast({ title: 'Renombrado' }); loadSignatureProfiles(); } }); } }}>Editar</Button>
-                          <Button size="sm" variant="outline" onClick={() => handleRotateSecret(p.id)}>Rotar secreto</Button>
+                          {/* secret rotation removed */}
                           <Button size="sm" variant="secondary" onClick={async () => {
                             // set as default
                             await saveCertSettings({ ...(certSettings || {}), default_signature_profile_id: p.id });
@@ -511,20 +495,7 @@ export const CertificationsPage = () => {
           </CardContent>
         </Card>
 
-        {/* Modal: muestra secreto generado (admin debe copiarlo una vez) */}
-        {showSecretModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-            <div className="bg-white p-6 rounded shadow max-w-lg w-full">
-              <h3 className="text-lg font-semibold">Secreto de la firma</h3>
-              <p className="text-sm text-muted-foreground mt-2">Copia este código en un lugar seguro. Se mostrará sólo una vez.</p>
-              <pre className="mt-4 p-3 bg-gray-100 rounded break-words">{createdSecret}</pre>
-              <div className="mt-4 flex justify-end gap-2">
-                <Button onClick={() => { navigator.clipboard.writeText(createdSecret || ''); toast({ title: 'Copiado' }); }}>Copiar</Button>
-                <Button variant="outline" onClick={() => setShowSecretModal(false)}>Cerrar</Button>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Secret modal removed: secrets are no longer generated or shown */}
 
         {/* Modal: Settings */}
         {showSettingsModal && (

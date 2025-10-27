@@ -18,6 +18,7 @@ type CertificateSettings = {
   logo_url: string;
   primary_color: string;
   secondary_color: string;
+  default_signature_profile_id?: string | null;
 };
 
 export const CertificateSettings = () => {
@@ -25,10 +26,22 @@ export const CertificateSettings = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<CertificateSettings | null>(null);
+  const [signatureProfiles, setSignatureProfiles] = useState<{id: string; name: string}[]>([]);
 
   useEffect(() => {
     loadSettings();
+    loadSignatureProfiles();
   }, []);
+
+  const loadSignatureProfiles = async () => {
+    try {
+      const { data, error } = await supabase.from('signature_profiles').select('id, name').order('created_at', { ascending: false });
+      if (error) throw error;
+      setSignatureProfiles(data || []);
+    } catch (e) {
+      console.error('Error loading signature profiles', e);
+    }
+  };
 
   const loadSettings = async () => {
     try {
@@ -96,9 +109,13 @@ export const CertificateSettings = () => {
             <footer class="flex justify-between items-end mt-8">
                 <div class="flex-grow flex justify-center items-end">
                     <div class="text-center w-auto">
-                        <div class="h-0.5 w-64 mb-2 mx-auto" style="background-color: var(--color-primary);"></div>
-                        <p class="text-lg font-semibold text-gray-800">{{SIGNATURE_NAME}}</p>
-                        <p class="text-sm text-gray-500 font-light">{{SIGNATURE_TITLE}}</p>
+            <div class="h-0.5 w-64 mb-2 mx-auto" style="background-color: var(--color-primary);"></div>
+            <p class="text-lg font-semibold text-gray-800">{{SIGNATURE_NAME}}</p>
+            <!-- Signature image: will be replaced with a public URL when available -->
+            <div class="my-2 text-center">
+              <img src="{{SIGNATURE_IMAGE_URL}}" alt="Firma" class="h-16 object-contain mx-auto" onerror="this.onerror=null; this.style.display='none'" />
+            </div>
+            <p class="text-sm text-gray-500 font-light">{{SIGNATURE_TITLE}}</p>
                         <p class="text-xs mt-3 text-gray-600 font-medium">Firma electrónica certificada mediante criptografía</p>
                         <p class="text-xs font-mono text-gray-500 mt-1">MD5: <span id="md5-code">{{MD5_HASH}}</span></p>
                         <p class="text-[10px] text-gray-500 mt-2 leading-tight max-w-xs mx-auto">
@@ -215,6 +232,7 @@ export const CertificateSettings = () => {
           logo_url: settings.logo_url,
           primary_color: settings.primary_color,
           secondary_color: settings.secondary_color,
+          default_signature_profile_id: (settings as any).default_signature_profile_id || null,
           updated_at: new Date().toISOString()
         })
         .eq("id", settings.id);
@@ -230,7 +248,7 @@ export const CertificateSettings = () => {
     }
   };
 
-  const handlePreview = () => {
+  const handlePreview = async () => {
     if (!settings) return;
 
     // Create a preview window with sample data
@@ -253,6 +271,37 @@ export const CertificateSettings = () => {
       PRIMARY_COLOR: settings.primary_color,
       SECONDARY_COLOR: settings.secondary_color
     };
+
+    // If a default signature profile is configured, try to include its public image URL in preview
+    if ((settings as any).default_signature_profile_id) {
+      try {
+        const { data: prof } = await supabase.from('signature_profiles').select('filename').eq('id', (settings as any).default_signature_profile_id).maybeSingle();
+        if (prof?.filename) {
+          let publicUrl = supabase.storage.from(settings.signature_bucket || 'certificate-signatures').getPublicUrl(prof.filename).data.publicUrl || '';
+          // sanitize URL: remove newlines or encoded newline tokens that may break the src
+          publicUrl = publicUrl.replace(/%0A/g, '').replace(/\r?\n/g, '').trim();
+          (sampleData as any).SIGNATURE_IMAGE_URL = publicUrl;
+        } else {
+          (sampleData as any).SIGNATURE_IMAGE_URL = '';
+        }
+      } catch (e) {
+        console.error('Error loading signature profile for preview', e);
+        (sampleData as any).SIGNATURE_IMAGE_URL = '';
+      }
+    } else {
+      (sampleData as any).SIGNATURE_IMAGE_URL = '';
+    }
+
+    // Sanitize all sample data values (remove newlines that can be encoded as %0A in URLs or break attributes)
+    Object.keys(sampleData).forEach((k) => {
+      const v = (sampleData as any)[k];
+      if (v === null || v === undefined) { (sampleData as any)[k] = ''; return; }
+      try {
+        (sampleData as any)[k] = String(v).replace(/\r?\n/g, '').trim();
+      } catch (e) {
+        (sampleData as any)[k] = '';
+      }
+    });
 
     let html = settings.template_html;
     Object.entries(sampleData).forEach(([key, value]) => {
@@ -286,7 +335,7 @@ export const CertificateSettings = () => {
   const AVAILABLE_VARIABLES = [
     'STUDENT_NAME', 'COURSE_TITLE', 'HOURS', 'ISSUED_DATE', 'CITY_TEXT',
     'SIGNATURE_NAME', 'SIGNATURE_TITLE', 'VERIFICATION_CODE', 'MD5_HASH',
-    'LOGO_URL', 'QR_BASE_URL', 'VERIFICATION_URL', 'PRIMARY_COLOR', 'SECONDARY_COLOR'
+    'LOGO_URL', 'QR_BASE_URL', 'VERIFICATION_URL', 'PRIMARY_COLOR', 'SECONDARY_COLOR', 'SIGNATURE_IMAGE_URL'
   ];
 
   if (loading) {
@@ -376,6 +425,22 @@ export const CertificateSettings = () => {
                   onChange={(e) => setSettings({ ...settings, logo_url: e.target.value })}
                   placeholder="https://..."
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="default_signature_profile">Firma por defecto</Label>
+                <select
+                  id="default_signature_profile"
+                  value={(settings.default_signature_profile_id as string) || ''}
+                  onChange={(e) => setSettings({ ...settings, default_signature_profile_id: e.target.value || null })}
+                  className="w-full p-2 border rounded"
+                >
+                  <option value="">-- Ninguna --</option>
+                  {signatureProfiles.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+                <div className="text-xs text-muted-foreground">Si se selecciona, esta firma se usará por defecto cuando un certificado no tenga una firma asignada.</div>
               </div>
 
               <div className="space-y-2">

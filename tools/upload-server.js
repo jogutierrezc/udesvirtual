@@ -52,23 +52,17 @@ app.post('/upload-signature', upload.single('file'), async (req, res) => {
       return res.status(500).json({ error: uploadError });
     }
 
-    // Try to call RPC create_signature_profile if it exists (returns secret)
+    // Create signature profile directly (RPCs/secret generation removed)
     let profile = null;
     try {
-      const { data: rpcData, error: rpcErr } = await supabase.rpc('create_signature_profile', { p_name: name || filename, p_filename: filename, p_created_by: created_by });
-      if (!rpcErr) {
-        profile = Array.isArray(rpcData) ? rpcData[0] : rpcData;
+      const { data: insData, error: insErr } = await supabase.from('signature_profiles').insert({ name: name || filename, filename, created_by }).select().limit(1).maybeSingle();
+      if (insErr) {
+        console.warn('Could not create signature profile via insert', insErr);
       } else {
-        // Fallback to insert directly if RPC not present
-        const { data: insData, error: insErr } = await supabase.from('signature_profiles').insert({ name: name || filename, filename, created_by }).select().limit(1).maybeSingle();
-        if (insErr) {
-          console.warn('Could not create signature profile via insert', insErr);
-        } else {
-          profile = insData;
-        }
+        profile = insData;
       }
     } catch (e) {
-      console.warn('Error creating profile via RPC/insert', e);
+      console.warn('Error creating profile via insert', e);
     }
 
     return res.json({ ok: true, filename, profile });

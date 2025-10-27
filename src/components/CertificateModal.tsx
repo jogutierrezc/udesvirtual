@@ -6,13 +6,14 @@ import QRCodeLib from 'qrcode';
 import { Loader2 } from 'lucide-react';
 
 interface CertData { id: string; course_id: string; hours: number; verification_code: string; issued_at: string; md5_hash?: string | null; course?: { title: string }; user?: { full_name: string; city?: string | null }; signature_code?: string | null; signature_filename?: string | null }
-interface CertificateSettings { signature_name?: string; signature_title?: string; qr_base_url?: string; verification_url?: string; logo_url?: string; primary_color?: string; secondary_color?: string }
+interface CertificateSettings { signature_name?: string; signature_title?: string; qr_base_url?: string; verification_url?: string; logo_url?: string; primary_color?: string; secondary_color?: string; default_signature_profile_id?: string | null }
 const DEFAULT_SETTINGS: CertificateSettings = { signature_name: 'Dra. Mónica Beltrán', signature_title: 'Directora General de MOOC UDES', qr_base_url: 'https://udesvirtual.com/verificar-certificado', verification_url: 'https://mooc.udes.edu.co/verificar-certificado', logo_url: 'https://udes.edu.co/images/logo/logo-con-acreditada-color.png', primary_color: '#052c4e', secondary_color: '#2c3e50' };
 
 export function CertificateModal({ certificateId, onClose }: { certificateId: string; onClose: () => void }) {
   const [loading, setLoading] = useState(true);
   const [cert, setCert] = useState<CertData | null>(null);
   const [settings, setSettings] = useState<CertificateSettings>(DEFAULT_SETTINGS);
+  const [signaturePublicUrl, setSignaturePublicUrl] = useState<string>('');
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const certificateRef = useRef<HTMLDivElement | null>(null);
 
@@ -30,9 +31,26 @@ export function CertificateModal({ certificateId, onClose }: { certificateId: st
       }
       setCert({ ...(certData as any), user: profile } as CertData);
 
-      const { data: settingsData } = await supabase.from('certificate_settings').select('signature_name, signature_title, qr_base_url, verification_url, logo_url, primary_color, secondary_color').maybeSingle();
+      const { data: settingsData } = await supabase.from('certificate_settings').select('signature_name, signature_title, qr_base_url, verification_url, logo_url, primary_color, secondary_color, default_signature_profile_id').maybeSingle();
       if (settingsData) setSettings({ ...DEFAULT_SETTINGS, ...(settingsData as any) });
       else setSettings(DEFAULT_SETTINGS);
+
+      // Determine signature image: use certificate-specific filename first, otherwise use default profile from settings
+      let sigFilename = (certData as any).signature_filename || null;
+      if (!sigFilename && settingsData?.default_signature_profile_id) {
+        try {
+          const { data: profileData, error: profileErr } = await supabase.from('signature_profiles').select('id, name, filename').eq('id', settingsData.default_signature_profile_id).maybeSingle();
+          if (!profileErr && profileData && profileData.filename) {
+            sigFilename = profileData.filename;
+            if (!settingsData.signature_name) setSettings(s => ({ ...s, signature_name: profileData.name } as any));
+          }
+        } catch (e) { console.error('Error loading default signature profile', e); }
+      }
+
+      if (sigFilename) {
+        const publicUrl = supabase.storage.from('certificate-signatures').getPublicUrl(sigFilename).data.publicUrl;
+        setSignaturePublicUrl(publicUrl || '');
+      }
     } catch (e) {
       console.error('Error loading certificate data', e);
     } finally { setLoading(false); }
@@ -62,6 +80,36 @@ export function CertificateModal({ certificateId, onClose }: { certificateId: st
     const btn = document.getElementById('export-btn');
     if (btn) { btn.innerHTML = 'Generando PDF...'; btn.setAttribute('disabled', 'true'); }
     try {
+      // Convert any canvases inside the certificate to images so html2canvas captures them reliably (e.g., QR libs)
+      const canvases = Array.from(certificateRef.current.querySelectorAll('canvas')) as HTMLCanvasElement[];
+      const replacedImgs: HTMLImageElement[] = [];
+      canvases.forEach((c) => {
+        try {
+          const dataUrl = c.toDataURL();
+          const img = document.createElement('img');
+          img.src = dataUrl;
+          img.width = c.width;
+          img.height = c.height;
+          img.style.maxWidth = c.style.maxWidth || '100%';
+          img.style.display = c.style.display || 'block';
+          c.replaceWith(img);
+          replacedImgs.push(img);
+        } catch (e) {
+          console.warn('Could not convert canvas to image for export', e);
+        }
+      });
+
+      // Wait for all images inside the certificate to finish loading
+      const imgs = Array.from(certificateRef.current.querySelectorAll('img')) as HTMLImageElement[];
+      await Promise.all(imgs.map((img) => new Promise<void>((resolve) => {
+        if (img.complete && img.naturalWidth !== 0) return resolve();
+        img.onload = () => resolve();
+        img.onerror = () => resolve();
+      })));
+
+      // small delay to ensure DOM stabilizes
+      await new Promise((r) => setTimeout(r, 50));
+
       const canvas = await html2canvas(certificateRef.current as HTMLElement, { scale: 4, useCORS: true, logging: false, scrollY: -window.scrollY, scrollX: -window.scrollX });
       const pdf = new jsPDF('l', 'mm', 'letter');
       const pdfWidth = 279.4; const pdfHeight = 215.9;
@@ -110,6 +158,11 @@ export function CertificateModal({ certificateId, onClose }: { certificateId: st
               <footer className="flex justify-between items-end mt-8">
                 <div className="flex-grow flex justify-center items-end">
                   <div className="text-center w-auto">
+                    {signaturePublicUrl && (
+                      <div className="mb-2">
+                        <img src={signaturePublicUrl} alt="Firma" className="h-16 object-contain mx-auto" />
+                      </div>
+                    )}
                     <div className="h-0.5 w-64 mb-2 mx-auto" style={{ backgroundColor: 'var(--color-primary)' }} />
                     <p className="text-lg font-semibold text-gray-800">{settings.signature_name || DEFAULT_SETTINGS.signature_name}</p>
                     <p className="text-sm text-gray-500 font-light">{settings.signature_title || DEFAULT_SETTINGS.signature_title}</p>

@@ -6,12 +6,11 @@ ALTER TABLE public.certificate_settings
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='signature_profiles') THEN
-    BEGIN
-      ALTER TABLE public.certificate_settings
-        ADD CONSTRAINT IF NOT EXISTS certificate_settings_default_profile_fk
-        FOREIGN KEY (default_signature_profile_id) REFERENCES public.signature_profiles(id) ON DELETE SET NULL;
-    EXCEPTION WHEN duplicate_object THEN
-      -- ignore
-    END;
+    -- Only add the constraint if it does not already exist
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_constraint WHERE conname = 'certificate_settings_default_profile_fk'
+    ) THEN
+      EXECUTE 'ALTER TABLE public.certificate_settings ADD CONSTRAINT certificate_settings_default_profile_fk FOREIGN KEY (default_signature_profile_id) REFERENCES public.signature_profiles(id) ON DELETE SET NULL';
+    END IF;
   END IF;
 END$$;
