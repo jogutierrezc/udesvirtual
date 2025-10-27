@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
@@ -20,6 +20,8 @@ export default function CertificateView(): JSX.Element {
   const [settings, setSettings] = useState<CertificateSettings>(DEFAULT_SETTINGS);
 
   const certificateRef = useRef<HTMLDivElement | null>(null);
+  const navigate = useNavigate();
+  const [open, setOpen] = useState<boolean>(true);
 
   const fetchData = useCallback(async () => {
     if (!id) return;
@@ -50,8 +52,8 @@ export default function CertificateView(): JSX.Element {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // QR will be rendered by the React <QRCode> component
-  useEffect(() => {}, [cert, settings]);
+  // QR url helper
+  const qrUrl = `${settings.qr_base_url || DEFAULT_SETTINGS.qr_base_url}?code=${encodeURIComponent(cert?.verification_code || '')}`;
 
   const exportToPDF = async () => {
     if (!certificateRef.current) return;
@@ -79,47 +81,59 @@ export default function CertificateView(): JSX.Element {
 
   return (
     <div className="flex flex-col items-center p-8 bg-gray-100 min-h-screen">
+      {/* trigger / export */}
       <button id="export-btn" onClick={exportToPDF} className="bg-blue-800 hover:bg-blue-900 text-white font-bold py-3 px-8 rounded-full shadow-xl transition duration-300 transform hover:scale-105 mb-10 text-lg">Exportar Certificado a PDF</button>
 
-      <div ref={certificateRef} id="certificado-template" className="certificado-container" style={{ width: '27.94cm', height: '21.59cm' }}>
-        <div className="accent-line" />
-        <div className="p-10 flex flex-col justify-between h-full relative z-10">
-          <header className="mb-10 w-full flex flex-col items-center text-center">
-            <div className="mb-2">
-              <img src={settings.logo_url || DEFAULT_SETTINGS.logo_url} alt="Logo de la Institución" className="h-16 w-auto mx-auto" onError={(e) => { const t = e.target as HTMLImageElement; t.onerror = null; t.src = 'https://placehold.co/150x60/f0f0f0/333?text=Logo+Placeholder'; }} />
-            </div>
-            <div className="mt-1"><h1 className="title-display text-3xl leading-none tracking-wider uppercase">Certificado de Curso Mooc</h1></div>
-          </header>
+      {/* Modal with backdrop showing the certificate */}
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+          <div className="absolute inset-0 bg-black/50" onClick={() => { setOpen(false); navigate(-1); }} />
+          <div className="relative z-10 bg-white p-4 rounded shadow-lg max-w-full overflow-auto">
+            <button className="absolute -top-6 -right-6 bg-white rounded-full p-2 shadow" onClick={() => { setOpen(false); navigate(-1); }} aria-label="Cerrar">✕</button>
+            <div ref={certificateRef} id="certificado-template" className="certificado-container" style={{ width: '27.94cm', height: '21.59cm' }}>
+              <div className="accent-line" />
+              <div className="p-10 flex flex-col justify-between h-full relative z-10">
+                <header className="mb-10 w-full flex flex-col items-center text-center">
+                  <div className="mb-2">
+                    <img src={settings.logo_url || DEFAULT_SETTINGS.logo_url} alt="Logo de la Institución" className="h-16 w-auto mx-auto" onError={(e) => { const t = e.target as HTMLImageElement; t.onerror = null; t.src = 'https://placehold.co/150x60/f0f0f0/333?text=Logo+Placeholder'; }} />
+                  </div>
+                  <div className="mt-1"><h1 className="title-display text-3xl leading-none tracking-wider uppercase">Certificado de Curso Mooc</h1></div>
+                </header>
 
-          <main className="flex-grow flex flex-col justify-center items-center py-4">
-            <p className="text-xl text-gray-600 mb-6 font-light uppercase">Se otorga este reconocimiento a:</p>
-            <p className="recipient-name text-5xl pb-3 mb-8 px-12">{name}</p>
-            <div className="max-w-4xl text-center">
-              <p className="text-2xl text-gray-700 leading-normal">Por completar con éxito el programa especializado de: <span className="font-bold italic" style={{ color: 'var(--color-primary)' }}>"{cert.course?.title || 'Curso MOOC'}"</span>, equivalente a <span className="font-bold">{cert.hours} horas</span> de contenido curricular.</p>
-              <p className="text-lg mt-6 text-gray-500">Finalizado el <span className="font-bold">{issuedDate}</span>{cityText}.</p>
-            </div>
-          </main>
+                <main className="flex-grow flex flex-col justify-center items-center py-4">
+                  <p className="text-xl text-gray-600 mb-6 font-light uppercase">Se otorga este reconocimiento a:</p>
+                  <p className="recipient-name text-5xl pb-3 mb-8 px-12">{name}</p>
+                  <div className="max-w-4xl text-center">
+                    <p className="text-2xl text-gray-700 leading-normal">Por completar con éxito el programa especializado de: <span className="font-bold italic" style={{ color: 'var(--color-primary)' }}>&quot;{cert.course?.title || 'Curso MOOC'}&quot;</span>, equivalente a <span className="font-bold">{cert.hours} horas</span> de contenido curricular.</p>
+                    <p className="text-lg mt-6 text-gray-500">Finalizado el <span className="font-bold">{issuedDate}</span>{cityText}.</p>
+                  </div>
+                </main>
 
-          <footer className="flex justify-between items-end mt-8">
-            <div className="flex-grow flex justify-center items-end">
-              <div className="text-center w-auto">
-                <div className="h-0.5 w-64 mb-2 mx-auto" style={{ backgroundColor: 'var(--color-primary)' }} />
-                <p className="text-lg font-semibold text-gray-800">{settings.signature_name || DEFAULT_SETTINGS.signature_name}</p>
-                <p className="text-sm text-gray-500 font-light">{settings.signature_title || DEFAULT_SETTINGS.signature_title}</p>
-                <p className="text-xs mt-3 text-gray-600 font-medium">Firma electrónica certificada mediante criptografía</p>
-                <p className="text-xs font-mono text-gray-500 mt-1">MD5: <span id="md5-code">{(cert.md5_hash || '').toUpperCase()}</span></p>
-                <p className="text-[10px] text-gray-500 mt-2 leading-tight max-w-xs mx-auto">Para verificar la autenticidad de este código debe ingresar a {settings.verification_url || DEFAULT_SETTINGS.verification_url} e ingresar el código del certificado para convalidar el mismo.</p>
+                <footer className="flex justify-between items-end mt-8">
+                  <div className="flex-grow flex justify-center items-end">
+                    <div className="text-center w-auto">
+                      <div className="h-0.5 w-64 mb-2 mx-auto" style={{ backgroundColor: 'var(--color-primary)' }} />
+                      <p className="text-lg font-semibold text-gray-800">{settings.signature_name || DEFAULT_SETTINGS.signature_name}</p>
+                      <p className="text-sm text-gray-500 font-light">{settings.signature_title || DEFAULT_SETTINGS.signature_title}</p>
+                      <p className="text-xs mt-3 text-gray-600 font-medium">Firma electrónica certificada mediante criptografía</p>
+                      <p className="text-xs font-mono text-gray-500 mt-1">MD5: <span id="md5-code">{(cert.md5_hash || '').toUpperCase()}</span></p>
+                      <p className="text-[10px] text-gray-500 mt-2 leading-tight max-w-xs mx-auto">Para verificar la autenticidad de este código debe ingresar a {settings.verification_url || DEFAULT_SETTINGS.verification_url} e ingresar el código del certificado para convalidar el mismo.</p>
+                    </div>
+                  </div>
+
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-sm text-gray-600 mb-2 font-semibold">Verificación Digital:</p>
+                    <div id="qrcodeContainer" className="p-1 border border-gray-300 shadow-sm inline-block bg-white">
+                      <QRCode value={qrUrl} size={100} fgColor={settings.primary_color || DEFAULT_SETTINGS.primary_color} bgColor="#ffffff" />
+                    </div>
+                    <p className="text-xs font-mono text-gray-500 mt-1">ID: <span>{cert.verification_code}</span></p>
+                  </div>
+                </footer>
               </div>
             </div>
-
-            <div className="text-right flex-shrink-0">
-              <p className="text-sm text-gray-600 mb-2 font-semibold">Verificación Digital:</p>
-              <div ref={qrRef} id="qrcodeContainer" className="p-1 border border-gray-300 shadow-sm inline-block bg-white" />
-              <p className="text-xs font-mono text-gray-500 mt-1">ID: <span>{cert.verification_code}</span></p>
-            </div>
-          </footer>
+          </div>
         </div>
-      </div>
+      )}
 
       <style jsx global>{`
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
