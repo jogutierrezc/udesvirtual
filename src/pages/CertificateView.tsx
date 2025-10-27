@@ -13,6 +13,9 @@ interface CertData {
   md5_hash?: string | null;
   course?: { title: string };
   user?: { full_name: string; city?: string | null };
+  signature_code?: string | null;
+  signature_filename?: string | null;
+  signature_applied?: boolean;
 }
 
 interface CertificateSettings {
@@ -47,7 +50,7 @@ export default function CertificateView() {
 
       const { data: certData, error: certError } = await supabase
         .from("mooc_certificates" as any)
-        .select("id, course_id, hours, verification_code, issued_at, md5_hash, course:mooc_courses(title), user:profiles(full_name, city)")
+        .select("id, course_id, hours, verification_code, issued_at, md5_hash, signature_code, signature_filename, signature_applied, course:mooc_courses(title), user:profiles(full_name, city)")
         .eq("id", id)
         .single();
 
@@ -101,6 +104,16 @@ export default function CertificateView() {
       PRIMARY_COLOR: settings.primary_color,
       SECONDARY_COLOR: settings.secondary_color
     };
+
+    // Add signature placeholders
+    const signaturePublicUrl = cert.signature_filename
+      ? (supabase.storage.from('certificate-signatures').getPublicUrl(cert.signature_filename).data.publicUrl)
+      : '';
+
+    Object.assign(variables, {
+      SIGNATURE_IMAGE_URL: signaturePublicUrl || '',
+      SIGNATURE_CODE: cert.signature_code || ''
+    });
 
     let html = settings.template_html;
     Object.entries(variables).forEach(([key, value]) => {

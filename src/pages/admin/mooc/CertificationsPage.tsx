@@ -28,6 +28,10 @@ type Certificate = {
   user_name: string;
   user_email: string;
   course_id: string;
+  signature_code?: string | null;
+  signature_filename?: string | null;
+  signature_applied?: boolean;
+  signature_profile_id?: string | null;
 };
 
 export const CertificationsPage = () => {
@@ -38,10 +42,26 @@ export const CertificationsPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [courseFilter, setCourseFilter] = useState<string>("all");
   const [courses, setCourses] = useState<{id: string, title: string}[]>([]);
+  const [certSettings, setCertSettings] = useState<any | null>(null);
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [signatureProfiles, setSignatureProfiles] = useState<any[]>([]);
+  const [uploadingSignature, setUploadingSignature] = useState(false);
+  const [newSignatureName, setNewSignatureName] = useState('');
+  const [createdSecret, setCreatedSecret] = useState<string | null>(null);
+  const [showSecretModal, setShowSecretModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+  const [showApplySignatureModal, setShowApplySignatureModal] = useState(false);
+  const [selectedCertForSigning, setSelectedCertForSigning] = useState<Certificate | null>(null);
+  const [selectedProfileForSigning, setSelectedProfileForSigning] = useState<string | null>(null);
+  const [applyingSignature, setApplyingSignature] = useState(false);
 
   useEffect(() => {
     loadCertificates();
     loadCourses();
+    loadCertSettings();
+    loadSignatureProfiles();
   }, []);
 
   useEffect(() => {
@@ -52,6 +72,7 @@ export const CertificationsPage = () => {
     try {
       setLoading(true);
 
+      // First try: attempt to use relationship selects (works if FK relationships exist)
       const { data, error } = await supabase
         .from("mooc_certificates")
         .select(`
@@ -59,6 +80,10 @@ export const CertificationsPage = () => {
           user_id,
           certificate_url,
           issued_at,
+          signature_code,
+          signature_filename,
+          signature_applied,
+          signature_profile_id,
           mooc_course:course_id (
             title
           ),
@@ -69,17 +94,61 @@ export const CertificationsPage = () => {
         `)
         .order("issued_at", { ascending: false });
 
-      if (error) throw error;
+      if (!error) {
+        const formattedCertificates: Certificate[] = (data || []).map((cert: any) => ({
+          id: cert.id,
+          user_id: cert.user_id,
+          certificate_url: cert.certificate_url,
+          issued_at: cert.issued_at,
+          course_title: cert.mooc_course?.title || "Curso desconocido",
+          user_name: cert.profiles?.full_name || "Usuario desconocido",
+          user_email: cert.profiles?.email || "",
+          course_id: cert.course_id,
+          signature_code: cert.signature_code,
+          signature_filename: cert.signature_filename,
+          signature_applied: cert.signature_applied,
+          signature_profile_id: cert.signature_profile_id
+        }));
 
-      const formattedCertificates: Certificate[] = (data || []).map((cert: any) => ({
+        setCertificates(formattedCertificates);
+        return;
+      }
+
+      // If we reach here, the relationship query failed (e.g., PGRST200). Fall back to simpler query and manual joins.
+      console.warn('Relationship select failed, falling back to manual joins', error);
+
+      const { data: basicData, error: basicErr } = await supabase.from('mooc_certificates')
+        .select('id,user_id,certificate_url,issued_at,signature_code,signature_filename,signature_applied,signature_profile_id,course_id')
+        .order('issued_at', { ascending: false });
+
+      if (basicErr) throw basicErr;
+
+      const certs = basicData || [];
+      const userIds = Array.from(new Set(certs.map((c: any) => c.user_id).filter(Boolean)));
+      const courseIds = Array.from(new Set(certs.map((c: any) => c.course_id).filter(Boolean)));
+
+      // Fetch profiles and courses in batch
+      const [{ data: profiles }, { data: coursesData }] = await Promise.all([
+        userIds.length > 0 ? supabase.from('profiles').select('id,full_name,email').in('id', userIds) : Promise.resolve({ data: [] }),
+        courseIds.length > 0 ? supabase.from('mooc_courses').select('id,title').in('id', courseIds) : Promise.resolve({ data: [] })
+      ] as any);
+
+      const profileMap = new Map<string, any>((profiles || []).map((p: any) => [p.id, p]));
+      const courseMap = new Map<string, any>((coursesData || []).map((c: any) => [c.id, c]));
+
+      const formattedCertificates: Certificate[] = (certs || []).map((cert: any) => ({
         id: cert.id,
         user_id: cert.user_id,
         certificate_url: cert.certificate_url,
         issued_at: cert.issued_at,
-        course_title: cert.mooc_course?.title || "Curso desconocido",
-        user_name: cert.profiles?.full_name || "Usuario desconocido",
-        user_email: cert.profiles?.email || "",
-        course_id: cert.course_id
+        course_title: courseMap.get(cert.course_id)?.title || 'Curso desconocido',
+        user_name: profileMap.get(cert.user_id)?.full_name || 'Usuario desconocido',
+        user_email: profileMap.get(cert.user_id)?.email || '',
+        course_id: cert.course_id,
+        signature_code: cert.signature_code,
+        signature_filename: cert.signature_filename,
+        signature_applied: cert.signature_applied,
+        signature_profile_id: cert.signature_profile_id
       }));
 
       setCertificates(formattedCertificates);
@@ -95,6 +164,120 @@ export const CertificationsPage = () => {
     }
   };
 
+  const loadSignatureProfiles = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('signature_profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setSignatureProfiles(data || []);
+    } catch (e) {
+      console.error('Error loading signature profiles', e);
+    }
+  };
+
+  const handleSignatureFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!newSignatureName) {
+      toast({ title: 'Nombre requerido', description: 'Ingresa un nombre para la firma antes de subir', variant: 'destructive' });
+      return;
+    }
+
+    // ensure user is authenticated (uploads require an authenticated user unless you open policies)
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user?.id) {
+      toast({ title: 'No autenticado', description: 'Debes iniciar sesión para subir una firma', variant: 'destructive' });
+      return;
+    }
+
+    setUploadingSignature(true);
+    try {
+      // Post to upload server which uses service_role key (avoid RLS issues)
+      const uploadServer = import.meta.env.VITE_UPLOAD_SERVER || 'http://localhost:3001';
+      const form = new FormData();
+      form.append('file', file);
+      form.append('name', newSignatureName);
+      form.append('created_by', session.user.id);
+
+      const resp = await fetch(`${uploadServer}/upload-signature`, {
+        method: 'POST',
+        body: form,
+      });
+
+      const json = await resp.json();
+      if (!resp.ok) {
+        console.error('Upload server error', json);
+        toast({ title: 'Error subiendo', description: json?.error?.message || JSON.stringify(json), variant: 'destructive' });
+        return;
+      }
+
+      const profile = json?.profile || null;
+      setCreatedSecret(profile?.secret || null);
+      setShowSecretModal(true);
+      setNewSignatureName('');
+      loadSignatureProfiles();
+      toast({ title: 'Firma subida', description: 'Se creó el perfil de firma. Guarda el código secreto que se muestra.' });
+    } catch (e: any) {
+      console.error('Error uploading signature', e);
+      toast({ title: 'Error', description: 'No se pudo subir la firma', variant: 'destructive' });
+    } finally {
+      setUploadingSignature(false);
+      // clear input value
+      const sigInput = document.getElementById('signature-file') as HTMLInputElement | null;
+      if (sigInput) sigInput.value = '';
+    }
+  };
+
+  // Helper to build a preview URL for a stored signature image.
+  // Uses a signed URL first (works for private buckets), falls back to public URL.
+  const getSignaturePreviewUrl = async (filename: string) => {
+    try {
+      const bucket = certSettings?.signature_bucket || 'certificate-signatures';
+      // Try signed URL (valid short time)
+      const { data: signed, error: signedErr } = await supabase.storage.from(bucket).createSignedUrl(filename, 120);
+      if (!signedErr && signed?.signedUrl) return signed.signedUrl;
+
+      // Fallback to public url
+      const publicRes = supabase.storage.from(bucket).getPublicUrl(filename);
+      const publicUrl = publicRes?.data?.publicUrl;
+      return publicUrl;
+    } catch (e) {
+      console.error('Error creating preview url', e);
+      return null;
+    }
+  };
+
+  const handleRotateSecret = async (profileId: string) => {
+    try {
+      const { data, error } = await supabase.rpc('rotate_signature_secret', { p_profile_id: profileId });
+      if (error) throw error;
+      const newSecret = Array.isArray(data) ? data[0] : data;
+      toast({ title: 'Se rotó el secreto', description: 'Copia el nuevo secreto ahora' });
+      setCreatedSecret(newSecret as string);
+      setShowSecretModal(true);
+      loadSignatureProfiles();
+    } catch (e) {
+      console.error('Error rotating secret', e);
+      toast({ title: 'Error', description: 'No se pudo rotar el secreto', variant: 'destructive' });
+    }
+  };
+
+  const handleDeleteProfile = async (profile: any) => {
+    try {
+      const { error } = await supabase.from('signature_profiles').delete().eq('id', profile.id);
+      if (error) throw error;
+      // remove storage file
+      try { await supabase.storage.from('certificate-signatures').remove([profile.filename]); } catch(_){}
+      toast({ title: 'Perfil eliminado' });
+      loadSignatureProfiles();
+    } catch (e) {
+      console.error('Error deleting profile', e);
+      toast({ title: 'Error', description: 'No se pudo eliminar el perfil', variant: 'destructive' });
+    }
+  };
+
   const loadCourses = async () => {
     try {
       const { data, error } = await supabase
@@ -107,6 +290,55 @@ export const CertificationsPage = () => {
       setCourses(data || []);
     } catch (error: any) {
       console.error("Error loading courses:", error);
+    }
+  };
+
+  const loadCertSettings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("certificate_settings")
+        .select("*")
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      setCertSettings(data || null);
+    } catch (e) {
+      console.error("Error loading certificate settings:", e);
+    }
+  };
+
+  const saveCertSettings = async (payload: any) => {
+    try {
+      setSavingSettings(true);
+      const up = { id: 1, ...payload };
+      const { error } = await supabase.from('certificate_settings').upsert(up, { onConflict: 'id' });
+      if (error) throw error;
+      toast({ title: 'Configuración guardada' });
+      loadCertSettings();
+    } catch (e: any) {
+      console.error('Error saving cert settings', e);
+      toast({ title: 'No se pudo guardar configuración', variant: 'destructive' });
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
+  const handleGenerateSignature = async (certId: string) => {
+    try {
+      const { data, error } = await supabase.rpc('generate_cert_signature', { cert_uuid: certId });
+      if (error) throw error;
+      const code = data as string;
+      // Build QR link using settings
+      const base = certSettings?.qr_base_url || window.location.origin + '/verify-cert';
+      const qr = `${base}?id=${certId}&code=${code}`;
+      // Update the certificate row with qr_link
+      const { error: upErr } = await supabase.from('mooc_certificates').update({ qr_link: qr }).eq('id', certId);
+      if (upErr) throw upErr;
+      toast({ title: 'Firma generada y QR creado' });
+      loadCertificates();
+    } catch (e: any) {
+      console.error('Error generating signature:', e);
+      toast({ title: 'No se pudo generar la firma', variant: 'destructive' });
     }
   };
 
@@ -166,43 +398,12 @@ export const CertificationsPage = () => {
           </div>
         </div>
 
-        {/* Estadísticas */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <Award className="h-8 w-8 text-primary" />
-                <div>
-                  <p className="text-2xl font-bold">{certificates.length}</p>
-                  <p className="text-sm text-muted-foreground">Total de certificaciones</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <FileText className="h-8 w-8 text-green-600" />
-                <div>
-                  <p className="text-2xl font-bold">{courses.length}</p>
-                  <p className="text-sm text-muted-foreground">Cursos con certificaciones</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <User className="h-8 w-8 text-blue-600" />
-                <div>
-                  <p className="text-2xl font-bold">{new Set(certificates.map(c => c.user_id)).size}</p>
-                  <p className="text-sm text-muted-foreground">Estudiantes certificados</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Settings moved to modal; stats cards removed for simplified admin view */}
+        <div className="flex items-center justify-between">
+          <div />
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => setShowSettingsModal(true)}>Configuración de Firma & QR</Button>
+          </div>
         </div>
 
         {/* Filtros */}
@@ -240,6 +441,175 @@ export const CertificationsPage = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Gestión de firmas autorizadas - list view with actions */}
+        <Card>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold">Firmas autorizadas</h3>
+                <p className="text-sm text-muted-foreground">Carga imágenes de firma que podrán usarse en certificados.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Input placeholder="Nombre de la firma" value={newSignatureName} onChange={(e) => setNewSignatureName(e.target.value)} />
+                <input id="signature-file" type="file" accept="image/*" onChange={handleSignatureFileChange} style={{ display: 'none' }} />
+                <Button onClick={() => document.getElementById('signature-file')?.click()} disabled={uploadingSignature || !newSignatureName}>
+                  {uploadingSignature ? 'Subiendo...' : 'Subir firma'}
+                </Button>
+              </div>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              {signatureProfiles.length === 0 ? (
+                <div className="text-sm text-muted-foreground">Aún no hay firmas autorizadas.</div>
+              ) : (
+                <div className="divide-y">
+                  {signatureProfiles.map((p) => {
+                    const publicUrl = supabase.storage.from('certificate-signatures').getPublicUrl(p.filename).data.publicUrl;
+                    return (
+                      <div key={p.id} className="py-4 flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-4">
+                          <img src={publicUrl} alt={p.name} className="h-12 w-40 object-contain border cursor-pointer" onClick={async () => {
+                            const url = await getSignaturePreviewUrl(p.filename);
+                            if (!url) { toast({ title: 'Error', description: 'No se pudo obtener la vista previa', variant: 'destructive' }); return; }
+                            setPreviewImageUrl(url);
+                            setShowPreviewModal(true);
+                          }} />
+                          <div>
+                            <div className="font-medium">{p.name}</div>
+                            <div className="text-xs text-muted-foreground">Subido: {new Date(p.created_at).toLocaleString()}</div>
+                            {certSettings?.default_signature_profile_id === p.id && (
+                              <div className="text-xs text-green-600">Perfil por defecto</div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button size="sm" variant="ghost" onClick={() => { const newName = window.prompt('Nuevo nombre de la firma', p.name); if (newName && newName.trim() !== '' ) { supabase.from('signature_profiles').update({ name: newName.trim() }).eq('id', p.id).then(res => { if (res.error) { toast({ title: 'Error', description: 'No se pudo renombrar', variant: 'destructive' }); } else { toast({ title: 'Renombrado' }); loadSignatureProfiles(); } }); } }}>Editar</Button>
+                          <Button size="sm" variant="outline" onClick={() => handleRotateSecret(p.id)}>Rotar secreto</Button>
+                          <Button size="sm" variant="secondary" onClick={async () => {
+                            // set as default
+                            await saveCertSettings({ ...(certSettings || {}), default_signature_profile_id: p.id });
+                            loadCertSettings();
+                            toast({ title: 'Definido como perfil por defecto' });
+                          }}>Definir por defecto</Button>
+                          <Button size="sm" variant="ghost" onClick={() => { if (confirm('Eliminar perfil de firma? Esta acción eliminará la imagen también.')) handleDeleteProfile(p); }} className="text-red-600">Eliminar</Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Modal: muestra secreto generado (admin debe copiarlo una vez) */}
+        {showSecretModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div className="bg-white p-6 rounded shadow max-w-lg w-full">
+              <h3 className="text-lg font-semibold">Secreto de la firma</h3>
+              <p className="text-sm text-muted-foreground mt-2">Copia este código en un lugar seguro. Se mostrará sólo una vez.</p>
+              <pre className="mt-4 p-3 bg-gray-100 rounded break-words">{createdSecret}</pre>
+              <div className="mt-4 flex justify-end gap-2">
+                <Button onClick={() => { navigator.clipboard.writeText(createdSecret || ''); toast({ title: 'Copiado' }); }}>Copiar</Button>
+                <Button variant="outline" onClick={() => setShowSecretModal(false)}>Cerrar</Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal: Settings */}
+        {showSettingsModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div className="bg-white p-6 rounded shadow max-w-lg w-full">
+              <h3 className="text-lg font-semibold">Configuración de Firma & QR</h3>
+              <p className="text-sm text-muted-foreground mt-2">Configura bucket, URL de verificación y clave secreta.</p>
+              <div className="mt-4 space-y-3">
+                <div>
+                  <Label>Bucket de firmas</Label>
+                  <Input value={certSettings?.signature_bucket || 'certificate-signatures'} onChange={(e) => setCertSettings(s => ({...(s||{}), signature_bucket: e.target.value}))} />
+                </div>
+                <div>
+                  <Label>URL base de verificación (QR)</Label>
+                  <Input value={certSettings?.qr_base_url || ''} onChange={(e) => setCertSettings(s => ({...(s||{}), qr_base_url: e.target.value}))} />
+                </div>
+                <div>
+                  <Label>Clave secreta (HMAC)</Label>
+                  <Input type="password" value={certSettings?.secret || ''} onChange={(e) => setCertSettings(s => ({...(s||{}), secret: e.target.value}))} />
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={async () => { await saveCertSettings(certSettings); setShowSettingsModal(false); }} disabled={savingSettings}>{savingSettings ? 'Guardando...' : 'Guardar configuración'}</Button>
+                  <Button variant="outline" onClick={() => setShowSettingsModal(false)}>Cerrar</Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal: Preview image */}
+        {showPreviewModal && previewImageUrl && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+            <div className="bg-white p-4 rounded shadow max-w-3xl w-full">
+              <div className="flex justify-end">
+                <Button variant="ghost" onClick={() => { setShowPreviewModal(false); setPreviewImageUrl(null); }}>Cerrar</Button>
+              </div>
+              <div className="mt-2">
+                <img src={previewImageUrl} alt="preview" className="w-full h-auto object-contain" />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal: Apply signature to certificate */}
+        {showApplySignatureModal && selectedCertForSigning && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div className="bg-white p-6 rounded shadow max-w-lg w-full">
+              <h3 className="text-lg font-semibold">Aplicar firma a certificado</h3>
+              <p className="text-sm text-muted-foreground mt-2">Selecciona la firma autorizada que deseas aplicar a este certificado.</p>
+              <div className="mt-4">
+                <Label>Firma autorizada</Label>
+                <select value={selectedProfileForSigning || ''} onChange={(e) => setSelectedProfileForSigning(e.target.value)} className="w-full mt-2 p-2 border rounded">
+                  <option value="">-- Selecciona una firma --</option>
+                  {signatureProfiles.map(sp => (
+                    <option key={sp.id} value={sp.id}>{sp.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="mt-4 flex justify-end gap-2">
+                <Button variant="outline" onClick={() => { setShowApplySignatureModal(false); setSelectedCertForSigning(null); setSelectedProfileForSigning(null); }}>Cancelar</Button>
+                <Button disabled={!selectedProfileForSigning || applyingSignature} onClick={async () => {
+                  if (!selectedProfileForSigning || !selectedCertForSigning) return;
+                  setApplyingSignature(true);
+                  try {
+                    // Generate signature code
+                    const { data: codeData, error: rpcErr } = await supabase.rpc('generate_cert_signature', { cert_uuid: selectedCertForSigning.id });
+                    if (rpcErr) throw rpcErr;
+                    const code = Array.isArray(codeData) ? codeData[0] : codeData;
+
+                    // get profile filename
+                    const profile = signatureProfiles.find(p => p.id === selectedProfileForSigning);
+                    const filename = profile?.filename || null;
+
+                    // update certificate row
+                    const { error: upErr } = await supabase.from('mooc_certificates').update({ signature_code: code, signature_filename: filename, signature_applied: true, signature_profile_id: selectedProfileForSigning }).eq('id', selectedCertForSigning.id);
+                    if (upErr) throw upErr;
+
+                    toast({ title: 'Firma aplicada' });
+                    loadCertificates();
+                  } catch (e) {
+                    console.error('Error applying signature', e);
+                    toast({ title: 'Error', description: 'No se pudo aplicar la firma', variant: 'destructive' });
+                  } finally {
+                    setApplyingSignature(false);
+                    setShowApplySignatureModal(false);
+                    setSelectedCertForSigning(null);
+                    setSelectedProfileForSigning(null);
+                  }
+                }}>{applyingSignature ? 'Aplicando...' : 'Aplicar firma'}</Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Lista de certificaciones */}
         <div className="grid grid-cols-1 gap-4">
@@ -299,6 +669,9 @@ export const CertificationsPage = () => {
                         <Download className="h-4 w-4 mr-2" />
                         Descargar
                       </Button>
+                      <Button size="sm" variant="secondary" onClick={() => { setSelectedCertForSigning(certificate); setShowApplySignatureModal(true); }}>
+                        Aplicar firma
+                      </Button>
                     </div>
                   </div>
                 </CardContent>
@@ -310,3 +683,5 @@ export const CertificationsPage = () => {
     </div>
   );
 };
+
+// Additional state hooks for signature application
