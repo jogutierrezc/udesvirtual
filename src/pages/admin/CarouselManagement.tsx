@@ -32,6 +32,8 @@ interface CarouselSlide {
   title: string;
   description: string | null;
   image_url: string;
+  video_url?: string | null;
+  media_type?: string;
   link_url: string | null;
   order_index: number;
   active: boolean;
@@ -43,6 +45,8 @@ interface SlideFormData {
   title: string;
   description: string;
   image_url: string;
+  video_url: string;
+  media_type: 'image' | 'video';
   link_url: string;
   order_index: number;
   active: boolean;
@@ -51,6 +55,7 @@ interface SlideFormData {
 export default function CarouselManagement() {
   const [slides, setSlides] = useState<CarouselSlide[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [editingSlide, setEditingSlide] = useState<CarouselSlide | null>(null);
@@ -60,6 +65,8 @@ export default function CarouselManagement() {
     title: "",
     description: "",
     image_url: "",
+    video_url: "",
+    media_type: "image",
     link_url: "",
     order_index: 0,
     active: true,
@@ -70,17 +77,44 @@ export default function CarouselManagement() {
   }, []);
 
   const fetchSlides = async () => {
+    setFetchError(null);
     try {
-      const { data, error } = await supabase
+      // Helpful debug: log current configured Supabase URL from the Vite env
+      try {
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        console.debug("VITE_SUPABASE_URL:", import.meta.env.VITE_SUPABASE_URL);
+      } catch (e) {
+        // ignore
+      }
+
+      console.debug("Fetching hero_carousel from Supabase...");
+      const { data, error, status, statusText } = await supabase
         .from("hero_carousel")
         .select("*")
         .order("order_index", { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        // Build a detailed message to show in UI
+        const details = {
+          message: error.message,
+          code: error.code,
+          hint: (error as any).hint || null,
+          status,
+          statusText: statusText || null,
+        };
+        const msg = JSON.stringify(details, null, 2);
+        console.error("Error fetching slides:", details);
+        setFetchError(msg);
+        toast.error("Error al cargar las imágenes del carrusel (ver detalles)");
+        return;
+      }
+
       setSlides(data || []);
     } catch (error: any) {
-      console.error("Error fetching slides:", error);
-      toast.error("Error al cargar las imágenes del carrusel");
+      console.error("Unexpected error fetching slides:", error);
+      setFetchError(String(error?.message || error));
+      toast.error("Error al cargar las imágenes del carrusel (ver consola)");
     } finally {
       setLoading(false);
     }
@@ -122,11 +156,57 @@ export default function CarouselManagement() {
     }
   };
 
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      if (!e.target.files || e.target.files.length === 0) {
+        return;
+      }
+
+      setUploading(true);
+      const file = e.target.files[0];
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      // Subir a Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from("carousel-videos")
+        .upload(filePath, file);
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      // Obtener URL pública
+      const { data } = supabase.storage
+        .from("carousel-videos")
+        .getPublicUrl(filePath);
+
+      setFormData({ ...formData, video_url: data.publicUrl });
+      toast.success("Video subido correctamente");
+    } catch (error: any) {
+      console.error("Error uploading video:", error);
+      toast.error("Error al subir el video");
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.title || !formData.image_url) {
-      toast.error("Título e imagen son obligatorios");
+    if (!formData.title) {
+      toast.error("Título es obligatorio");
+      return;
+    }
+
+    if (formData.media_type === 'image' && !formData.image_url) {
+      toast.error("Imagen es obligatoria para slides de imagen");
+      return;
+    }
+
+    if (formData.media_type === 'video' && !formData.video_url) {
+      toast.error("Video es obligatorio para slides de video");
       return;
     }
 
@@ -139,6 +219,8 @@ export default function CarouselManagement() {
             title: formData.title,
             description: formData.description || null,
             image_url: formData.image_url,
+            video_url: formData.video_url || null,
+            media_type: formData.media_type,
             link_url: formData.link_url || null,
             order_index: formData.order_index,
             active: formData.active,
@@ -146,7 +228,7 @@ export default function CarouselManagement() {
           .eq("id", editingSlide.id);
 
         if (error) throw error;
-        toast.success("Imagen actualizada correctamente");
+        toast.success("Slide actualizado correctamente");
       } else {
         // Crear nuevo slide
         const { error } = await supabase.from("hero_carousel").insert([
@@ -154,6 +236,8 @@ export default function CarouselManagement() {
             title: formData.title,
             description: formData.description || null,
             image_url: formData.image_url,
+            video_url: formData.video_url || null,
+            media_type: formData.media_type,
             link_url: formData.link_url || null,
             order_index: formData.order_index,
             active: formData.active,
@@ -161,7 +245,7 @@ export default function CarouselManagement() {
         ]);
 
         if (error) throw error;
-        toast.success("Imagen agregada correctamente");
+        toast.success("Slide agregado correctamente");
       }
 
       setIsDialogOpen(false);
@@ -169,7 +253,7 @@ export default function CarouselManagement() {
       fetchSlides();
     } catch (error: any) {
       console.error("Error saving slide:", error);
-      toast.error("Error al guardar la imagen");
+      toast.error("Error al guardar el slide");
     }
   };
 
@@ -179,6 +263,8 @@ export default function CarouselManagement() {
       title: slide.title,
       description: slide.description || "",
       image_url: slide.image_url,
+      video_url: slide.video_url || "",
+      media_type: (slide.media_type as 'image' | 'video') || "image",
       link_url: slide.link_url || "",
       order_index: slide.order_index,
       active: slide.active,
@@ -213,6 +299,8 @@ export default function CarouselManagement() {
       title: "",
       description: "",
       image_url: "",
+      video_url: "",
+      media_type: "image",
       link_url: "",
       order_index: slides.length,
       active: true,
@@ -244,23 +332,46 @@ export default function CarouselManagement() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Gestión del Carrusel</h1>
-          <p className="text-gray-500 mt-1">
-            Administra las imágenes del carrusel de la página de inicio
-          </p>
+      {/* If there was a fetch error, show details and retry */}
+      {fetchError && (
+        <Card className="border border-red-200 bg-red-50">
+          <CardContent>
+            <div className="flex items-start justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-red-700">Error consultando hero_carousel</h2>
+                <pre className="mt-2 whitespace-pre-wrap text-sm text-red-800 max-h-48 overflow-auto">{fetchError}</pre>
+              </div>
+              <div className="flex flex-col gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setLoading(true);
+                    fetchSlides();
+                  }}
+                >
+                  Reintentar
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      {/* Page title (non-sticky, simple) */}
+      <div className="space-y-2">
+        <h1 className="text-3xl font-bold">Gestión del Carrusel</h1>
+        <p className="text-gray-500 mt-1">Administra las imágenes y videos del carrusel de la página de inicio</p>
+        <div className="flex justify-end">
+          <Button
+            onClick={() => {
+              resetForm();
+              setIsDialogOpen(true);
+            }}
+            className="bg-[#9b87f5] hover:bg-[#7E69AB]"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Agregar Slide
+          </Button>
         </div>
-        <Button
-          onClick={() => {
-            resetForm();
-            setIsDialogOpen(true);
-          }}
-          className="bg-[#9b87f5] hover:bg-[#7E69AB]"
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Agregar Imagen
-        </Button>
       </div>
 
       {/* Lista de slides */}
@@ -272,7 +383,7 @@ export default function CarouselManagement() {
         <Card>
           <CardContent className="py-12 text-center">
             <p className="text-gray-500 mb-4">
-              No hay imágenes en el carrusel aún
+              No hay slides en el carrusel aún
             </p>
             <Button
               onClick={() => {
@@ -282,7 +393,7 @@ export default function CarouselManagement() {
               variant="outline"
             >
               <Plus className="mr-2 h-4 w-4" />
-              Agregar primera imagen
+              Agregar primer slide
             </Button>
           </CardContent>
         </Card>
@@ -291,11 +402,21 @@ export default function CarouselManagement() {
           {slides.map((slide) => (
             <Card key={slide.id} className="overflow-hidden">
               <div className="relative h-48 bg-gray-200">
-                <img
-                  src={slide.image_url}
-                  alt={slide.title}
-                  className="w-full h-full object-cover"
-                />
+                {slide.media_type === 'video' && slide.video_url ? (
+                  <video
+                    src={slide.video_url}
+                    className="w-full h-full object-cover"
+                    muted
+                    onMouseEnter={(e) => e.currentTarget.play()}
+                    onMouseLeave={(e) => e.currentTarget.pause()}
+                  />
+                ) : (
+                  <img
+                    src={slide.image_url}
+                    alt={slide.title}
+                    className="w-full h-full object-cover"
+                  />
+                )}
                 <div className="absolute top-2 right-2 flex gap-2">
                   <div
                     className={`px-2 py-1 rounded text-xs font-semibold ${
@@ -308,6 +429,9 @@ export default function CarouselManagement() {
                   </div>
                   <div className="px-2 py-1 rounded text-xs font-semibold bg-blue-500 text-white">
                     #{slide.order_index}
+                  </div>
+                  <div className="px-2 py-1 rounded text-xs font-semibold bg-purple-500 text-white">
+                    {slide.media_type === 'video' ? 'Video' : 'Imagen'}
                   </div>
                 </div>
               </div>
@@ -358,10 +482,10 @@ export default function CarouselManagement() {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {editingSlide ? "Editar Imagen" : "Agregar Nueva Imagen"}
+              {editingSlide ? "Editar Slide" : "Agregar Nuevo Slide"}
             </DialogTitle>
             <DialogDescription>
-              Las imágenes del carrusel deben tener dimensiones de ancho completo x 720px de alto
+              Los slides del carrusel deben tener dimensiones de ancho completo x 720px de alto
             </DialogDescription>
           </DialogHeader>
 
@@ -393,45 +517,103 @@ export default function CarouselManagement() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="image">Imagen * (Ancho completo x 720px)</Label>
-              <div className="flex gap-2">
-                <Input
-                  type="file"
-                  id="image"
-                  accept="image/*"
-                  onChange={handleFileUpload}
-                  disabled={uploading}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={uploading}
-                  onClick={() => document.getElementById("image")?.click()}
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  {uploading ? "Subiendo..." : "Subir"}
-                </Button>
-              </div>
-              {formData.image_url && (
-                <div className="mt-2">
-                  <img
-                    src={formData.image_url}
-                    alt="Preview"
-                    className="w-full h-48 object-cover rounded-md"
-                  />
-                </div>
-              )}
-              <p className="text-xs text-gray-500">
-                O pega la URL de una imagen externa
-              </p>
-              <Input
-                value={formData.image_url}
+              <Label htmlFor="media_type">Tipo de medio</Label>
+              <select
+                id="media_type"
+                value={formData.media_type}
                 onChange={(e) =>
-                  setFormData({ ...formData, image_url: e.target.value })
+                  setFormData({ ...formData, media_type: e.target.value as 'image' | 'video' })
                 }
-                placeholder="https://ejemplo.com/imagen.jpg"
-              />
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9b87f5] focus:border-transparent"
+              >
+                <option value="image">Imagen</option>
+                <option value="video">Video</option>
+              </select>
             </div>
+
+            {formData.media_type === 'image' ? (
+              <div className="space-y-2">
+                <Label htmlFor="image">Imagen * (Ancho completo x 720px)</Label>
+                <div className="flex gap-2">
+                  <Input
+                    type="file"
+                    id="image"
+                    accept="image/*"
+                    onChange={handleFileUpload}
+                    disabled={uploading}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={uploading}
+                    onClick={() => document.getElementById("image")?.click()}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    {uploading ? "Subiendo..." : "Subir"}
+                  </Button>
+                </div>
+                {formData.image_url && (
+                  <div className="mt-2">
+                    <img
+                      src={formData.image_url}
+                      alt="Preview"
+                      className="w-full h-48 object-cover rounded-md"
+                    />
+                  </div>
+                )}
+                <p className="text-xs text-gray-500">
+                  O pega la URL de una imagen externa
+                </p>
+                <Input
+                  value={formData.image_url}
+                  onChange={(e) =>
+                    setFormData({ ...formData, image_url: e.target.value })
+                  }
+                  placeholder="https://ejemplo.com/imagen.jpg"
+                />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="video">Video * (MP4 recomendado, ancho completo x 720px)</Label>
+                <div className="flex gap-2">
+                  <Input
+                    type="file"
+                    id="video"
+                    accept="video/*"
+                    onChange={handleVideoUpload}
+                    disabled={uploading}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={uploading}
+                    onClick={() => document.getElementById("video")?.click()}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    {uploading ? "Subiendo..." : "Subir"}
+                  </Button>
+                </div>
+                {formData.video_url && (
+                  <div className="mt-2">
+                    <video
+                      src={formData.video_url}
+                      controls
+                      className="w-full h-48 object-cover rounded-md"
+                    />
+                  </div>
+                )}
+                <p className="text-xs text-gray-500">
+                  O pega la URL de un video externo
+                </p>
+                <Input
+                  value={formData.video_url}
+                  onChange={(e) =>
+                    setFormData({ ...formData, video_url: e.target.value })
+                  }
+                  placeholder="https://ejemplo.com/video.mp4"
+                />
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="link_url">URL de enlace (opcional)</Label>

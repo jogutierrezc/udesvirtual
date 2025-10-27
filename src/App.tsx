@@ -29,6 +29,8 @@ import { RegistrationsPage } from "./pages/admin/registrations/RegistrationsPage
 import { MoocPage } from "./pages/admin/mooc/MoocPage";
 import { CarouselPage } from "./pages/admin/carousel/CarouselPage";
 import { PassportPage } from "./pages/admin/passport/PassportPage";
+import { CertificationsPage } from "./pages/admin/mooc/CertificationsPage";
+import { StudentsPage } from "./pages/admin/mooc/StudentsPage";
 import { AdminLayout } from "./pages/admin/layout/AdminLayout";
 import Certificates from "./pages/Certificates";
 import CertificateView from "./pages/CertificateView";
@@ -46,13 +48,15 @@ const AppContent = () => {
   // Verificar si es una ruta 404
   const is404 = !['/', '/auth', '/unauthorized', '/dashboard', '/catalog', '/professor-offerings', 
     '/coil-offerings', '/mooc', '/profile', '/profile-setup', '/welcome', '/admin/catalog', '/admin/offerings', 
-    '/admin/registrations', '/admin/mooc', '/admin/carousel', '/admin/passport', '/admin', '/professor', '/lia', '/passport', '/celebration-test'].includes(location.pathname) && 
+    '/admin/registrations', '/admin/mooc', '/admin/mooc/certifications', '/admin/mooc/students', '/admin/carousel', '/admin/passport', '/admin', '/professor', '/lia', '/passport', '/celebration-test'].includes(location.pathname) && 
     !location.pathname.startsWith('/admin/') &&
     !location.pathname.startsWith('/mooc/') &&
     !location.pathname.startsWith('/courses/') &&
     !location.pathname.startsWith('/certificado');
 
   // Ocultar navbar en 404 o en rutas específicas
+  // Para las rutas de administración usamos un navbar específico (AdminNavbar) dentro del layout,
+  // por eso ocultamos el Navbar principal cuando la ruta comienza con /admin
   const shouldHideNavbar = is404 || hideNavbarRoutes.includes(location.pathname) || location.pathname.startsWith('/admin');
 
   return (
@@ -163,6 +167,26 @@ const AppContent = () => {
                 <ProtectedRoute requireAdmin={true}>
                   <AdminLayout>
                     <MoocPage />
+                  </AdminLayout>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/mooc/certifications" 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <AdminLayout>
+                    <CertificationsPage />
+                  </AdminLayout>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/mooc/students" 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <AdminLayout>
+                    <StudentsPage />
                   </AdminLayout>
                 </ProtectedRoute>
               } 

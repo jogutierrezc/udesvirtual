@@ -13,7 +13,8 @@ create table if not exists public.mooc_certificates (
 alter table public.mooc_certificates enable row level security;
 
 -- Policy: owner (student) can view their certificates; admins can view all; course creators can view certificates for their courses
-create policy if not exists "cert_owner_select"
+drop policy if exists "cert_owner_select" on public.mooc_certificates;
+create policy "cert_owner_select"
   on public.mooc_certificates for select
   using (
     auth.uid() = user_id
@@ -29,7 +30,8 @@ create policy if not exists "cert_owner_select"
   );
 
 -- Only the system trigger inserts certificates; block direct inserts/updates/deletes except admin
-create policy if not exists "cert_admin_modify"
+drop policy if exists "cert_admin_modify" on public.mooc_certificates;
+create policy "cert_admin_modify"
   on public.mooc_certificates for all
   using (has_role(auth.uid(), 'admin'::app_role))
   with check (has_role(auth.uid(), 'admin'::app_role));

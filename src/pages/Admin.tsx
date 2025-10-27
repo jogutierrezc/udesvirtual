@@ -17,12 +17,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Loader2, CheckCircle, XCircle, LogOut, Users, BookOpen, GraduationCap, PlusCircle, Package, Globe, Edit2, Trash2, EyeOff, ChevronDown, Settings, FileText, Image } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, Users, BookOpen, GraduationCap, PlusCircle, Package, Globe, Edit2, Trash2, EyeOff, ChevronDown, Settings, FileText, Image } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
 import CarouselManagement from "@/pages/admin/CarouselManagement";
-import PassportPage from "@/pages/admin/passport/PassportPage";
+import { PassportPage } from "@/pages/admin/passport/PassportPage";
 import { TagInput } from "@/components/TagInput";
 import { ImportTeachersDialog } from "@/components/ImportTeachersDialog";
+import { CertificateSettings } from "@/pages/admin/CertificateSettings";
 
 type Class = Tables<"classes">;
 type Teacher = Tables<"teachers">;
@@ -591,11 +592,6 @@ const Admin = () => {
     }
   };
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate("/");
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -603,108 +599,10 @@ const Admin = () => {
       </div>
     );
   }
-
   return (
     <div className="min-h-screen bg-background">
-      <header className="bg-gradient-to-r from-primary to-accent text-white py-6 px-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Panel de Administración</h1>
-            <p className="text-white/80">Gestión de Clases y Docentes</p>
-          </div>
-          <Button variant="secondary" onClick={handleLogout}>
-            <LogOut className="h-4 w-4 mr-2" />
-            Cerrar Sesión
-          </Button>
-        </div>
-      </header>
-
       <div className="max-w-7xl mx-auto px-4 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          {/* Navbar simplificado con dropdowns */}
-          <div className="flex items-center gap-4 p-4 bg-white rounded-lg shadow-sm border">
-            {/* Exchange Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="gap-2">
-                  <Globe className="h-4 w-4" />
-                  Exchange
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                <DropdownMenuItem onClick={() => setActiveTab("catalog")}>
-                  <BookOpen className="h-4 w-4 mr-2" />
-                  Catálogo
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setActiveTab("offerings")}>
-                  <Package className="h-4 w-4 mr-2" />
-                  Oferta
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setActiveTab("registrations")}>
-                  <Users className="h-4 w-4 mr-2" />
-                  Registros ({registrations.length})
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            {/* MOOC (COIL) Button */}
-            <Button
-              variant={activeTab === "create-coil" ? "default" : "outline"}
-              onClick={() => setActiveTab("create-coil")}
-              className="gap-2"
-            >
-              <Globe className="h-4 w-4" />
-              MOOC
-            </Button>
-
-            {/* Pasaporte Button */}
-            <Button
-              variant={activeTab === "passport" ? "default" : "outline"}
-              onClick={() => setActiveTab("passport")}
-              className="gap-2"
-            >
-              <FileText className="h-4 w-4" />
-              Pasaporte
-            </Button>
-
-            {/* Configuración Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="gap-2">
-                  <Settings className="h-4 w-4" />
-                  Configuración
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                <DropdownMenuItem onClick={() => setActiveTab("carousel")}>
-                  <Image className="h-4 w-4 mr-2" />
-                  Carrusel
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setActiveTab("create")}>
-                  <PlusCircle className="h-4 w-4 mr-2" />
-                  Crear Clase
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setActiveTab("create-offering")}>
-                  <Package className="h-4 w-4 mr-2" />
-                  Crear Oferta
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setActiveTab("create-teacher")}>
-                  <GraduationCap className="h-4 w-4 mr-2" />
-                  Crear Profesor
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setActiveTab("classes")}>
-                  <BookOpen className="h-4 w-4 mr-2" />
-                  Pendientes ({pendingClasses.length})
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setActiveTab("teachers")}>
-                  <GraduationCap className="h-4 w-4 mr-2" />
-                  Docentes ({pendingTeachers.length})
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
 
           <TabsContent value="create">
             <Card>
@@ -1588,6 +1486,11 @@ const Admin = () => {
           {/* Nuevo: Pasaporte */}
           <TabsContent value="passport">
             <PassportPage />
+          </TabsContent>
+
+          {/* Nuevo: Configuración de Certificados */}
+          <TabsContent value="certificates">
+            <CertificateSettings />
           </TabsContent>
 
         </Tabs>

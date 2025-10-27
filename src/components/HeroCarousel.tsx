@@ -8,8 +8,13 @@ interface CarouselSlide {
   title: string;
   description: string | null;
   image_url: string;
+  video_url?: string | null;
+  media_type?: string;
   link_url: string | null;
   order_index: number;
+  active?: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export const HeroCarousel = () => {
@@ -31,9 +36,65 @@ export const HeroCarousel = () => {
         .order("order_index", { ascending: true });
 
       if (error) throw error;
-      setSlides(data || []);
+      
+      let slidesData = data || [];
+      
+      // Si no hay slides activos, usar slides por defecto
+      if (slidesData.length === 0) {
+        slidesData = [
+          {
+            id: "default-1",
+            title: "Bienvenido a UDES Virtual",
+            description: "Explora nuestra plataforma de cursos MOOC de alta calidad",
+            image_url: "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=1920&h=720&fit=crop",
+            link_url: "/catalog",
+            order_index: 1,
+            active: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+          {
+            id: "default-2", 
+            title: "Aprende a tu ritmo",
+            description: "Cursos flexibles diseñados para tu éxito profesional",
+            image_url: "https://images.unsplash.com/photo-1501504905252-473c47e087f8?w=1920&h=720&fit=crop",
+            link_url: "/catalog",
+            order_index: 2,
+            active: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+          {
+            id: "default-3",
+            title: "Certificados verificables",
+            description: "Obtén certificados al completar tus cursos",
+            image_url: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=1920&h=720&fit=crop",
+            link_url: "/catalog", 
+            order_index: 3,
+            active: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }
+        ];
+      }
+      
+      setSlides(slidesData);
     } catch (error) {
       console.error("Error fetching carousel slides:", error);
+      // En caso de error, usar slides por defecto
+      setSlides([
+        {
+          id: "default-1",
+          title: "Bienvenido a UDES Virtual",
+          description: "Explora nuestra plataforma de cursos MOOC de alta calidad",
+          image_url: "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=1920&h=720&fit=crop",
+          link_url: "/catalog",
+          order_index: 1,
+          active: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }
+      ]);
     } finally {
       setIsLoading(false);
     }
@@ -86,7 +147,27 @@ export const HeroCarousel = () => {
   }
 
   if (slides.length === 0) {
-    return null;
+    // Mostrar carrusel por defecto si no hay slides configurados
+    return (
+      <div className="relative w-full h-[720px] overflow-hidden bg-gradient-to-r from-blue-600 to-purple-600">
+        <div className="absolute inset-0 bg-black/20" />
+        <div className="absolute inset-0 flex flex-col justify-center px-8 md:px-16 lg:px-24 max-w-7xl">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4 drop-shadow-lg">
+            Bienvenido a UDES Virtual
+          </h1>
+          <p className="text-xl md:text-2xl text-white/90 max-w-2xl mb-8 drop-shadow-md">
+            Explora nuestra plataforma de cursos MOOC de alta calidad
+          </p>
+          <Button
+            size="lg"
+            className="w-fit bg-[#9b87f5] hover:bg-[#7E69AB] text-white font-semibold px-8 py-6 text-lg"
+            onClick={() => window.location.href = '/catalog'}
+          >
+            Explorar cursos
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -102,12 +183,32 @@ export const HeroCarousel = () => {
             onClick={() => handleSlideClick(slide.link_url)}
             style={{ cursor: slide.link_url ? "pointer" : "default" }}
           >
-            {/* Imagen de fondo */}
-            <img
-              src={slide.image_url}
-              alt={slide.title}
-              className="w-full h-full object-cover"
-            />
+            {/* Media de fondo (imagen o video) */}
+            {slide.media_type === 'video' && slide.video_url ? (
+              <video
+                src={slide.video_url}
+                autoPlay
+                muted
+                loop
+                playsInline
+                className="w-full h-full object-cover"
+                onLoadedData={() => {
+                  // Video cargado, asegurar que esté reproduciendo
+                  const video = document.querySelector(`video[src="${slide.video_url}"]`) as HTMLVideoElement;
+                  if (video && index === currentIndex) {
+                    video.play().catch(() => {
+                      // Silenciar errores de autoplay
+                    });
+                  }
+                }}
+              />
+            ) : (
+              <img
+                src={slide.image_url}
+                alt={slide.title}
+                className="w-full h-full object-cover"
+              />
+            )}
 
             {/* Overlay gradient */}
             <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-transparent" />
