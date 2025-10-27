@@ -192,6 +192,15 @@ export const CertificateSettings = () => {
 
   const handleSave = async () => {
     if (!settings) return;
+    // Validation
+    const errors: string[] = [];
+    if (!settings.signature_name || settings.signature_name.trim() === '') errors.push('El nombre de la firma es obligatorio.');
+    if (!settings.signature_title || settings.signature_title.trim() === '') errors.push('El título/cargo de la firma es obligatorio.');
+    if (!settings.verification_url || settings.verification_url.trim() === '') errors.push('La URL de verificación es obligatoria.');
+    if (errors.length > 0) {
+      toast({ title: 'Errores de validación', description: errors.join(' '), variant: 'destructive' });
+      return;
+    }
 
     setSaving(true);
     try {
@@ -212,17 +221,10 @@ export const CertificateSettings = () => {
 
       if (error) throw error;
 
-      toast({
-        title: "Éxito",
-        description: "Configuración de certificados guardada correctamente",
-      });
+      toast({ title: "Éxito", description: "Configuración de certificados guardada correctamente" });
     } catch (error: any) {
       console.error("Error saving settings:", error);
-      toast({
-        title: "Error",
-        description: "No se pudo guardar la configuración",
-        variant: "destructive"
-      });
+      toast({ title: "Error", description: "No se pudo guardar la configuración", variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -260,6 +262,32 @@ export const CertificateSettings = () => {
     previewWindow.document.write(html);
     previewWindow.document.close();
   };
+
+  // Helper: insert variable token at cursor position in template textarea
+  const insertVariable = (variable: string) => {
+    if (!settings) return;
+    const textarea = document.querySelector('textarea') as HTMLTextAreaElement | null;
+    if (!textarea) return;
+    const start = textarea.selectionStart || 0;
+    const end = textarea.selectionEnd || 0;
+    const before = settings.template_html.slice(0, start);
+    const after = settings.template_html.slice(end);
+    const token = `{{${variable}}}`;
+    const newHtml = before + token + after;
+    setSettings({ ...settings, template_html: newHtml });
+    // restore focus and move cursor after inserted token
+    setTimeout(() => {
+      textarea.focus();
+      const pos = start + token.length;
+      textarea.setSelectionRange(pos, pos);
+    }, 0);
+  };
+
+  const AVAILABLE_VARIABLES = [
+    'STUDENT_NAME', 'COURSE_TITLE', 'HOURS', 'ISSUED_DATE', 'CITY_TEXT',
+    'SIGNATURE_NAME', 'SIGNATURE_TITLE', 'VERIFICATION_CODE', 'MD5_HASH',
+    'LOGO_URL', 'QR_BASE_URL', 'VERIFICATION_URL', 'PRIMARY_COLOR', 'SECONDARY_COLOR'
+  ];
 
   if (loading) {
     return (
@@ -429,6 +457,21 @@ export const CertificateSettings = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            <div className="mb-3">
+              <div className="flex flex-wrap gap-2 mb-2">
+                {AVAILABLE_VARIABLES.map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => insertVariable(v)}
+                    className="px-2 py-1 bg-gray-100 rounded border text-xs hover:bg-gray-200"
+                  >
+                    {`{{${v}}}`}
+                  </button>
+                ))}
+              </div>
+              <div className="text-xs text-muted-foreground mb-2">Haz clic en una variable para insertarla en la plantilla en la posición actual del cursor.</div>
+            </div>
             <Textarea
               value={settings.template_html}
               onChange={(e) => setSettings({ ...settings, template_html: e.target.value })}
