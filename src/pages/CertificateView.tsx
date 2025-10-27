@@ -1,151 +1,137 @@
-import { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
+import QRCode from 'qrcode.react';
 
-interface CertData {
-  id: string;
-  course_id: string;
-  hours: number;
-  verification_code: string;
-  issued_at: string;
-  md5_hash?: string | null;
-  course?: { title: string };
-  user?: { full_name: string; city?: string | null };
-  signature_code?: string | null;
-  signature_filename?: string | null;
-  signature_applied?: boolean;
-}
+interface CertData { id: string; course_id: string; hours: number; verification_code: string; issued_at: string; md5_hash?: string | null; course?: { title: string }; user?: { full_name: string; city?: string | null }; signature_code?: string | null; signature_filename?: string | null }
 
-interface CertificateSettings {
-  template_html: string;
-  signature_name: string;
-  signature_title: string;
-  qr_base_url: string;
-  verification_url: string;
-  logo_url: string;
-  primary_color: string;
-  secondary_color: string;
-}
+interface CertificateSettings { signature_name?: string; signature_title?: string; qr_base_url?: string; verification_url?: string; logo_url?: string; primary_color?: string; secondary_color?: string }
 
-export default function CertificateView() {
+const DEFAULT_SETTINGS: CertificateSettings = { signature_name: 'Dra. Mónica Beltrán', signature_title: 'Directora General de MOOC UDES', qr_base_url: 'https://udesvirtual.com/verificar-certificado', verification_url: 'https://mooc.udes.edu.co/verificar-certificado', logo_url: 'https://udes.edu.co/images/logo/logo-con-acreditada-color.png', primary_color: '#052c4e', secondary_color: '#2c3e50' };
+
+export default function CertificateView(): JSX.Element {
   const { id } = useParams();
   const [loading, setLoading] = useState(true);
   const [cert, setCert] = useState<CertData | null>(null);
-  const [settings, setSettings] = useState<CertificateSettings | null>(null);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [settings, setSettings] = useState<CertificateSettings>(DEFAULT_SETTINGS);
 
-  useEffect(() => {
-    loadData();
-  }, [id]);
+  const certificateRef = useRef<HTMLDivElement | null>(null);
 
-  const loadData = async () => {
+  const fetchData = useCallback(async () => {
+    if (!id) return;
+    setLoading(true);
     try {
-      setLoading(true);
-
-      // Load certificate data
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user || !id) return;
+      if (!user) throw new Error('No authenticated user');
 
-      const { data: certData, error: certError } = await supabase
-        .from("mooc_certificates" as any)
-        .select("id, course_id, hours, verification_code, issued_at, md5_hash, signature_code, signature_filename, signature_applied, course:mooc_courses(title), user:profiles(full_name, city)")
-        .eq("id", id)
-        .single();
-
+      const { data: certData, error: certError } = await supabase.from('mooc_certificates').select('id, course_id, hours, verification_code, issued_at, md5_hash, signature_code, signature_filename, course:mooc_courses(title), user_id').eq('id', id).single();
       if (certError) throw certError;
-      setCert(certData as any);
 
-      // Load certificate settings
-      const { data: settingsData, error: settingsError } = await supabase
-        .from("certificate_settings")
-        .select("template_html, signature_name, signature_title, qr_base_url, verification_url, logo_url, primary_color, secondary_color")
-        .single();
+      let profile: any = null;
+      if (certData?.user_id) {
+        const { data: profileData, error: profileError } = await supabase.from('profiles').select('full_name, city').eq('id', certData.user_id).single();
+        if (!profileError) profile = profileData;
+      }
 
-      if (settingsError) throw settingsError;
-      setSettings(settingsData);
+      setCert({ ...(certData as any), user: profile } as CertData);
+
+      const { data: settingsData } = await supabase.from('certificate_settings').select('signature_name, signature_title, qr_base_url, verification_url, logo_url, primary_color, secondary_color').maybeSingle();
+      if (settingsData) setSettings({ ...DEFAULT_SETTINGS, ...(settingsData as any) });
+      else setSettings(DEFAULT_SETTINGS);
 
     } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
+      console.error('Error loading certificate view data', e);
+    } finally { setLoading(false); }
+  }, [id]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  // QR will be rendered by the React <QRCode> component
+  useEffect(() => {}, [cert, settings]);
+
+  const exportToPDF = async () => {
+    if (!certificateRef.current) return;
+    const btn = document.getElementById('export-btn');
+    if (btn) { btn.innerHTML = 'Generando PDF...'; btn.setAttribute('disabled', 'true'); }
+    try {
+      const canvas = await html2canvas(certificateRef.current as HTMLElement, { scale: 4, useCORS: true, logging: false, scrollY: -window.scrollY, scrollX: -window.scrollX });
+      const pdf = new jsPDF('l', 'mm', 'letter');
+      const pdfWidth = 279.4; const pdfHeight = 215.9;
+      const imgData = canvas.toDataURL('image/jpeg', 1.0);
+      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`Certificado_Participacion_${cert?.verification_code || 'cert'}.pdf`);
+    } catch (e) { console.error('Error al generar el PDF:', e); alert('Ocurrió un error al generar el PDF. Revisa la consola.'); }
+    finally { if (btn) { btn.innerHTML = ' Exportar Certificado a PDF'; btn.removeAttribute('disabled'); } }
   };
 
-  const handlePrint = () => {
-    if (iframeRef.current?.contentWindow) {
-      iframeRef.current.contentWindow.print();
-    }
-  };
+  if (loading) return (<div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>);
+  if (!cert) return (<div className="p-8">No se encontró el certificado.</div>);
 
-  const generateCertificateHTML = () => {
-    if (!cert || !settings) return '';
-
-    const issuedDate = new Date(cert.issued_at).toLocaleDateString('es-ES');
-    const name = cert.user?.full_name || "Estudiante";
-    const city = cert.user?.city || "";
-    const cityText = city ? ` en ${city}` : "";
-    const title = cert.course?.title || "Curso MOOC";
-
-    const variables = {
-      STUDENT_NAME: name,
-      COURSE_TITLE: title,
-      HOURS: cert.hours.toString(),
-      ISSUED_DATE: issuedDate,
-      CITY_TEXT: cityText,
-      SIGNATURE_NAME: settings.signature_name,
-      SIGNATURE_TITLE: settings.signature_title,
-      VERIFICATION_CODE: cert.verification_code,
-      MD5_HASH: (cert.md5_hash || '').toUpperCase(),
-      LOGO_URL: settings.logo_url,
-      QR_BASE_URL: settings.qr_base_url,
-      VERIFICATION_URL: settings.verification_url,
-      PRIMARY_COLOR: settings.primary_color,
-      SECONDARY_COLOR: settings.secondary_color
-    };
-
-    // Add signature placeholders
-    const signaturePublicUrl = cert.signature_filename
-      ? (supabase.storage.from('certificate-signatures').getPublicUrl(cert.signature_filename).data.publicUrl)
-      : '';
-
-    Object.assign(variables, {
-      SIGNATURE_IMAGE_URL: signaturePublicUrl || '',
-      SIGNATURE_CODE: cert.signature_code || ''
-    });
-
-    let html = settings.template_html;
-    Object.entries(variables).forEach(([key, value]) => {
-      html = html.replace(new RegExp(`{{${key}}}`, 'g'), value);
-    });
-
-    return html;
-  };
-
-  if (loading || !cert || !settings) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  const certificateHTML = generateCertificateHTML();
+  const issuedDate = new Date(cert.issued_at).toLocaleDateString('es-ES');
+  const name = cert.user?.full_name || 'Estudiante';
+  const city = cert.user?.city || '';
+  const cityText = city ? ` en ${city}` : '';
+  const signaturePublicUrl = cert.signature_filename ? supabase.storage.from('certificate-signatures').getPublicUrl(cert.signature_filename).data.publicUrl : '';
 
   return (
-    <div className="flex flex-col items-center p-6 bg-gray-200 min-h-screen">
-      <div className="mb-4 no-print">
-        <Button onClick={handlePrint}>Imprimir / Guardar como PDF</Button>
+    <div className="flex flex-col items-center p-8 bg-gray-100 min-h-screen">
+      <button id="export-btn" onClick={exportToPDF} className="bg-blue-800 hover:bg-blue-900 text-white font-bold py-3 px-8 rounded-full shadow-xl transition duration-300 transform hover:scale-105 mb-10 text-lg">Exportar Certificado a PDF</button>
+
+      <div ref={certificateRef} id="certificado-template" className="certificado-container" style={{ width: '27.94cm', height: '21.59cm' }}>
+        <div className="accent-line" />
+        <div className="p-10 flex flex-col justify-between h-full relative z-10">
+          <header className="mb-10 w-full flex flex-col items-center text-center">
+            <div className="mb-2">
+              <img src={settings.logo_url || DEFAULT_SETTINGS.logo_url} alt="Logo de la Institución" className="h-16 w-auto mx-auto" onError={(e) => { const t = e.target as HTMLImageElement; t.onerror = null; t.src = 'https://placehold.co/150x60/f0f0f0/333?text=Logo+Placeholder'; }} />
+            </div>
+            <div className="mt-1"><h1 className="title-display text-3xl leading-none tracking-wider uppercase">Certificado de Curso Mooc</h1></div>
+          </header>
+
+          <main className="flex-grow flex flex-col justify-center items-center py-4">
+            <p className="text-xl text-gray-600 mb-6 font-light uppercase">Se otorga este reconocimiento a:</p>
+            <p className="recipient-name text-5xl pb-3 mb-8 px-12">{name}</p>
+            <div className="max-w-4xl text-center">
+              <p className="text-2xl text-gray-700 leading-normal">Por completar con éxito el programa especializado de: <span className="font-bold italic" style={{ color: 'var(--color-primary)' }}>"{cert.course?.title || 'Curso MOOC'}"</span>, equivalente a <span className="font-bold">{cert.hours} horas</span> de contenido curricular.</p>
+              <p className="text-lg mt-6 text-gray-500">Finalizado el <span className="font-bold">{issuedDate}</span>{cityText}.</p>
+            </div>
+          </main>
+
+          <footer className="flex justify-between items-end mt-8">
+            <div className="flex-grow flex justify-center items-end">
+              <div className="text-center w-auto">
+                <div className="h-0.5 w-64 mb-2 mx-auto" style={{ backgroundColor: 'var(--color-primary)' }} />
+                <p className="text-lg font-semibold text-gray-800">{settings.signature_name || DEFAULT_SETTINGS.signature_name}</p>
+                <p className="text-sm text-gray-500 font-light">{settings.signature_title || DEFAULT_SETTINGS.signature_title}</p>
+                <p className="text-xs mt-3 text-gray-600 font-medium">Firma electrónica certificada mediante criptografía</p>
+                <p className="text-xs font-mono text-gray-500 mt-1">MD5: <span id="md5-code">{(cert.md5_hash || '').toUpperCase()}</span></p>
+                <p className="text-[10px] text-gray-500 mt-2 leading-tight max-w-xs mx-auto">Para verificar la autenticidad de este código debe ingresar a {settings.verification_url || DEFAULT_SETTINGS.verification_url} e ingresar el código del certificado para convalidar el mismo.</p>
+              </div>
+            </div>
+
+            <div className="text-right flex-shrink-0">
+              <p className="text-sm text-gray-600 mb-2 font-semibold">Verificación Digital:</p>
+              <div ref={qrRef} id="qrcodeContainer" className="p-1 border border-gray-300 shadow-sm inline-block bg-white" />
+              <p className="text-xs font-mono text-gray-500 mt-1">ID: <span>{cert.verification_code}</span></p>
+            </div>
+          </footer>
+        </div>
       </div>
 
-      <iframe
-        ref={iframeRef}
-        srcDoc={certificateHTML}
-        className="border border-gray-300 shadow-xl"
-        style={{ width: "27.94cm", height: "21.59cm" }}
-        title="Certificado"
-      />
+      <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
+        :root { --color-primary: ${settings.primary_color || DEFAULT_SETTINGS.primary_color}; --color-secondary: ${settings.secondary_color || DEFAULT_SETTINGS.secondary_color}; }
+        body { font-family: 'Montserrat', sans-serif; }
+        .certificado-container { width: 27.94cm; height: 21.59cm; box-shadow: 0 10px 20px rgba(0,0,0,0.1); background-color: #fff; position: relative; overflow: hidden; border: 2px solid #ddd; }
+        .certificado-container::before { content: ''; position: absolute; top:0;left:0;right:0;bottom:0; background-image: radial-gradient(#e5e7eb 1px, transparent 0); background-size:5px 5px; opacity:0.1; pointer-events:none; z-index:0; }
+        .accent-line { position: absolute; top:0; left:0; width:100%; height:5px; background-color: var(--color-primary); z-index:2; }
+        .title-display { color: var(--color-secondary); letter-spacing:0.5px; font-weight:500; }
+        .recipient-name { color: var(--color-primary); font-weight:800; }
+        @media print { .certificado-container { box-shadow:none !important; margin:0 !important; } }
+      `}</style>
     </div>
   );
 }
