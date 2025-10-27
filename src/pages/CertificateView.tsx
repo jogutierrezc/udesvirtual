@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
-import QRCode from 'qrcode.react';
+import QRCodeLib from 'qrcode';
 
 interface CertData { id: string; course_id: string; hours: number; verification_code: string; issued_at: string; md5_hash?: string | null; course?: { title: string }; user?: { full_name: string; city?: string | null }; signature_code?: string | null; signature_filename?: string | null }
 
@@ -22,6 +22,7 @@ export default function CertificateView(): JSX.Element {
   const certificateRef = useRef<HTMLDivElement | null>(null);
   const navigate = useNavigate();
   const [open, setOpen] = useState<boolean>(true);
+  const [qrDataUrl, setQrDataUrl] = useState<string>('');
 
   const fetchData = useCallback(async () => {
     if (!id) return;
@@ -54,6 +55,21 @@ export default function CertificateView(): JSX.Element {
 
   // QR url helper
   const qrUrl = `${settings.qr_base_url || DEFAULT_SETTINGS.qr_base_url}?code=${encodeURIComponent(cert?.verification_code || '')}`;
+
+  useEffect(() => {
+    let mounted = true;
+    if (!qrUrl) { setQrDataUrl(''); return; }
+    (async () => {
+      try {
+        const dataUrl = await QRCodeLib.toDataURL(qrUrl, { margin: 1, width: 200, color: { dark: settings.primary_color || DEFAULT_SETTINGS.primary_color, light: '#FFFFFF' } });
+        if (mounted) setQrDataUrl(dataUrl);
+      } catch (err) {
+        console.error('Error generating QR', err);
+        if (mounted) setQrDataUrl('');
+      }
+    })();
+    return () => { mounted = false; };
+  }, [qrUrl, settings.primary_color]);
 
   const exportToPDF = async () => {
     if (!certificateRef.current) return;
@@ -124,7 +140,11 @@ export default function CertificateView(): JSX.Element {
                   <div className="text-right flex-shrink-0">
                     <p className="text-sm text-gray-600 mb-2 font-semibold">Verificación Digital:</p>
                     <div id="qrcodeContainer" className="p-1 border border-gray-300 shadow-sm inline-block bg-white">
-                      <QRCode value={qrUrl} size={100} fgColor={settings.primary_color || DEFAULT_SETTINGS.primary_color} bgColor="#ffffff" />
+                      {qrDataUrl ? (
+                        <img src={qrDataUrl} alt="QR" width={100} height={100} />
+                      ) : (
+                        <div className="w-[100px] h-[100px] flex items-center justify-center text-xs text-gray-400">QR</div>
+                      )}
                     </div>
                     <p className="text-xs font-mono text-gray-500 mt-1">ID: <span>{cert.verification_code}</span></p>
                   </div>
@@ -135,7 +155,7 @@ export default function CertificateView(): JSX.Element {
         </div>
       )}
 
-      <style jsx global>{`
+      <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
         :root { --color-primary: ${settings.primary_color || DEFAULT_SETTINGS.primary_color}; --color-secondary: ${settings.secondary_color || DEFAULT_SETTINGS.secondary_color}; }
         body { font-family: 'Montserrat', sans-serif; }
