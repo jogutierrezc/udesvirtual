@@ -31,6 +31,11 @@ type ProfileRow = {
   is_other_university: boolean | null;
   is_private_student: boolean | null;
   profile_completed: boolean | null;
+  // nuevos campos
+  bio?: string | null;
+  orcid_link?: string | null;
+  cvlac_link?: string | null;
+  is_udes?: boolean | null;
 };
 
 type UserRoleRow = {
@@ -292,6 +297,23 @@ export default function Profile() {
                   <Label>Universidad</Label>
                   <Input value={profile.university_name || ""} onChange={(e) => setProfile({ ...profile, university_name: e.target.value })} />
                 </div>
+                {/* Campos de profesor/admin: biografía y enlaces */}
+                {(role === 'professor' || role === 'admin') && (
+                  <div className="md:col-span-2">
+                    <Label>Biografía / Descripción</Label>
+                    <Textarea value={(profile as any).bio || ""} onChange={(e) => setProfile({ ...profile, bio: e.target.value })} />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                      <div>
+                        <Label>ORCID</Label>
+                        <Input value={(profile as any).orcid_link || ""} onChange={(e) => setProfile({ ...profile, orcid_link: e.target.value })} />
+                      </div>
+                      <div>
+                        <Label>CvLAC</Label>
+                        <Input value={(profile as any).cvlac_link || ""} onChange={(e) => setProfile({ ...profile, cvlac_link: e.target.value })} />
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <div>
                   <Label>País</Label>
                   <Input value={profile.country || ""} onChange={(e) => setProfile({ ...profile, country: e.target.value })} />
@@ -326,29 +348,32 @@ export default function Profile() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="flex items-center justify-between border rounded-md p-3">
-                  <div>
-                    <Label>Estudiante internacional</Label>
-                    <p className="text-xs text-muted-foreground">Fuera de Colombia</p>
+              {/* Mostrar opciones de estudiante solo si no es profesor/admin */}
+              {(role !== 'professor' && role !== 'admin') && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="flex items-center justify-between border rounded-md p-3">
+                    <div>
+                      <Label>Estudiante internacional</Label>
+                      <p className="text-xs text-muted-foreground">Fuera de Colombia</p>
+                    </div>
+                    <Switch checked={!!profile.is_international_student} onCheckedChange={(v) => setProfile({ ...profile, is_international_student: v })} />
                   </div>
-                  <Switch checked={!!profile.is_international_student} onCheckedChange={(v) => setProfile({ ...profile, is_international_student: v })} />
-                </div>
-                <div className="flex items-center justify-between border rounded-md p-3">
-                  <div>
-                    <Label>De otra universidad</Label>
-                    <p className="text-xs text-muted-foreground">No UDES</p>
+                  <div className="flex items-center justify-between border rounded-md p-3">
+                    <div>
+                      <Label>De otra universidad</Label>
+                      <p className="text-xs text-muted-foreground">No UDES</p>
+                    </div>
+                    <Switch checked={!!profile.is_other_university} onCheckedChange={(v) => setProfile({ ...profile, is_other_university: v })} />
                   </div>
-                  <Switch checked={!!profile.is_other_university} onCheckedChange={(v) => setProfile({ ...profile, is_other_university: v })} />
-                </div>
-                <div className="flex items-center justify-between border rounded-md p-3">
-                  <div>
-                    <Label>Estudiante particular</Label>
-                    <p className="text-xs text-muted-foreground">Independiente</p>
+                  <div className="flex items-center justify-between border rounded-md p-3">
+                    <div>
+                      <Label>Estudiante particular</Label>
+                      <p className="text-xs text-muted-foreground">Independiente</p>
+                    </div>
+                    <Switch checked={!!profile.is_private_student} onCheckedChange={(v) => setProfile({ ...profile, is_private_student: v })} />
                   </div>
-                  <Switch checked={!!profile.is_private_student} onCheckedChange={(v) => setProfile({ ...profile, is_private_student: v })} />
                 </div>
-              </div>
+              )}
 
               <div className="flex justify-end">
                 <Button onClick={saveProfile} disabled={saving}>

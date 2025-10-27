@@ -112,7 +112,10 @@ export const StudentsPage = () => {
         ] as any);
 
         const profileMap = new Map<string, any>((profiles || []).map((p: any) => [p.id, p]));
-        const courseMap = new Map<string, any>((c: any) => [c.id, c]);
+  const courseMap = new Map<string, any>(((coursesData || []) as any[]).map((c: any) => [c.id, c]));
+
+  // Debugging: mostrar conteo de datos obtenidos
+  console.debug('basicEnrollments:', enrolls.length, 'profiles:', (profiles || []).length, 'courses:', (coursesData || []).length);
 
         // Procesar datos de estudiantes
         const studentMap = new Map<string, Student>();
@@ -176,7 +179,7 @@ export const StudentsPage = () => {
 
       // Si llegamos aquí, la consulta con relaciones funcionó
       const studentMap = new Map<string, Student>();
-
+  console.debug('Enrollments (with relations):', (enrollments || []).length, enrollments);
       (enrollments || []).forEach((enrollment: any) => {
         const userId = enrollment.user_id;
         const userName = enrollment.profiles?.full_name || "Usuario desconocido";

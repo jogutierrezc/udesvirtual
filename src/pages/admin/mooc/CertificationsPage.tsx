@@ -46,6 +46,7 @@ export const CertificationsPage = () => {
   const [certSettings, setCertSettings] = useState<any | null>(null);
   const [savingSettings, setSavingSettings] = useState(false);
   const [signatureProfiles, setSignatureProfiles] = useState<any[]>([]);
+  const [signatureUrls, setSignatureUrls] = useState<Record<string, string | null>>({});
   const [uploadingSignature, setUploadingSignature] = useState(false);
   const [newSignatureName, setNewSignatureName] = useState('');
   // secrets and RPCs removed: we no longer generate or display secrets for signature profiles
@@ -253,6 +254,52 @@ export const CertificationsPage = () => {
       return null;
     }
   };
+
+    // Poblar signatureUrls para cada certificado según prioridad:
+    // 1) certificate.signature_filename
+    // 2) certificate.signature_profile_id -> buscar en signatureProfiles
+    // 3) certSettings.default_signature_profile_id -> buscar en signatureProfiles
+    useEffect(() => {
+      const populate = async () => {
+        if (!certificates || certificates.length === 0) {
+          setSignatureUrls({});
+          return;
+        }
+
+        const map: Record<string, string | null> = {};
+        for (const cert of certificates) {
+          try {
+            let filename: string | null = null;
+
+            if (cert.signature_filename) filename = cert.signature_filename;
+            else if (cert.signature_profile_id) {
+              const prof = signatureProfiles.find(p => p.id === cert.signature_profile_id);
+              if (prof) filename = prof.filename;
+            }
+
+            // fallback to default profile from settings
+            if (!filename && certSettings?.default_signature_profile_id) {
+              const def = signatureProfiles.find(p => p.id === certSettings.default_signature_profile_id);
+              if (def) filename = def.filename;
+            }
+
+            if (filename) {
+              const url = await getSignaturePreviewUrl(filename);
+              map[cert.id] = url || null;
+            } else {
+              map[cert.id] = null;
+            }
+          } catch (e) {
+            console.error('Error resolving signature URL for cert', cert.id, e);
+            map[cert.id] = null;
+          }
+        }
+
+        setSignatureUrls(map);
+      };
+
+      populate();
+    }, [certificates, certSettings, signatureProfiles]);
 
   // rotate secret RPC removed — no-op; secret handling was intentionally removed
 
@@ -617,6 +664,14 @@ export const CertificationsPage = () => {
                           <p className="text-xs text-muted-foreground">{certificate.user_email}</p>
                         </div>
                       </div>
+                      {/* Mostrar imagen de la firma si existe */}
+                      {signatureUrls[certificate.id] ? (
+                        <div className="mt-3">
+                          <img src={signatureUrls[certificate.id] || ''} alt="Firma" className="h-12 w-40 object-contain border" />
+                        </div>
+                      ) : (
+                        <div className="mt-3 text-xs text-muted-foreground">No hay firma aplicada</div>
+                      )}
 
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
                         <div className="flex items-center gap-1">
