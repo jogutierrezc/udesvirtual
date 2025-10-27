@@ -62,16 +62,16 @@ export const StudentsPage = () => {
     try {
       setLoading(true);
 
-      // Obtener todos los estudiantes con cursos MOOC
+      // Intentar usar selects con relaciones (funciona si existen FK declaradas)
       const { data: enrollments, error: enrollmentsError } = await supabase
         .from("mooc_enrollments")
         .select(`
           user_id,
           course_id,
-          enrollment_date,
-          completion_date,
-          progress_percentage,
-          status,
+          enrolled_at,
+          completed,
+          progress,
+          updated_at,
           mooc_course:course_id (
             title
           ),
@@ -80,18 +80,101 @@ export const StudentsPage = () => {
             email
           )
         `)
-        .order("enrollment_date", { ascending: false });
+        .order("enrolled_at", { ascending: false });
 
-      if (enrollmentsError) throw enrollmentsError;
-
-      // Obtener certificaciones
+      // Obtener certificaciones (se usa en ambos caminos)
       const { data: certificates, error: certError } = await supabase
         .from("mooc_certificates")
         .select("user_id, course_id");
 
       if (certError) throw certError;
 
-      // Procesar datos de estudiantes
+      // Si la consulta con relaciones falla (p. ej. no hay FK hacia profiles), hacemos un fallback manual
+      if (enrollmentsError) {
+        console.warn("Relationship select for mooc_enrollments failed, falling back to manual join:", enrollmentsError);
+
+        const { data: basicEnrollments, error: basicErr } = await supabase
+          .from("mooc_enrollments")
+          .select("user_id, course_id, enrolled_at, completed, progress, updated_at")
+          .order("enrolled_at", { ascending: false });
+
+        if (basicErr) throw basicErr;
+
+        const enrolls = basicEnrollments || [];
+
+        // Obtener perfiles y cursos en batch
+        const userIds = Array.from(new Set(enrolls.map((e: any) => e.user_id).filter(Boolean)));
+        const courseIds = Array.from(new Set(enrolls.map((e: any) => e.course_id).filter(Boolean)));
+
+        const [{ data: profiles }, { data: coursesData }] = await Promise.all([
+          userIds.length > 0 ? supabase.from('profiles').select('id,full_name,email').in('id', userIds) : Promise.resolve({ data: [] }),
+          courseIds.length > 0 ? supabase.from('mooc_courses').select('id,title').in('id', courseIds) : Promise.resolve({ data: [] })
+        ] as any);
+
+        const profileMap = new Map<string, any>((profiles || []).map((p: any) => [p.id, p]));
+        const courseMap = new Map<string, any>((c: any) => [c.id, c]);
+
+        // Procesar datos de estudiantes
+        const studentMap = new Map<string, Student>();
+
+        (enrolls || []).forEach((enrollment: any) => {
+          const userId = enrollment.user_id;
+          const userProfile = profileMap.get(userId) || {};
+          const userName = userProfile.full_name || "Usuario desconocido";
+          const userEmail = userProfile.email || "";
+
+          if (!studentMap.has(userId)) {
+            studentMap.set(userId, {
+              id: userId,
+              name: userName,
+              email: userEmail,
+              enrolled_courses: 0,
+              completed_courses: 0,
+              certificates_earned: 0,
+              total_hours: 0,
+              last_activity: enrollment.updated_at || enrollment.enrolled_at || new Date().toISOString(),
+              enrollment_date: enrollment.enrolled_at || new Date().toISOString(),
+              courses: []
+            });
+          }
+
+          const student = studentMap.get(userId)!;
+          student.enrolled_courses += 1;
+
+          if (enrollment.completed) {
+            student.completed_courses += 1;
+          }
+
+          // Verificar si tiene certificado para este curso
+          const hasCertificate = certificates?.some((cert: any) =>
+            cert.user_id === userId && cert.course_id === enrollment.course_id
+          );
+
+          if (hasCertificate) {
+            student.certificates_earned += 1;
+          }
+
+          student.courses.push({
+            course_id: enrollment.course_id,
+            course_title: courseMap.get(enrollment.course_id)?.title || "Curso desconocido",
+            enrollment_date: enrollment.enrolled_at,
+            completion_date: enrollment.completed ? enrollment.updated_at : undefined,
+            progress_percentage: enrollment.progress || 0,
+            status: enrollment.completed ? "completed" : "active"
+          });
+
+          // Actualizar última actividad
+          if (new Date(enrollment.updated_at || enrollment.enrolled_at) > new Date(student.last_activity)) {
+            student.last_activity = enrollment.updated_at || enrollment.enrolled_at;
+          }
+        });
+
+        const studentsArray = Array.from(studentMap.values());
+        setStudents(studentsArray);
+        return;
+      }
+
+      // Si llegamos aquí, la consulta con relaciones funcionó
       const studentMap = new Map<string, Student>();
 
       (enrollments || []).forEach((enrollment: any) => {
@@ -108,8 +191,8 @@ export const StudentsPage = () => {
             completed_courses: 0,
             certificates_earned: 0,
             total_hours: 0,
-            last_activity: enrollment.enrollment_date,
-            enrollment_date: enrollment.enrollment_date,
+            last_activity: enrollment.updated_at || enrollment.enrolled_at || new Date().toISOString(),
+            enrollment_date: enrollment.enrolled_at || new Date().toISOString(),
             courses: []
           });
         }
@@ -117,7 +200,7 @@ export const StudentsPage = () => {
         const student = studentMap.get(userId)!;
         student.enrolled_courses += 1;
 
-        if (enrollment.status === "completed") {
+        if (enrollment.completed) {
           student.completed_courses += 1;
         }
 
@@ -133,15 +216,15 @@ export const StudentsPage = () => {
         student.courses.push({
           course_id: enrollment.course_id,
           course_title: enrollment.mooc_course?.title || "Curso desconocido",
-          enrollment_date: enrollment.enrollment_date,
-          completion_date: enrollment.completion_date,
-          progress_percentage: enrollment.progress_percentage || 0,
-          status: enrollment.status
+          enrollment_date: enrollment.enrolled_at,
+          completion_date: enrollment.completed ? enrollment.updated_at : undefined,
+          progress_percentage: enrollment.progress || 0,
+          status: enrollment.completed ? "completed" : "active"
         });
 
         // Actualizar última actividad
-        if (new Date(enrollment.enrollment_date) > new Date(student.last_activity)) {
-          student.last_activity = enrollment.enrollment_date;
+        if (new Date(enrollment.updated_at || enrollment.enrolled_at) > new Date(student.last_activity)) {
+          student.last_activity = enrollment.updated_at || enrollment.enrolled_at;
         }
       });
 

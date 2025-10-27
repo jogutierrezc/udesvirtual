@@ -157,6 +157,49 @@ export default function CourseLearning() {
     }
   };
 
+  // Convierte URLs de video (YouTube watch, youtu.be, embed) a una URL segura para iframe
+  const getEmbedUrl = (rawUrl?: string | null) => {
+    if (!rawUrl) return null;
+    try {
+      const url = new URL(rawUrl, window.location.origin);
+      const host = url.hostname.replace('www.', '').toLowerCase();
+
+      // YouTube watch?v=ID -> /embed/ID
+      if (host.includes('youtube.com')) {
+        const v = url.searchParams.get('v');
+        if (v) return `https://www.youtube.com/embed/${v}`;
+
+        // If already an embed path, return as-is
+        if (url.pathname.startsWith('/embed/')) return url.href;
+
+        // Any other youtube path — try to extract last segment
+        const parts = url.pathname.split('/').filter(Boolean);
+        const maybeId = parts[parts.length - 1];
+        if (maybeId) return `https://www.youtube.com/embed/${maybeId}`;
+      }
+
+      // youtu.be short links
+      if (host === 'youtu.be') {
+        const id = url.pathname.split('/').filter(Boolean)[0];
+        if (id) return `https://www.youtube.com/embed/${id}`;
+      }
+
+      // Vimeo and others often provide embed-friendly URLs already
+      if (host.includes('vimeo.com')) {
+        // For vimeo, transform /{id} to player.vimeo.com/video/{id}
+        const parts = url.pathname.split('/').filter(Boolean);
+        const id = parts[parts.length - 1];
+        if (id) return `https://player.vimeo.com/video/${id}`;
+      }
+
+      // Default: return original (may still be blocked by provider)
+      return rawUrl;
+    } catch (e) {
+      console.warn('Invalid video URL', rawUrl, e);
+      return rawUrl;
+    }
+  };
+
   const markLessonComplete = async () => {
     if (!currentLesson || !courseId) return;
 
@@ -301,15 +344,34 @@ export default function CourseLearning() {
                   <CardContent className="space-y-4">
                     {/* Video */}
                     {currentLesson.video_url && (
-                      <div className="aspect-video bg-muted rounded-lg overflow-hidden">
-                        <iframe
-                          ref={videoRef}
-                          src={currentLesson.video_url}
-                          className="w-full h-full"
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          allowFullScreen
-                        />
-                      </div>
+                      (() => {
+                        const embed = getEmbedUrl(currentLesson.video_url);
+                        // Si no hay embed válido, mostramos botón para abrir en nueva pestaña
+                        if (!embed) {
+                          return (
+                            <div className="p-4 rounded-lg bg-muted">
+                              <p className="text-sm mb-2">Este video no tiene una vista embebida disponible.</p>
+                              <Button asChild>
+                                <a href={currentLesson.video_url} target="_blank" rel="noreferrer">Abrir video en YouTube</a>
+                              </Button>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div className="aspect-video bg-muted rounded-lg overflow-hidden">
+                            <iframe
+                              ref={videoRef}
+                              src={embed}
+                              className="w-full h-full"
+                              frameBorder={0}
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                              allowFullScreen
+                              title={currentLesson.title || 'Video'}
+                            />
+                          </div>
+                        );
+                      })()
                     )}
 
                     {/* Contenido de texto */}
