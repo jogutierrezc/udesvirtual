@@ -108,24 +108,15 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
             </div>
 
             {/* Middle Nav Controls */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-6">
             {/* Exchange Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button 
-                  variant={
-                    location.pathname.includes('/admin/catalog') ||
-                    location.pathname.includes('/admin/offerings') ||
-                    location.pathname.includes('/admin/registrations')
-                      ? "default" 
-                      : "outline"
-                  } 
-                  className="gap-2"
-                >
+                <button className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded hover:bg-muted/50">
                   <Globe className="h-4 w-4" />
                   Exchange
                   <ChevronDown className="h-4 w-4" />
-                </Button>
+                </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
                 <DropdownMenuItem onClick={() => navigate("/admin/catalog")}>
@@ -143,37 +134,40 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* MOOC Button */}
-            <Button
-              variant={location.pathname.includes('/admin/mooc') ? "default" : "outline"}
+            {/* MOOC Text Link */}
+            <button
               onClick={() => navigate("/admin/mooc")}
-              className="gap-2"
+              className={`flex items-center gap-2 text-sm font-medium px-2 py-1 rounded transition-colors ${
+                location.pathname.includes('/admin/mooc')
+                  ? 'text-foreground bg-muted/50'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+              }`}
             >
               <Globe className="h-4 w-4" />
               MOOC
-            </Button>
+            </button>
 
-            {/* Pasaporte Button */}
-            <Button
-              variant={location.pathname.includes('/admin/passport') ? "default" : "outline"}
+            {/* Pasaporte Text Link */}
+            <button
               onClick={() => navigate("/admin/passport")}
-              className="gap-2"
+              className={`flex items-center gap-2 text-sm font-medium px-2 py-1 rounded transition-colors ${
+                location.pathname.includes('/admin/passport')
+                  ? 'text-foreground bg-muted/50'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+              }`}
             >
               <FileText className="h-4 w-4" />
               Pasaporte
-            </Button>
+            </button>
 
             {/* Configuración Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button 
-                  variant={location.pathname.includes('/admin/carousel') ? "default" : "outline"}
-                  className="gap-2"
-                >
+                <button className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded hover:bg-muted/50">
                   <Settings className="h-4 w-4" />
                   Configuración
                   <ChevronDown className="h-4 w-4" />
-                </Button>
+                </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
                 <DropdownMenuItem onClick={() => navigate("/admin/carousel")}>
