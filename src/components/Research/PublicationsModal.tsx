@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -14,9 +14,11 @@ type Props = {
   onOpenChange: (open: boolean) => void;
   profileId: string | null;
   onSaved?: () => void;
+  // optional initial item for editing
+  initial?: any | null;
 };
 
-export default function PublicationsModal({ open, onOpenChange, profileId, onSaved }: Props) {
+export default function PublicationsModal({ open, onOpenChange, profileId, onSaved, initial }: Props) {
   const { toast } = useToast();
   const [type, setType] = useState('');
   const [title, setTitle] = useState('');
@@ -41,6 +43,21 @@ export default function PublicationsModal({ open, onOpenChange, profileId, onSav
     setAreas('');
   };
 
+  useEffect(() => {
+    if (open && initial) {
+      setType(initial.type || '');
+      setTitle(initial.title || '');
+      setYear(initial.year ? String(initial.year) : '');
+      setIssnIsbn(initial.issn_isbn || '');
+      setPage(initial.page || '');
+      setHasLink(!!initial.has_link);
+      setLink(initial.link || '');
+      setKeywords(initial.keywords ? (Array.isArray(initial.keywords) ? initial.keywords.join(', ') : String(initial.keywords)) : '');
+      setAreas(initial.areas ? (Array.isArray(initial.areas) ? initial.areas.join(', ') : String(initial.areas)) : '');
+    }
+    if (!open) reset();
+  }, [open, initial]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profileId) {
@@ -62,9 +79,16 @@ export default function PublicationsModal({ open, onOpenChange, profileId, onSav
         areas: areas ? areas.split(',').map(s => s.trim()).filter(Boolean) : null,
       } as any;
 
-      const { error } = await supabase.from('publications').insert(payload);
-      if (error) throw error;
-      toast({ title: 'Guardado', description: 'Publicación registrada' });
+      if (initial && initial.id) {
+        // update
+        const { error } = await supabase.from('publications').update(payload).eq('id', initial.id);
+        if (error) throw error;
+        toast({ title: 'Actualizado', description: 'Publicación actualizada' });
+      } else {
+        const { error } = await supabase.from('publications').insert(payload);
+        if (error) throw error;
+        toast({ title: 'Guardado', description: 'Publicación registrada' });
+      }
       reset();
       onOpenChange(false);
       onSaved?.();
@@ -80,7 +104,7 @@ export default function PublicationsModal({ open, onOpenChange, profileId, onSav
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[700px]">
         <DialogHeader>
-          <DialogTitle>Agregar Publicación</DialogTitle>
+          <DialogTitle>{initial && initial.id ? 'Editar Publicación' : 'Agregar Publicación'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -141,7 +165,7 @@ export default function PublicationsModal({ open, onOpenChange, profileId, onSav
 
           <div className="flex justify-end gap-2">
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>Cancelar</Button>
-            <Button type="submit" disabled={saving}>{saving ? 'Guardando...' : 'Agregar publicación'}</Button>
+            <Button type="submit" disabled={saving}>{saving ? 'Guardando...' : initial && initial.id ? 'Guardar' : 'Agregar publicación'}</Button>
           </div>
         </form>
       </DialogContent>

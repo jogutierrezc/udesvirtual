@@ -55,6 +55,8 @@ export default function Profile() {
   const [pubOpen, setPubOpen] = useState(false);
   const [qualifications, setQualifications] = useState<any[]>([]);
   const [publications, setPublications] = useState<any[]>([]);
+  const [editingQualification, setEditingQualification] = useState<any | null>(null);
+  const [editingPublication, setEditingPublication] = useState<any | null>(null);
 
   const initials = useMemo(() => {
     const name = profile?.full_name || email || "";
@@ -407,9 +409,29 @@ export default function Profile() {
                         <ul className="space-y-2">
                           {qualifications.map((q) => (
                             <li key={q.id} className="border rounded p-3">
-                              <div className="font-semibold">{q.level} — {q.program || q.institution}</div>
-                              <div className="text-sm text-muted-foreground">{q.campus || ''} {q.start_year ? `· ${q.start_year}` : ''} {q.end_year ? `- ${q.end_year}` : ''}</div>
-                              {q.notes && <div className="text-sm mt-1">{q.notes}</div>}
+                                          <div className="flex justify-between items-start">
+                                            <div>
+                                              <div className="font-semibold">{q.level} — {q.program || q.institution}</div>
+                                              <div className="text-sm text-muted-foreground">{q.campus || ''} {q.start_year ? `· ${q.start_year}` : ''} {q.end_year ? `- ${q.end_year}` : ''}</div>
+                                              {q.notes && <div className="text-sm mt-1">{q.notes}</div>}
+                                            </div>
+                                            <div className="flex gap-2">
+                                              <Button variant="ghost" size="sm" onClick={() => { setEditingQualification(q); setQualOpen(true); }}>Editar</Button>
+                                              <Button variant="destructive" size="sm" onClick={async () => {
+                                                if (!confirm('¿Eliminar esta formación?')) return;
+                                                try {
+                                                  const { error } = await supabase.from('academic_qualifications').delete().eq('id', q.id);
+                                                  if (error) throw error;
+                                                  toast({ title: 'Eliminado', description: 'Formación eliminada' });
+                                                  // refresh
+                                                  fetchQualifications(profile!.id);
+                                                } catch (err: any) {
+                                                  console.error(err);
+                                                  toast({ title: 'Error', description: err.message || 'No se pudo eliminar', variant: 'destructive' });
+                                                }
+                                              }}>Eliminar</Button>
+                                            </div>
+                                          </div>
                             </li>
                           ))}
                         </ul>
@@ -1178,10 +1200,29 @@ export default function Profile() {
                       <ul className="space-y-2">
                         {publications.map((p) => (
                           <li key={p.id} className="border rounded p-3">
-                            <div className="font-semibold">{p.title} {p.year ? `(${p.year})` : ''}</div>
-                            <div className="text-sm text-muted-foreground">{p.type} {p.issn_isbn ? `· ${p.issn_isbn}` : ''}</div>
-                            {p.link && <div className="text-sm mt-1"><a href={p.link} target="_blank" rel="noreferrer" className="text-blue-600 underline">Enlace</a></div>}
-                            {p.keywords && p.keywords.length > 0 && <div className="text-xs text-muted-foreground mt-2">Palabras clave: {p.keywords.join(', ')}</div>}
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <div className="font-semibold">{p.title} {p.year ? `(${p.year})` : ''}</div>
+                                <div className="text-sm text-muted-foreground">{p.type} {p.issn_isbn ? `· ${p.issn_isbn}` : ''}</div>
+                                {p.link && <div className="text-sm mt-1"><a href={p.link} target="_blank" rel="noreferrer" className="text-blue-600 underline">Enlace</a></div>}
+                                {p.keywords && p.keywords.length > 0 && <div className="text-xs text-muted-foreground mt-2">Palabras clave: {Array.isArray(p.keywords) ? p.keywords.join(', ') : String(p.keywords)}</div>}
+                              </div>
+                              <div className="flex gap-2">
+                                <Button variant="ghost" size="sm" onClick={() => { setEditingPublication(p); setPubOpen(true); }}>Editar</Button>
+                                <Button variant="destructive" size="sm" onClick={async () => {
+                                  if (!confirm('¿Eliminar esta publicación?')) return;
+                                  try {
+                                    const { error } = await supabase.from('publications').delete().eq('id', p.id);
+                                    if (error) throw error;
+                                    toast({ title: 'Eliminado', description: 'Publicación eliminada' });
+                                    fetchPublications(profile!.id);
+                                  } catch (err: any) {
+                                    console.error(err);
+                                    toast({ title: 'Error', description: err.message || 'No se pudo eliminar', variant: 'destructive' });
+                                  }
+                                }}>Eliminar</Button>
+                              </div>
+                            </div>
                           </li>
                         ))}
                       </ul>
@@ -1193,8 +1234,20 @@ export default function Profile() {
           </div>
         )}
 
-        <QualificationModal open={qualOpen} onOpenChange={setQualOpen} profileId={profile?.id || null} onSaved={() => profile && fetchQualifications(profile.id)} />
-        <PublicationsModal open={pubOpen} onOpenChange={setPubOpen} profileId={profile?.id || null} onSaved={() => profile && fetchPublications(profile.id)} />
+        <QualificationModal
+          open={qualOpen}
+          onOpenChange={(v) => { setQualOpen(v); if (!v) setEditingQualification(null); }}
+          profileId={profile?.id || null}
+          initial={editingQualification}
+          onSaved={() => profile && fetchQualifications(profile.id)}
+        />
+        <PublicationsModal
+          open={pubOpen}
+          onOpenChange={(v) => { setPubOpen(v); if (!v) setEditingPublication(null); }}
+          profileId={profile?.id || null}
+          initial={editingPublication}
+          onSaved={() => profile && fetchPublications(profile.id)}
+        />
       </div>
     </div>
   );

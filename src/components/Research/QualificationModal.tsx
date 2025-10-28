@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -13,9 +13,11 @@ type Props = {
   onOpenChange: (open: boolean) => void;
   profileId: string | null;
   onSaved?: () => void;
+  // optional initial item for editing
+  initial?: any | null;
 };
 
-export default function QualificationModal({ open, onOpenChange, profileId, onSaved }: Props) {
+export default function QualificationModal({ open, onOpenChange, profileId, onSaved, initial }: Props) {
   const { toast } = useToast();
   const [level, setLevel] = useState('');
   const [institution, setInstitution] = useState('');
@@ -36,6 +38,24 @@ export default function QualificationModal({ open, onOpenChange, profileId, onSa
     setNotes('');
   };
 
+  useEffect(() => {
+    if (open && initial) {
+      // prefill fields for editing
+      setLevel(initial.level || '');
+      setInstitution(initial.institution || '');
+      setProgram(initial.program || '');
+      setCampus(initial.campus || '');
+      setStartYear(initial.start_year ? String(initial.start_year) : '');
+      setEndYear(initial.end_year ? String(initial.end_year) : '');
+      setNotes(initial.notes || '');
+    }
+    if (!open) {
+      // reset when modal closes
+      reset();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initial]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profileId) {
@@ -55,9 +75,16 @@ export default function QualificationModal({ open, onOpenChange, profileId, onSa
         notes,
       } as any;
 
-      const { error } = await supabase.from('academic_qualifications').insert(payload);
-      if (error) throw error;
-      toast({ title: 'Guardado', description: 'Formación registrada' });
+      if (initial && initial.id) {
+        // update existing
+        const { error } = await supabase.from('academic_qualifications').update(payload).eq('id', initial.id);
+        if (error) throw error;
+        toast({ title: 'Actualizado', description: 'Formación actualizada' });
+      } else {
+        const { error } = await supabase.from('academic_qualifications').insert(payload);
+        if (error) throw error;
+        toast({ title: 'Guardado', description: 'Formación registrada' });
+      }
       reset();
       onOpenChange(false);
       onSaved?.();
@@ -73,7 +100,7 @@ export default function QualificationModal({ open, onOpenChange, profileId, onSa
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[640px]">
         <DialogHeader>
-          <DialogTitle>Agregar Formación Académica</DialogTitle>
+          <DialogTitle>{initial && initial.id ? 'Editar Formación Académica' : 'Agregar Formación Académica'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -122,7 +149,7 @@ export default function QualificationModal({ open, onOpenChange, profileId, onSa
 
           <div className="flex justify-end gap-2">
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>Cancelar</Button>
-            <Button type="submit" disabled={saving}>{saving ? 'Guardando...' : 'Agregar'}</Button>
+            <Button type="submit" disabled={saving}>{saving ? 'Guardando...' : initial && initial.id ? 'Guardar' : 'Agregar'}</Button>
           </div>
         </form>
       </DialogContent>
