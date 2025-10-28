@@ -2,6 +2,7 @@ import React from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useMemo } from "react";
 import {
   Mail,
   MapPin,
@@ -182,6 +183,36 @@ const PublicProfile: React.FC = () => {
     staleTime: 1000 * 60 * 5,
   });
 
+  const { data: qualifications } = useQuery<any[], Error>({
+    queryKey: ["publicProfileQualifications", id],
+    queryFn: async () => {
+      if (!id) return [];
+      const res = await (supabase.from("academic_qualifications") as any)
+        .select("*")
+        .eq("profile_id", id)
+        .order('created_at', { ascending: false });
+      if (res.error) throw res.error;
+      return res.data || [];
+    },
+    enabled: !!id,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const { data: publications } = useQuery<any[], Error>({
+    queryKey: ["publicProfilePublications", id],
+    queryFn: async () => {
+      if (!id) return [];
+      const res = await (supabase.from("publications") as any)
+        .select("*")
+        .eq("profile_id", id)
+        .order('created_at', { ascending: false });
+      if (res.error) throw res.error;
+      return res.data || [];
+    },
+    enabled: !!id,
+    staleTime: 1000 * 60 * 5,
+  });
+
   const roleText = profile ? (getRole(profile) === "PROFESOR" ? "Profesor Investigador UDES" : "Usuario") : "";
 
   if (isLoading) {
@@ -346,6 +377,48 @@ const PublicProfile: React.FC = () => {
                 <p className="text-sm">Publica tus cursos E-Exchange, COIL o MOOC para destacarlos aquí.</p>
               </div>
             )}
+
+            {/* Formación académica pública */}
+            <div className="mb-8 pt-4 border-t border-gray-100">
+              <h2 className="text-xl font-semibold text-gray-700 mb-4 flex items-center"><School className="w-5 h-5 mr-2 text-blue-600" />Formación Académica</h2>
+              {qualifications && qualifications.length > 0 ? (
+                <div className="space-y-3">
+                  {qualifications.map((q) => (
+                    <div key={q.id} className="p-4 bg-white rounded-lg border">
+                      <div className="font-semibold">{q.level}{q.program ? ` — ${q.program}` : ''}</div>
+                      {/* Show the institution of origin explicitly */}
+                      {q.institution && (
+                        <div className="text-sm text-muted-foreground font-medium">Institución: {q.institution}</div>
+                      )}
+                      <div className="text-sm text-muted-foreground">{q.campus || ''} {q.start_year ? `· ${q.start_year}` : ''} {q.end_year ? `- ${q.end_year}` : ''}</div>
+                      {q.notes && <div className="text-sm mt-2 text-gray-600">{q.notes}</div>}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">No hay formación académica pública disponible.</p>
+              )}
+            </div>
+
+            {/* Publicaciones públicas */}
+            <div className="mb-8 pt-4 border-t border-gray-100">
+              <h2 className="text-xl font-semibold text-gray-700 mb-4 flex items-center"><BookOpen className="w-5 h-5 mr-2 text-blue-600" />Publicaciones</h2>
+              {publications && publications.length > 0 ? (
+                <div className="space-y-3">
+                  {publications.map((p) => (
+                    <div key={p.id} className="p-4 bg-white rounded-lg border">
+                      <div className="font-semibold">{p.title} {p.year ? `(${p.year})` : ''}</div>
+                      <div className="text-sm text-muted-foreground">{p.type} {p.issn_isbn ? `· ${p.issn_isbn}` : ''}</div>
+                      {p.link && <div className="text-sm mt-2"><a href={p.link} target="_blank" rel="noreferrer" className="text-blue-600 underline">Ver enlace</a></div>}
+                      {p.keywords && p.keywords.length > 0 && <div className="text-xs text-muted-foreground mt-2">Palabras clave: {p.keywords.join(', ')}</div>}
+                      {p.areas && p.areas.length > 0 && <div className="text-xs text-muted-foreground mt-1">Áreas: {p.areas.join(', ')}</div>}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">No hay publicaciones públicas registradas.</p>
+              )}
+            </div>
 
             <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
               <h2 className="text-xl font-semibold text-gray-700 mb-3 flex items-center"><School className="w-5 h-5 mr-2 text-blue-600" />Información Académica</h2>

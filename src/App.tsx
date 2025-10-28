@@ -15,7 +15,7 @@ import MisEstudiantes from "./pages/professor/MisEstudiantes";
 import Lia from "./pages/Lia";
 import Mooc from "./pages/Mooc";
 import MoocDetail from "./pages/MoocDetail";
-import Profile from "./pages/Profile";
+import Profile from "./pages/ProfileNew";
 import PublicProfile from "./pages/PublicProfile";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
