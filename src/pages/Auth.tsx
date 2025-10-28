@@ -20,6 +20,11 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [showBlockedModal, setShowBlockedModal] = useState(false);
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [showProfessorModal, setShowProfessorModal] = useState(false);
+  const [profFullName, setProfFullName] = useState("");
+  const [profEmail, setProfEmail] = useState("");
+  const [profPassword, setProfPassword] = useState("");
 
   const checkUserProfile = async (userId: string) => {
     const { data: profile, error } = await supabase
@@ -75,6 +80,30 @@ const Auth = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
+  // Load failed attempts from localStorage and expire after 15 minutes
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("loginFailedAttempts");
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      const { count = 0, last = null } = parsed || {};
+      if (last) {
+        const lastDate = new Date(last);
+        const now = new Date();
+        const diffMs = now.getTime() - lastDate.getTime();
+        const FIFTEEN_MIN = 15 * 60 * 1000;
+        if (diffMs > FIFTEEN_MIN) {
+          localStorage.removeItem("loginFailedAttempts");
+          setFailedAttempts(0);
+          return;
+        }
+      }
+      setFailedAttempts(count || 0);
+    } catch (e) {
+      console.error("Failed to read failed attempts", e);
+    }
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -87,7 +116,14 @@ const Auth = () => {
         });
         
         if (error) throw error;
-        
+        // successful login -> reset failed attempts
+        try {
+          localStorage.removeItem("loginFailedAttempts");
+        } catch (e) {
+          /* ignore */
+        }
+        setFailedAttempts(0);
+
         toast({
           title: "¡Bienvenido!",
           description: "Has iniciado sesión correctamente",
@@ -112,6 +148,19 @@ const Auth = () => {
         });
       }
     } catch (error: any) {
+      // If this was a login attempt, increment the failed attempts counter
+      if (isLogin) {
+        try {
+          const raw = localStorage.getItem("loginFailedAttempts");
+          const parsed = raw ? JSON.parse(raw) : { count: 0 };
+          const next = (parsed?.count || 0) + 1;
+          const payload = { count: next, last: new Date().toISOString() };
+          localStorage.setItem("loginFailedAttempts", JSON.stringify(payload));
+          setFailedAttempts(next);
+        } catch (e) {
+          console.error("Failed to increment failed attempts", e);
+        }
+      }
       toast({
         title: "Error",
         description: error.message,
@@ -139,6 +188,58 @@ const Auth = () => {
         description: error.message,
         variant: "destructive",
       });
+      setLoading(false);
+    }
+  };
+
+  const allowedProfessorDomains = [
+    "@mail.udes.edu.co",
+    "@udes.edu.co",
+    "@valledupar.udes.edu.co",
+    "@cucuta.udes.edu.co",
+  ];
+
+  const isProfessorEmail = (emailToCheck: string) => {
+    const lower = emailToCheck.trim().toLowerCase();
+    return allowedProfessorDomains.some((d) => lower.endsWith(d));
+  };
+
+  const handleProfessorSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isProfessorEmail(profEmail)) {
+      toast({ title: "Correo no permitido", description: "Usa tu correo institucional UDES.", variant: "destructive" });
+      return;
+    }
+
+    if (!profFullName || !profPassword) {
+      toast({ title: "Completa los campos", description: "Nombre y contraseña son requeridos.", variant: "destructive" });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signUp({
+        email: profEmail,
+        password: profPassword,
+        options: {
+          data: {
+            full_name: profFullName,
+            role: "profesor",
+          },
+          emailRedirectTo: `${window.location.origin}/welcome-profesor`,
+        },
+      });
+
+      if (error) throw error;
+
+      toast({ title: "Cuenta creada", description: "Revisa tu correo institucional para confirmar y continúa en la página de bienvenida." });
+      setShowProfessorModal(false);
+      setProfFullName("");
+      setProfEmail("");
+      setProfPassword("");
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
       setLoading(false);
     }
   };
@@ -219,6 +320,19 @@ const Auth = () => {
                 )}
               </Button>
 
+              {isLogin && failedAttempts >= 2 && (
+                <div className="mt-2">
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="w-full text-sm"
+                    onClick={() => navigate('/forgot-password')}
+                  >
+                    ¿Olvidaste tu contraseña?
+                  </Button>
+                </div>
+              )}
+
               <div className="relative my-4">
                 <Separator />
                 <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-background px-2 text-xs text-muted-foreground">
@@ -262,6 +376,14 @@ const Auth = () => {
                 >
                   {isLogin ? "¿No tienes cuenta? Regístrate" : "¿Ya tienes cuenta? Inicia sesión"}
                 </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="w-full text-sm mt-2"
+                    onClick={() => setShowProfessorModal(true)}
+                  >
+                    ¿Eres profesor UDES? Crea tu cuenta aquí
+                  </Button>
               </form>
             </CardContent>
           </Card>
@@ -359,6 +481,42 @@ const Auth = () => {
       </div>
 
       {/* Blocked Account Modal */}
+      {/* Profesor UDES - Registro Modal */}
+      <Dialog open={showProfessorModal} onOpenChange={setShowProfessorModal}>
+        <DialogContent className="sm:max-w-[500px]">
+          <form onSubmit={handleProfessorSignUp}>
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-lg font-semibold">Registro para Profesores UDES</h3>
+                <p className="text-sm text-gray-600">Usa tu correo institucional UDES para crear la cuenta.</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="profFullName">Nombre completo</Label>
+                <Input id="profFullName" value={profFullName} onChange={(e) => setProfFullName(e.target.value)} required />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="profEmail">Correo institucional</Label>
+                <Input id="profEmail" type="email" value={profEmail} onChange={(e) => setProfEmail(e.target.value)} required />
+                <p className="text-xs text-muted-foreground">Dominios permitidos: @mail.udes.edu.co, @udes.edu.co, @valledupar.udes.edu.co, @cucuta.udes.edu.co</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="profPassword">Contraseña</Label>
+                <Input id="profPassword" type="password" value={profPassword} onChange={(e) => setProfPassword(e.target.value)} required />
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="ghost" onClick={() => setShowProfessorModal(false)} disabled={loading}>Cancelar</Button>
+                <Button type="submit" disabled={loading}>
+                  {loading ? "Creando..." : "Crear cuenta"}
+                </Button>
+              </div>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
       <Dialog open={showBlockedModal} onOpenChange={() => {}}>
         <DialogContent className="sm:max-w-[500px]" onPointerDownOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
           <DialogHeader>

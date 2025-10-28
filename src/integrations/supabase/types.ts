@@ -249,6 +249,66 @@ export type Database = {
         }
         Relationships: []
       }
+      offering_requests: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          offering_id: string
+          full_name: string
+          country: string
+          department: string | null
+          university_representing: string
+          institutional_email: string
+          proposal_type: string
+          message: string | null
+          read: boolean | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          offering_id: string
+          full_name: string
+          country: string
+          department?: string | null
+          university_representing: string
+          institutional_email: string
+          proposal_type: string
+          message?: string | null
+          read?: boolean | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          offering_id?: string
+          full_name?: string
+          country?: string
+          department?: string | null
+          university_representing?: string
+          institutional_email?: string
+          proposal_type?: string
+          message?: string | null
+          read?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offering_requests_offering_id_fkey"
+            columns: ["offering_id"]
+            isOneToOne: false
+            referencedRelation: "course_offerings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offering_requests_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       hero_carousel: {
         Row: {
           id: string

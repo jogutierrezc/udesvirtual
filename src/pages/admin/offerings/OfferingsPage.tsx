@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useAdmin } from "@/contexts/AdminContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +8,8 @@ import { PlusCircle, Edit2, Trash2, EyeOff, Loader2, Globe, Upload, Search, Chev
 import { OfferingFormModal } from "./modals/OfferingFormModal";
 import { CoilFormModal } from "./modals/CoilFormModal";
 import { ImportModal } from "./modals/ImportModal";
+
+import { Badge } from "@/components/ui/badge";
 import { Tables } from "@/integrations/supabase/types";
 
 type Offering = Tables<"course_offerings">;
@@ -54,6 +56,8 @@ export const OfferingsPage = () => {
     if (!confirm("¿Deshabilitar esta oferta?")) return;
     await updateOffering(id, { status: "rejected" });
   };
+
+  
 
   const handleEditCoil = (coil: CoilProposal) => {
     setEditingCoil(coil);
@@ -254,6 +258,8 @@ export const OfferingsPage = () => {
                         >
                           <EyeOff className="h-3.5 w-3.5 md:h-4 md:w-4" />
                         </Button>
+                        {/* Buzón / Requests summary */}
+                        {/* additional actions can go here */}
                       </div>
                     </div>
                   ))}
@@ -380,6 +386,8 @@ export const OfferingsPage = () => {
         open={showImportModal}
         onClose={() => setShowImportModal(false)}
       />
+
+      {/* Buzón modal removed — moved to separate /admin/buzon page */}
     </div>
   );
 };

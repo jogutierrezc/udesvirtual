@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Search, Users, MapPin, BookOpen, Mail, Phone, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { LiaChat } from "@/components/LiaChat";
+import RequestModal from "@/components/RequestModal";
 import { EmptyState } from "@/components/EmptyState";
 
 const ProfessorOfferings = () => {
@@ -19,6 +20,7 @@ const ProfessorOfferings = () => {
   const [loading, setLoading] = useState(true);
   const [selectedOffering, setSelectedOffering] = useState<any | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [showRequestModal, setShowRequestModal] = useState(false);
   
   // Estados de paginación
   const [currentPage, setCurrentPage] = useState(1);
@@ -361,6 +363,10 @@ const ProfessorOfferings = () => {
                     <Badge variant={selectedOffering.offering_type === "exchange" ? "default" : "secondary"}>
                       {selectedOffering.offering_type === "exchange" ? "Exchange" : "Programada"}
                     </Badge>
+                    {/* Solicitar button only for Exchange offers */}
+                    {selectedOffering.offering_type === "exchange" && (
+                      <Button onClick={() => setShowRequestModal(true)} variant="secondary">Solicitar</Button>
+                    )}
                     <Button variant="ghost" onClick={() => setShowModal(false)}>
                       <X className="h-4 w-4" />
                     </Button>
@@ -447,6 +453,14 @@ const ProfessorOfferings = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Modal de Solicitud */}
+      <RequestModal
+        open={showRequestModal}
+        onOpenChange={setShowRequestModal}
+        offeringId={selectedOffering?.id}
+        offeringTitle={selectedOffering?.title}
+      />
 
       <LiaChat />
     </div>

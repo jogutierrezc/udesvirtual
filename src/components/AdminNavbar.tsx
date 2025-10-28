@@ -170,6 +170,19 @@ export const AdminNavbar = () => {
               Pasaporte
             </button>
 
+            {/* Buzón link */}
+            <button
+              onClick={() => navigate("/admin/buzon")}
+              className={`flex items-center gap-2 text-sm font-medium px-2 py-1 rounded transition-colors ${
+                location.pathname.includes('/admin/buzon')
+                  ? 'text-foreground bg-muted/50'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+              }`}
+            >
+              <FileText className="h-4 w-4" />
+              Buzón
+            </button>
+
             {/* Configuración Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

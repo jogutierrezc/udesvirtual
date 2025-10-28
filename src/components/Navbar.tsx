@@ -110,16 +110,25 @@ export const Navbar = () => {
     }
     
     // Navegación para profesores y otros usuarios
+    // Los profesores tienen navegación simplificada: ocultamos Catálogo, Oferta, COIL, MOOC y LIA
+    if (user?.role === "professor") {
+      return [
+        { to: "/", label: "Inicio" },
+        { to: "/professor", label: "Profesor" },
+        { to: "/professor/mis-estudiantes", label: "Mis Estudiantes" },
+      ];
+    }
+
     const base = [
       { to: "/", label: "Inicio" },
+      { to: "/profesores", label: "Profesores" },
       { to: "/catalog", label: "Catálogo" },
       { to: "/professor-offerings", label: "Oferta" },
       { to: "/coil-offerings", label: "COIL" },
       { to: "/mooc", label: "MOOC" },
       { to: "/lia", label: "LIA" },
     ];
-    
-    if (user?.role === "professor") base.push({ to: "/professor", label: "Profesor" });
+
     return base;
   }, [user?.role, isUdesEmail]);
 

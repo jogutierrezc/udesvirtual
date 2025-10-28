@@ -35,6 +35,13 @@ const colombianDepartments = [
   "Vaupés", "Vichada"
 ];
 
+const allowedUdesDomains = [
+  "@mail.udes.edu.co",
+  "@udes.edu.co",
+  "@valledupar.udes.edu.co",
+  "@cucuta.udes.edu.co",
+];
+
 export default function ProfileSetup() {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -60,6 +67,7 @@ export default function ProfileSetup() {
     orcid_link: "",
     cvlac_link: "",
     isUdesStudent: false,
+    udesVinculo: "",
   });
   const [isProfessor, setIsProfessor] = useState(false);
 
@@ -77,6 +85,12 @@ export default function ProfileSetup() {
       }
 
       setUserId(session.user.id);
+      const userEmail = session.user.email || "";
+      const isUdes = allowedUdesDomains.some((d) => userEmail.toLowerCase().endsWith(d));
+      // marcar si el correo es UDES
+      if (isUdes) {
+        setFormData((prev) => ({ ...prev, isUdesStudent: true }));
+      }
 
       // Verificar si el perfil ya está completo
       const { data: profile } = await supabase
@@ -131,6 +145,13 @@ export default function ProfileSetup() {
 
     if (field === "country" && value !== "Colombia") {
       setFormData(prev => ({ ...prev, department: "" }));
+    }
+
+    if (field === "udesVinculo") {
+      // Si selecciona vínculo con UDES, fijar país y restringir departamento
+      if (value === "udes_estudiante" || value === "udes_profesor") {
+        setFormData(prev => ({ ...prev, country: "Colombia", department: "" }));
+      }
     }
   };
 
@@ -216,7 +237,23 @@ export default function ProfileSetup() {
       return false;
     }
 
-    // Si es profesor, no validamos los campos opcionales (biografía, links) — son opcionales
+    // Si el usuario indica que es Profesor UDES, validar biografía, ORCID y CvLac (requeridos)
+    const isProfByVinculo = (formData as any).udesVinculo === 'udes_profesor';
+    if (isProfByVinculo || isProfessor) {
+      // si es profesor por vínculo o rol, requerir biografía, orcid y cvlac
+      if (!((formData as any).biography || "").trim()) {
+        toast({ title: "Error", description: "La biografía es obligatoria para profesores", variant: "destructive" });
+        return false;
+      }
+      if (!((formData as any).orcid_link || "").trim()) {
+        toast({ title: "Error", description: "El link de ORCID es obligatorio para profesores", variant: "destructive" });
+        return false;
+      }
+      if (!((formData as any).cvlac_link || "").trim()) {
+        toast({ title: "Error", description: "El link de CvLac es obligatorio para profesores", variant: "destructive" });
+        return false;
+      }
+    }
 
     return true;
   };
@@ -250,6 +287,7 @@ export default function ProfileSetup() {
           orcid_link: (formData as any).orcid_link || null,
           cvlac_link: (formData as any).cvlac_link || null,
           ...(typeof (formData as any).isUdesStudent !== 'undefined' ? { is_udes: (formData as any).isUdesStudent } : {}),
+          ...(typeof (formData as any).udesVinculo !== 'undefined' ? { udes_vinculo: (formData as any).udesVinculo } : {}),
           updated_at: new Date().toISOString()
         })
         .eq("id", userId);
@@ -347,80 +385,101 @@ export default function ProfileSetup() {
                 </div>
               </div>
 
-              {/* Tipo de Estudiante (oculto para profesores/admins) */}
-              {!isProfessor && (
-                <>
-                  <div className="space-y-3">
-                    <Label>Tipo de Estudiante</Label>
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="isUdesStudent"
-                        checked={(formData as any).isUdesStudent || false}
-                        onCheckedChange={(checked) => handleChange("isUdesStudent", checked)}
-                      />
-                      <label htmlFor="isUdesStudent" className="text-sm font-medium leading-none">Estudiante UDES</label>
+              {/* Vínculo con UDES: si el correo es institucional mostrar opción especial */}
+              { (formData as any).isUdesStudent ? (
+                <div className="space-y-3">
+                  <Label>¿Cuál es tu vínculo con la UDES?</Label>
+                  <Select
+                    value={(formData as any).udesVinculo}
+                    onValueChange={(value) => handleChange("udesVinculo", value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar vínculo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="udes_estudiante">Estudiante UDES</SelectItem>
+                      <SelectItem value="udes_profesor">Profesor UDES</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">Si seleccionas Estudiante UDES o Profesor UDES, el país se fijará en Colombia y los departamentos se limitarán a las opciones institucionales.</p>
+
+                  {/* Universidad no aplica en este flujo */}
+                </div>
+              ) : (
+                !isProfessor && (
+                  <>
+                    <div className="space-y-3">
+                      <Label>Tipo de Estudiante</Label>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="isUdesStudent"
+                          checked={(formData as any).isUdesStudent || false}
+                          onCheckedChange={(checked) => handleChange("isUdesStudent", checked)}
+                        />
+                        <label htmlFor="isUdesStudent" className="text-sm font-medium leading-none">Estudiante UDES</label>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="isPrivateStudent"
+                          checked={formData.isPrivateStudent}
+                          onCheckedChange={(checked) => handleChange("isPrivateStudent", checked)}
+                        />
+                        <label
+                          htmlFor="isPrivateStudent"
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                          Particular
+                        </label>
+                      </div>
+
+                      {!formData.isPrivateStudent && (
+                        <>
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id="isInternationalStudent"
+                              checked={formData.isInternationalStudent}
+                              onCheckedChange={(checked) => handleChange("isInternationalStudent", checked)}
+                            />
+                            <label
+                              htmlFor="isInternationalStudent"
+                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                            >
+                              Estudiante Extranjero
+                            </label>
+                          </div>
+
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id="isOtherUniversity"
+                              checked={formData.isOtherUniversity}
+                              onCheckedChange={(checked) => handleChange("isOtherUniversity", checked)}
+                            />
+                            <label
+                              htmlFor="isOtherUniversity"
+                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                            >
+                              Estudiante de Otra IES
+                            </label>
+                          </div>
+                        </>
+                      )}
                     </div>
 
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="isPrivateStudent"
-                        checked={formData.isPrivateStudent}
-                        onCheckedChange={(checked) => handleChange("isPrivateStudent", checked)}
-                      />
-                      <label
-                        htmlFor="isPrivateStudent"
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                      >
-                        Particular
-                      </label>
-                    </div>
-
-                    {!formData.isPrivateStudent && (
-                      <>
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            id="isInternationalStudent"
-                            checked={formData.isInternationalStudent}
-                            onCheckedChange={(checked) => handleChange("isInternationalStudent", checked)}
-                          />
-                          <label
-                            htmlFor="isInternationalStudent"
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                          >
-                            Estudiante Extranjero
-                          </label>
-                        </div>
-
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            id="isOtherUniversity"
-                            checked={formData.isOtherUniversity}
-                            onCheckedChange={(checked) => handleChange("isOtherUniversity", checked)}
-                          />
-                          <label
-                            htmlFor="isOtherUniversity"
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                          >
-                            Estudiante de Otra IES
-                          </label>
-                        </div>
-                      </>
+                    {/* Universidad (condicional) */}
+                    {(formData.isInternationalStudent || formData.isOtherUniversity) && (
+                      <div className="space-y-2">
+                        <Label htmlFor="universityName">Nombre de la Universidad *</Label>
+                        <Input
+                          id="universityName"
+                          value={formData.universityName}
+                          onChange={(e) => handleChange("universityName", e.target.value)}
+                          placeholder="Ej: Universidad Nacional"
+                        />
+                      </div>
                     )}
-                  </div>
-
-                  {/* Universidad (condicional) */}
-                  {(formData.isInternationalStudent || formData.isOtherUniversity) && (
-                    <div className="space-y-2">
-                      <Label htmlFor="universityName">Nombre de la Universidad *</Label>
-                      <Input
-                        id="universityName"
-                        value={formData.universityName}
-                        onChange={(e) => handleChange("universityName", e.target.value)}
-                        placeholder="Ej: Universidad Nacional"
-                      />
-                    </div>
-                  )}
-                </>
+                  </>
+                )
               )}
 
               {/* Teléfono */}
@@ -450,21 +509,25 @@ export default function ProfileSetup() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="country">País *</Label>
-                  <Select
-                    value={formData.country}
-                    onValueChange={(value) => handleChange("country", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {countries.map((country) => (
-                        <SelectItem key={country} value={country}>
-                          {country}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {((formData as any).isUdesStudent && ((formData as any).udesVinculo === 'udes_estudiante' || (formData as any).udesVinculo === 'udes_profesor')) ? (
+                    <Input id="country" value={formData.country} readOnly />
+                  ) : (
+                    <Select
+                      value={formData.country}
+                      onValueChange={(value) => handleChange("country", value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {countries.map((country) => (
+                          <SelectItem key={country} value={country}>
+                            {country}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -490,10 +553,16 @@ export default function ProfileSetup() {
                       <SelectValue placeholder="Seleccionar departamento" />
                     </SelectTrigger>
                     <SelectContent>
-                      {colombianDepartments.map((dept) => (
-                        <SelectItem key={dept} value={dept}>
-                          {dept}
-                        </SelectItem>
+                      {( (formData as any).isUdesStudent && ((formData as any).udesVinculo === 'udes_estudiante' || (formData as any).udesVinculo === 'udes_profesor') ) ? [
+                        "Santander",
+                        "Norte de Santander",
+                        "Cesar",
+                        "Arauca",
+                        "Distrito Capital de Bogota"
+                      ].map((dept) => (
+                        <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                      )) : colombianDepartments.map((dept) => (
+                        <SelectItem key={dept} value={dept}>{dept}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -501,20 +570,20 @@ export default function ProfileSetup() {
               )}
 
               {/* Campos para Profesores */}
-              {isProfessor && (
+              {(isProfessor || (formData as any).udesVinculo === 'udes_profesor') && (
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold">Perfil de Profesor</h3>
                       <div className="space-y-2">
-                        <Label htmlFor="biography">Biografía / Descripción</Label>
+                        <Label htmlFor="biography">Biografía / Descripción *</Label>
                         <textarea id="biography" value={(formData as any).biography} onChange={(e) => handleChange('biography', e.target.value)} className="w-full p-2 border rounded" rows={4} />
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="orcid_link">Link ORCID (Opcional)</Label>
+                          <Label htmlFor="orcid_link">Link ORCID *</Label>
                           <Input id="orcid_link" value={(formData as any).orcid_link} onChange={(e) => handleChange('orcid_link', e.target.value)} placeholder="https://orcid.org/0000-0000-0000-0000" />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="cvlac_link">Link CVLAC (Opcional)</Label>
+                          <Label htmlFor="cvlac_link">Link CVLAC *</Label>
                           <Input id="cvlac_link" value={(formData as any).cvlac_link} onChange={(e) => handleChange('cvlac_link', e.target.value)} placeholder="https://scienti.minciencias.gov.co/cvlac/" />
                         </div>
                       </div>

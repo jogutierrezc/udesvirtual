@@ -4,14 +4,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Link } from "react-router-dom";
+// removed dropdown menu and header links per UI update
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, LogOut, PlusCircle, BookOpen, GraduationCap, Package, Video } from "lucide-react";
+import { Loader2, PlusCircle, BookOpen, GraduationCap, Package, Video } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { TagInput } from "@/components/TagInput";
 import { ProfessorMoocPage } from "@/pages/professor/ProfessorMoocPage";
@@ -294,32 +293,6 @@ const Professor = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="bg-gradient-to-r from-primary to-accent text-white py-6 px-4">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Panel de Profesor</h1>
-            <p className="text-white/80">Crear Clases y Perfil de Investigador</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="secondary" className="">Opciones</Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem asChild>
-                  <Link to="/">Inicio</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/catalog">Catálogo</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleLogout}>
-                  <LogOut className="h-4 w-4 mr-2" /> Cerrar sesión
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-      </header>
 
       <div className="max-w-5xl mx-auto px-4 py-8">
         <Tabs defaultValue="class" className="space-y-6">

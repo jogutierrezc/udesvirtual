@@ -11,15 +11,21 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Catalog from "./pages/Catalog";
 import Professor from "./pages/Professor";
+import MisEstudiantes from "./pages/professor/MisEstudiantes";
 import Lia from "./pages/Lia";
 import Mooc from "./pages/Mooc";
 import MoocDetail from "./pages/MoocDetail";
 import Profile from "./pages/Profile";
+import PublicProfile from "./pages/PublicProfile";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import ProfileSetup from "./pages/ProfileSetup";
 import Welcome from "./pages/Welcome";
+import WelcomeProfesor from "./pages/WelcomeProfesor";
 import ProfessorOfferings from "./pages/ProfessorOfferings";
 import CoilOfferings from "./pages/CoilOfferings";
 import Navbar from "./components/Navbar";
+import Profesores from "./pages/Profesores";
 import ProtectedRoute from "./components/ProtectedRoute";
 import StudentDashboard from "./pages/student/StudentDashboard";
 import CourseLearning from "./pages/student/CourseLearning";
@@ -33,6 +39,7 @@ import { CertificationsPage } from "./pages/admin/mooc/CertificationsPage";
 import { StudentsPage } from "./pages/admin/mooc/StudentsPage";
 import { AdminLayout } from "./pages/admin/layout/AdminLayout";
 import { CertificateSettings } from "./pages/admin/CertificateSettings";
+import BuzonPage from "./pages/admin/BuzonPage";
 import Certificates from "./pages/Certificates";
 import CertificateView from "./pages/CertificateView";
 import Passport from "./pages/Passport";
@@ -44,16 +51,17 @@ const AppContent = () => {
   const location = useLocation();
   
   // Rutas donde se debe ocultar el Navbar
-  const hideNavbarRoutes = ['/unauthorized', '/profile-setup', '/welcome'];
+  const hideNavbarRoutes = ['/unauthorized', '/profile-setup', '/welcome', '/welcome-profesor'];
   
   // Verificar si es una ruta 404
   const is404 = !['/', '/auth', '/unauthorized', '/dashboard', '/catalog', '/professor-offerings', 
-    '/coil-offerings', '/mooc', '/profile', '/profile-setup', '/welcome', '/admin/catalog', '/admin/offerings', 
-    '/admin/registrations', '/admin/mooc', '/admin/mooc/certifications', '/admin/mooc/students', '/admin/carousel', '/admin/passport', '/admin', '/professor', '/lia', '/passport', '/celebration-test'].includes(location.pathname) && 
+    '/coil-offerings', '/mooc', '/profile', '/profile-setup', '/welcome', '/welcome-profesor', '/profesores', '/admin/catalog', '/admin/offerings', 
+    '/admin/registrations', '/admin/mooc', '/admin/mooc/certifications', '/admin/mooc/students', '/admin/carousel', '/admin/passport', '/admin', '/professor', '/professor/mis-estudiantes', '/lia', '/passport', '/celebration-test'].includes(location.pathname) && 
     !location.pathname.startsWith('/admin/') &&
     !location.pathname.startsWith('/mooc/') &&
     !location.pathname.startsWith('/courses/') &&
-    !location.pathname.startsWith('/certificado');
+    !location.pathname.startsWith('/certificado') &&
+    !location.pathname.startsWith('/profile/');
 
   // Ocultar navbar en 404 o en rutas específicas
   // Para las rutas de administración usamos un navbar específico (AdminNavbar) dentro del layout,
@@ -68,6 +76,7 @@ const AppContent = () => {
         <Route path="/auth" element={<Auth />} />
         <Route path="/profile-setup" element={<ProfileSetup />} />
         <Route path="/welcome" element={<Welcome />} />
+  <Route path="/welcome-profesor" element={<WelcomeProfesor />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
         <Route 
           path="/dashboard" 
@@ -148,6 +157,16 @@ const AppContent = () => {
                 <ProtectedRoute requireAdmin={true}>
                   <AdminLayout>
                     <OfferingsPage />
+                  </AdminLayout>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/buzon" 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <AdminLayout>
+                    <BuzonPage />
                   </AdminLayout>
                 </ProtectedRoute>
               } 
@@ -234,6 +253,12 @@ const AppContent = () => {
             />
             
             <Route path="/professor" element={<Professor />} />
+          <Route path="/professor/mis-estudiantes" element={<ProtectedRoute><MisEstudiantes /></ProtectedRoute>} />
+          {/* Public profile view by id (public) */}
+          <Route path="/profile/:id" element={<PublicProfile />} />
+        <Route path="/profesores" element={<Profesores />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/lia" element={<Lia />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

@@ -160,6 +160,14 @@ export default function Profile() {
       });
       if (metaError) throw metaError;
 
+      // Also save avatar_url in profiles table so public views can read it
+      try {
+        const { error: profileError } = await supabase.from('profiles').update(({ avatar_url: avatarUrl } as any)).eq('id', userId);
+        if (profileError) console.warn('Could not update profiles.avatar_url', profileError);
+      } catch (err) {
+        console.warn('profiles update failed', err);
+      }
+
       toast({ 
         title: "Avatar actualizado", 
         description: "Tu avatar ha sido actualizado correctamente." 
@@ -196,6 +204,14 @@ export default function Profile() {
       // store in user metadata for now
       const { error: metaError } = await supabase.auth.updateUser({ data: { avatar_url: publicUrl } });
       if (metaError) throw metaError;
+
+      // Also save avatar_url in profiles table so public views can read it
+      try {
+        const { error: profileError } = await supabase.from('profiles').update(({ avatar_url: publicUrl } as any)).eq('id', userId);
+        if (profileError) console.warn('Could not update profiles.avatar_url', profileError);
+      } catch (err) {
+        console.warn('profiles update failed', err);
+      }
 
       toast({ title: "Foto actualizada", description: "Tu foto de perfil ha sido subida." });
     } catch (e: any) {
