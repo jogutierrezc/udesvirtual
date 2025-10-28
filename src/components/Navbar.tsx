@@ -21,6 +21,7 @@ interface UserInfo {
 export const Navbar = () => {
   const [user, setUser] = useState<UserInfo | null>(null);
   const [loading, setLoading] = useState(true);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { isUdesEmail, isLoading: emailLoading } = useIsUdesEmail();
 
@@ -48,6 +49,20 @@ export const Navbar = () => {
 
         if (mounted) {
          setUser({ id: userId, name, email, role, avatarUrl });
+        // fetch unread contact messages for professors
+        try {
+          if (role === 'professor') {
+            const { data: cntData, count, error } = await (supabase.from('contact_messages') as any)
+              .select('*', { count: 'exact', head: true })
+              .eq('profile_id', userId)
+              .eq('read', false);
+            if (!error) setUnreadCount(Number(count) || 0);
+          } else {
+            setUnreadCount(0);
+          }
+        } catch (e) {
+          console.error('Error fetching unread count', e);
+        }
         }
       } catch (e) {
         console.error("Navbar auth load error", e);
@@ -70,9 +85,38 @@ export const Navbar = () => {
       }
     });
 
+    // realtime subscription to contact_messages for the current user
+    let channel: any = null;
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const uid = session?.user?.id;
+        if (!uid) return;
+        channel = supabase.channel(`public:contact_messages_user_${uid}`)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'contact_messages', filter: `profile_id=eq.${uid}` }, (payload) => {
+            // re-fetch unread count on any insert/update/delete for this profile
+            (async () => {
+              try {
+                const { count, error } = await (supabase.from('contact_messages') as any)
+                  .select('*', { count: 'exact', head: true })
+                  .eq('profile_id', uid)
+                  .eq('read', false);
+                if (!error) setUnreadCount(Number(count) || 0);
+              } catch (err) {
+                console.error('Error refreshing unread count', err);
+              }
+            })();
+          })
+          .subscribe();
+      } catch (err) {
+        console.error(err);
+      }
+    })();
+
     return () => {
       mounted = false;
       authSub.subscription.unsubscribe();
+      try { if (channel) channel.unsubscribe(); } catch (e) {}
     };
   }, []);
 
@@ -169,7 +213,12 @@ export const Navbar = () => {
                 `px-3 py-2 rounded-md text-sm font-medium ${isActive ? "bg-primary/10 text-primary" : "text-foreground/80 hover:text-foreground"}`
               }
             >
-              {l.label}
+              <span className="inline-flex items-center gap-2">
+                <span>{l.label}</span>
+                {l.to === '/professor/buzon' && unreadCount > 0 && (
+                  <span className="inline-flex items-center justify-center bg-red-600 text-white text-xs font-semibold rounded-full h-5 w-5">{unreadCount > 99 ? '99+' : unreadCount}</span>
+                )}
+              </span>
             </NavLink>
           ))}
         </div>
