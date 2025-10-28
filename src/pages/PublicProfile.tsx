@@ -1,8 +1,7 @@
-import React from "react";
+import React, { useState, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useMemo } from "react";
 import {
   Mail,
   MapPin,
@@ -19,6 +18,8 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import ContactProfessorModal from "@/components/ContactProfessorModal";
 
 // Simple brand SVG icons (inline to avoid new dependencies)
 const FacebookIcon: React.FC<{ className?: string }> = ({ className }) => (
@@ -167,6 +168,7 @@ function CursoCard({ curso }: { curso: CursoAcademico }) {
 const PublicProfile: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
+  const [contactOpen, setContactOpen] = useState(false);
 
   const { data: profile, isLoading, error } = useQuery<UserProfile | null, Error>({
     queryKey: ["publicProfile", id],
@@ -243,15 +245,31 @@ const PublicProfile: React.FC = () => {
   const roleFromProfile = profile ? getRole(profile) : null;
   // prefer explicit role from `user_roles` when available, otherwise derive from profile
   const rawRole = userRole ? String(userRole) : (roleFromProfile || "");
-  // Determine UDES professor using several sources: udes_relationships, profile fields, or user_roles
+  // Determine UDES professor primarily from the profile or the new udes_relationships table.
+  // Do NOT rely on the current session; this must work for unauthenticated visitors as well.
   const isUdesProfessor = !!(
     (udesRelation && udesRelation.vinculation_type === "Profesor") ||
-    (profile && profile.is_udes && profile.udes_vinculo === "Profesor") ||
-    (userRole && String(userRole).toLowerCase() === "professor")
+    (profile && profile.is_udes && profile.udes_vinculo === "Profesor")
   );
   const roleLabel = isUdesProfessor ? "Profesor UDES" : (rawRole ? rawRole.toUpperCase() : "");
   const programLabel = udesRelation?.program || null;
   const roleText = roleLabel ? (programLabel ? `${roleLabel} — ${programLabel}` : roleLabel) : "";
+
+  // Compute avatar URL: prefer absolute URLs stored in profile.avatar_url, otherwise try the 'avatars' public bucket
+  const avatarUrl = (() => {
+    try {
+      if (profile?.avatar_url) {
+        const url = String(profile.avatar_url);
+        if (url.startsWith("http://") || url.startsWith("https://")) return url;
+        // Try to build public URL from storage (assume bucket 'avatars')
+        const publicUrl = (supabase.storage.from("avatars") as any).getPublicUrl(url)?.data?.publicUrl || null;
+        return publicUrl || url;
+      }
+      return null;
+    } catch (e) {
+      return profile?.avatar_url || null;
+    }
+  })();
 
   if (isLoading) {
     return (
@@ -376,9 +394,8 @@ const PublicProfile: React.FC = () => {
         <div className="px-6 pb-6 -mt-16 sm:px-10">
           <div className="relative w-32 h-32 rounded-full border-4 border-white bg-gray-200 flex items-center justify-center shadow-lg mb-4 text-blue-600 text-4xl font-bold overflow-hidden z-30">
             {/* If there is an avatar URL render it, otherwise initials */}
-              {profile.avatar_url ? (
-              // prefer avatar_url stored in profiles
-              <img src={profile.avatar_url} alt={profile.full_name} className="w-32 h-32 object-cover rounded-full" />
+            {avatarUrl ? (
+              <img src={avatarUrl} alt={profile.full_name} className="w-32 h-32 object-cover rounded-full" />
             ) : profile.full_name ? (
               <div>{profile.full_name.split(" ").map((n: string) => n[0]).slice(0,2).join("")}</div>
             ) : (
@@ -390,11 +407,19 @@ const PublicProfile: React.FC = () => {
             <h1 className="text-3xl font-extrabold text-gray-900">{profile.full_name}</h1>
             <p className="text-lg text-blue-600 mb-4 font-medium">{roleText}</p>
 
-            <div className="flex flex-wrap items-center space-x-6 text-gray-600 mb-6 border-b pb-4">
-              <span className="flex items-center space-x-1"><Mail className="w-4 h-4 text-blue-600" /><span>{profile.email}</span></span>
-              <span className="flex items-center space-x-1"><MapPin className="w-4 h-4 text-blue-600" /><span>{profile.city}, {profile.country}</span></span>
-              {profile.phone && <span className="flex items-center space-x-1"><Phone className="w-4 h-4 text-blue-600" /><span>{profile.phone}</span></span>}
+            <div className="flex flex-wrap items-center justify-between text-gray-600 mb-6 border-b pb-4">
+              <div className="flex items-center space-x-6 flex-1 min-w-0">
+                <span className="flex items-center space-x-1 truncate"><Mail className="w-4 h-4 text-blue-600" /><span className="truncate">{profile.email}</span></span>
+                <span className="flex items-center space-x-1 truncate"><MapPin className="w-4 h-4 text-blue-600" /><span className="truncate">{profile.city}, {profile.country}</span></span>
+                {profile.phone && <span className="flex items-center space-x-1 truncate"><Phone className="w-4 h-4 text-blue-600" /><span className="truncate">{profile.phone}</span></span>}
+              </div>
+
+              {/* Button aligned to the right to write to the professor (always visible) */}
+              <div className="ml-4 mt-3 sm:mt-0">
+                <Button onClick={() => setContactOpen(true)} size="sm">Escribirle al profesor</Button>
+              </div>
             </div>
+            {/* Previously there was an extra absolute button here; removed to avoid duplication */}
 
             <div className="mb-8">
               <h2 className="text-xl font-semibold text-gray-700 mb-3 flex items-center"><Pencil className="w-5 h-5 mr-2 text-blue-600" />Biografía</h2>
@@ -466,6 +491,7 @@ const PublicProfile: React.FC = () => {
           </div>
         </div>
       </div>
+      <ContactProfessorModal open={contactOpen} onOpenChange={setContactOpen} profileId={profile.id} />
     </div>
   );
 };

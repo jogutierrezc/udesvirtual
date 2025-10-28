@@ -115,6 +115,7 @@ export const Navbar = () => {
       return [
         { to: "/", label: "Inicio" },
         { to: "/professor", label: "Profesor" },
+        { to: "/professor/buzon", label: "Buzón" },
         { to: "/professor/mis-estudiantes", label: "Mis Estudiantes" },
       ];
     }

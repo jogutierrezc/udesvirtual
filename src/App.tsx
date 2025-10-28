@@ -12,6 +12,7 @@ import Dashboard from "./pages/Dashboard";
 import Catalog from "./pages/Catalog";
 import Professor from "./pages/Professor";
 import MisEstudiantes from "./pages/professor/MisEstudiantes";
+import ProfessorInbox from "./pages/professor/Inbox";
 import Lia from "./pages/Lia";
 import Mooc from "./pages/Mooc";
 import MoocDetail from "./pages/MoocDetail";
@@ -55,7 +56,7 @@ const AppContent = () => {
   
   // Verificar si es una ruta 404
   const is404 = !['/', '/auth', '/unauthorized', '/dashboard', '/catalog', '/professor-offerings', 
-    '/coil-offerings', '/mooc', '/profile', '/profile-setup', '/welcome', '/welcome-profesor', '/profesores', '/admin/catalog', '/admin/offerings', 
+    '/coil-offerings', '/mooc', '/profile', '/profile-setup', '/welcome', '/welcome-profesor', '/profesores', '/professor/buzon', '/admin/catalog', '/admin/offerings', 
     '/admin/registrations', '/admin/mooc', '/admin/mooc/certifications', '/admin/mooc/students', '/admin/carousel', '/admin/passport', '/admin', '/professor', '/professor/mis-estudiantes', '/lia', '/passport', '/celebration-test'].includes(location.pathname) && 
     !location.pathname.startsWith('/admin/') &&
     !location.pathname.startsWith('/mooc/') &&
@@ -253,6 +254,7 @@ const AppContent = () => {
             />
             
             <Route path="/professor" element={<Professor />} />
+              <Route path="/professor/buzon" element={<ProtectedRoute><ProfessorInbox /></ProtectedRoute>} />
           <Route path="/professor/mis-estudiantes" element={<ProtectedRoute><MisEstudiantes /></ProtectedRoute>} />
           {/* Public profile view by id (public) */}
           <Route path="/profile/:id" element={<PublicProfile />} />
