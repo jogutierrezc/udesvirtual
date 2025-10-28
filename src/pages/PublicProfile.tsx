@@ -198,6 +198,33 @@ const PublicProfile: React.FC = () => {
     staleTime: 1000 * 60 * 5,
   });
 
+  const { data: userRole } = useQuery<string | null, Error>({
+    queryKey: ["publicProfileRole", id],
+    queryFn: async () => {
+      if (!id) return null;
+      const res = await (supabase.from("user_roles") as any).select("role").eq("user_id", id).single();
+      if (res.error && (res.error as any).code !== 'PGRST116') throw res.error;
+      return res.data?.role || null;
+    },
+    enabled: !!id,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const { data: udesRelation } = useQuery<any | null, Error>({
+    queryKey: ["publicProfileUdesRelation", id],
+    queryFn: async () => {
+      if (!id) return null;
+      const res = await (supabase.from("udes_relationships") as any)
+        .select("program, vinculation_type")
+        .eq("profile_id", id)
+        .single();
+      if (res.error && (res.error as any).code !== 'PGRST116') throw res.error;
+      return res.data || null;
+    },
+    enabled: !!id,
+    staleTime: 1000 * 60 * 5,
+  });
+
   const { data: publications } = useQuery<any[], Error>({
     queryKey: ["publicProfilePublications", id],
     queryFn: async () => {
@@ -213,7 +240,18 @@ const PublicProfile: React.FC = () => {
     staleTime: 1000 * 60 * 5,
   });
 
-  const roleText = profile ? (getRole(profile) === "PROFESOR" ? "Profesor Investigador UDES" : "Usuario") : "";
+  const roleFromProfile = profile ? getRole(profile) : null;
+  // prefer explicit role from `user_roles` when available, otherwise derive from profile
+  const rawRole = userRole ? String(userRole) : (roleFromProfile || "");
+  // Determine UDES professor using several sources: udes_relationships, profile fields, or user_roles
+  const isUdesProfessor = !!(
+    (udesRelation && udesRelation.vinculation_type === "Profesor") ||
+    (profile && profile.is_udes && profile.udes_vinculo === "Profesor") ||
+    (userRole && String(userRole).toLowerCase() === "professor")
+  );
+  const roleLabel = isUdesProfessor ? "Profesor UDES" : (rawRole ? rawRole.toUpperCase() : "");
+  const programLabel = udesRelation?.program || null;
+  const roleText = roleLabel ? (programLabel ? `${roleLabel} — ${programLabel}` : roleLabel) : "";
 
   if (isLoading) {
     return (

@@ -13,6 +13,7 @@ import { AvatarSelector } from "@/components/AvatarSelector";
 import { Loader2, Save, User2 } from "lucide-react";
 import QualificationModal from '@/components/Research/QualificationModal';
 import PublicationsModal from '@/components/Research/PublicationsModal';
+import UdesRelationModal from '@/components/Research/UdesRelationModal';
 
 type ProfileRow = {
   id: string;
@@ -53,6 +54,8 @@ export default function ProfileNew() {
   const [pubOpen, setPubOpen] = useState(false);
   const [qualifications, setQualifications] = useState<any[]>([]);
   const [publications, setPublications] = useState<any[]>([]);
+  const [udesRelation, setUdesRelation] = useState<any | null>(null);
+  const [udesOpen, setUdesOpen] = useState(false);
   const [editingQualification, setEditingQualification] = useState<any | null>(null);
   const [editingPublication, setEditingPublication] = useState<any | null>(null);
 
@@ -150,6 +153,19 @@ export default function ProfileNew() {
       setPublications(data || []);
     } catch (err) {
       console.warn("Could not fetch publications", err);
+    }
+  };
+
+  const fetchUdesRelation = async (profileId: string) => {
+    try {
+      const { data, error } = await supabase.from('udes_relationships').select('*').eq('profile_id', profileId).single();
+      if (error && (error as any).code !== 'PGRST116') {
+        // no rows -> swallow
+        throw error;
+      }
+      setUdesRelation(data || null);
+    } catch (err) {
+      setUdesRelation(null);
     }
   };
 
@@ -264,6 +280,29 @@ export default function ProfileNew() {
                     <div className="space-y-2">
                       <Input id="avatar" type="file" accept="image/*" onChange={onAvatarChange} disabled={fileUploading} className="cursor-pointer" />
                       <p className="text-xs text-muted-foreground">Súbe tu propia imagen</p>
+                    </div>
+                    {/* Relación con la UDES */}
+                    <div className="mt-4 border rounded p-3 bg-white">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label className="mb-1">Relación con la UDES</Label>
+                          {udesRelation ? (
+                            <div className="text-sm text-muted-foreground">
+                              <div><strong>Programa:</strong> {udesRelation.program}</div>
+                              <div><strong>Campus:</strong> {udesRelation.campus}</div>
+                              <div><strong>Vinculación:</strong> {udesRelation.vinculation_type}</div>
+                              <div className="text-xs text-muted-foreground mt-1">Estos datos no se pueden modificar.</div>
+                            </div>
+                          ) : (
+                            <div className="text-sm text-muted-foreground">No registrada.</div>
+                          )}
+                        </div>
+                        <div>
+                          {!udesRelation && (
+                            <Button size="sm" onClick={() => setUdesOpen(true)}>Agregar</Button>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -491,6 +530,12 @@ export default function ProfileNew() {
         profileId={profile?.id || null}
         initial={editingPublication}
         onSaved={() => profile && fetchPublications(profile.id)}
+      />
+      <UdesRelationModal
+        open={udesOpen}
+        onOpenChange={(v) => { setUdesOpen(v); if (!v && profile) fetchUdesRelation(profile.id); }}
+        profileId={profile?.id || null}
+        onSaved={() => profile && fetchUdesRelation(profile.id)}
       />
     </div>
   );

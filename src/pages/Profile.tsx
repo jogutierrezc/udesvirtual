@@ -14,6 +14,7 @@ import { AvatarSelector } from "@/components/AvatarSelector";
 import { Loader2, Save, User2 } from "lucide-react";
 import QualificationModal from '@/components/Research/QualificationModal';
 import PublicationsModal from '@/components/Research/PublicationsModal';
+import UdesRelationModal from '@/components/Research/UdesRelationModal';
 
 // Minimal types for this file
 type ProfileRow = {
@@ -55,6 +56,10 @@ export default function Profile() {
   const [pubOpen, setPubOpen] = useState(false);
   const [qualifications, setQualifications] = useState<any[]>([]);
   const [publications, setPublications] = useState<any[]>([]);
+  const [udesRelation, setUdesRelation] = useState<any | null>(null);
+  const [udesOpen, setUdesOpen] = useState(false);
+  const [editingQualification, setEditingQualification] = useState<any | null>(null);
+  const [editingPublication, setEditingPublication] = useState<any | null>(null);
   const [editingQualification, setEditingQualification] = useState<any | null>(null);
   const [editingPublication, setEditingPublication] = useState<any | null>(null);
 
@@ -838,6 +843,7 @@ export default function Profile() {
         // load researcher data
         fetchQualifications(prof.id);
         fetchPublications(prof.id);
+        fetchUdesRelation(prof.id);
       } else {
         // create a minimal profile row if not exists
         const insertRow = {
@@ -853,6 +859,7 @@ export default function Profile() {
         // fetch empty lists for new profile
         fetchQualifications(created.id);
         fetchPublications(created.id);
+        fetchUdesRelation(created.id);
       }
     } catch (e) {
       console.error(e);
@@ -878,6 +885,18 @@ export default function Profile() {
         setPublications(data || []);
       } catch (err) {
         console.warn('Could not fetch publications', err);
+      }
+    };
+
+    const fetchUdesRelation = async (profileId: string) => {
+      try {
+        const { data, error } = await supabase.from('udes_relationships').select('*').eq('profile_id', profileId).single();
+        if (error && (error as any).code !== 'PGRST116') {
+          throw error;
+        }
+        setUdesRelation(data || null);
+      } catch (err) {
+        setUdesRelation(null);
       }
     };
 
