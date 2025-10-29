@@ -40,6 +40,7 @@ import { CertificationsPage } from "./pages/admin/mooc/CertificationsPage";
 import { StudentsPage } from "./pages/admin/mooc/StudentsPage";
 import { AdminLayout } from "./pages/admin/layout/AdminLayout";
 import { CertificateSettings } from "./pages/admin/CertificateSettings";
+import ProfessorsPage from "./pages/admin/professors/ProfessorsPage";
 import BuzonPage from "./pages/admin/BuzonPage";
 import Certificates from "./pages/Certificates";
 import CertificateView from "./pages/CertificateView";
@@ -228,6 +229,16 @@ const AppContent = () => {
                 <ProtectedRoute requireAdmin={true}>
                   <AdminLayout>
                     <PassportPage />
+                  </AdminLayout>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/professors" 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <AdminLayout>
+                    <ProfessorsPage />
                   </AdminLayout>
                 </ProtectedRoute>
               } 

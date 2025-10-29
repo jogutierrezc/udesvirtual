@@ -106,6 +106,8 @@ export default function ProfileNew() {
         setProfile(prof as unknown as ProfileRow);
         fetchQualifications(prof.id);
         fetchPublications(prof.id);
+        // Load UDES relation (write-once data)
+        fetchUdesRelation(prof.id);
       } else {
         const insertRow = {
           id: user.id,
@@ -119,6 +121,7 @@ export default function ProfileNew() {
         setProfile(created as unknown as ProfileRow);
         fetchQualifications(created.id);
         fetchPublications(created.id);
+        fetchUdesRelation(created.id);
       }
     } catch (e) {
       console.error(e);
@@ -158,12 +161,9 @@ export default function ProfileNew() {
 
   const fetchUdesRelation = async (profileId: string) => {
     try {
-      const { data, error } = await supabase.from('udes_relationships').select('*').eq('profile_id', profileId).single();
-      if (error && (error as any).code !== 'PGRST116') {
-        // no rows -> swallow
-        throw error;
-      }
-      setUdesRelation(data || null);
+      const { data, error } = await supabase.from('udes_relationships').select('*').eq('profile_id', profileId).maybeSingle();
+      if (error) throw error;
+      setUdesRelation(data ?? null);
     } catch (err) {
       setUdesRelation(null);
     }

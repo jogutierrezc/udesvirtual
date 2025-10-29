@@ -487,6 +487,13 @@ const PathwayManager: React.FC = () => {
     setStepsDialogOpen(true);
   };
 
+  const openCreateDialog = () => {
+    // Prepare dialog for creating a new pathway
+    resetForm();
+    setEditingPathway(null);
+    setDialogOpen(true);
+  };
+
   const handleLinkExistingActivities = async (pathway: PassportRoute) => {
     try {
       // Get all active activities with matching pathway_type that are not already linked to this route

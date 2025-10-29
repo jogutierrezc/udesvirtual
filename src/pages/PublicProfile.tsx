@@ -219,9 +219,9 @@ const PublicProfile: React.FC = () => {
       const res = await (supabase.from("udes_relationships") as any)
         .select("program, vinculation_type")
         .eq("profile_id", id)
-        .single();
-      if (res.error && (res.error as any).code !== 'PGRST116') throw res.error;
-      return res.data || null;
+        .maybeSingle();
+      if (res.error) throw res.error;
+      return res.data ?? null;
     },
     enabled: !!id,
     staleTime: 1000 * 60 * 5,

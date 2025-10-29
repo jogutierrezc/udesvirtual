@@ -1,0 +1,2 @@
+-- Migration: add disabled flag to profiles for soft account disable
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS disabled boolean NOT NULL DEFAULT false;

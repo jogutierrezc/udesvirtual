@@ -205,6 +205,10 @@ export const AdminNavbar = () => {
                   <Award className="h-4 w-4 mr-2" />
                   Agregar Firma Manuscrita
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/admin/professors")}>
+                  <Users className="h-4 w-4 mr-2" />
+                  Mis Profesores
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
