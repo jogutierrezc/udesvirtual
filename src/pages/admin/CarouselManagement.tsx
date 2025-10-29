@@ -35,10 +35,11 @@ interface CarouselSlide {
   video_url?: string | null;
   media_type?: string;
   link_url: string | null;
+  button_text?: string | null;
   order_index: number;
   active: boolean;
-  created_at: string;
-  updated_at: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface SlideFormData {
@@ -48,6 +49,7 @@ interface SlideFormData {
   video_url: string;
   media_type: 'image' | 'video';
   link_url: string;
+  button_text: string;
   order_index: number;
   active: boolean;
 }
@@ -68,6 +70,7 @@ export default function CarouselManagement() {
     video_url: "",
     media_type: "image",
     link_url: "",
+    button_text: "Explorar cursos",
     order_index: 0,
     active: true,
   });
@@ -222,6 +225,7 @@ export default function CarouselManagement() {
             video_url: formData.video_url || null,
             media_type: formData.media_type,
             link_url: formData.link_url || null,
+            button_text: formData.button_text || "Explorar cursos",
             order_index: formData.order_index,
             active: formData.active,
           })
@@ -239,6 +243,7 @@ export default function CarouselManagement() {
             video_url: formData.video_url || null,
             media_type: formData.media_type,
             link_url: formData.link_url || null,
+            button_text: formData.button_text || "Explorar cursos",
             order_index: formData.order_index,
             active: formData.active,
           },
@@ -266,6 +271,7 @@ export default function CarouselManagement() {
       video_url: slide.video_url || "",
       media_type: (slide.media_type as 'image' | 'video') || "image",
       link_url: slide.link_url || "",
+      button_text: slide.button_text || "Explorar cursos",
       order_index: slide.order_index,
       active: slide.active,
     });
@@ -302,6 +308,7 @@ export default function CarouselManagement() {
       video_url: "",
       media_type: "image",
       link_url: "",
+      button_text: "Explorar cursos",
       order_index: slides.length,
       active: true,
     });
@@ -627,6 +634,21 @@ export default function CarouselManagement() {
               />
               <p className="text-xs text-gray-500">
                 Página a la que redirige al hacer clic en la imagen
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="button_text">Texto del botón</Label>
+              <Input
+                id="button_text"
+                value={formData.button_text}
+                onChange={(e) =>
+                  setFormData({ ...formData, button_text: e.target.value })
+                }
+                placeholder="Explorar cursos"
+              />
+              <p className="text-xs text-gray-500">
+                Texto que aparece en el botón del slide (solo si hay URL de enlace)
               </p>
             </div>
 

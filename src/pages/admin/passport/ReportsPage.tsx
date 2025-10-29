@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import MobileTable from "@/components/ui/MobileTable";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Loader2 } from "lucide-react";
 
@@ -129,8 +130,8 @@ export const ReportsPage: React.FC = () => {
         {loading && <Loader2 className="h-5 w-5 animate-spin" />}
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+  {/* Summary Cards */}
+  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Puntos Totales Otorgados</CardTitle>
@@ -218,36 +219,55 @@ export const ReportsPage: React.FC = () => {
           ) : filtered.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">No hay datos para mostrar</div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full border text-sm bg-white">
-                <thead className="bg-muted">
-                  <tr>
-                    <th className="border px-2 py-1 w-12">#</th>
-                    <th className="border px-2 py-1">Estudiante</th>
-                    <th className="border px-2 py-1">Email</th>
-                    <th className="border px-2 py-1 text-right">Puntos Totales</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((r, idx) => (
-                    <tr key={r.user_id} className="hover:bg-muted/40">
-                      <td className="border px-2 py-1 text-center">{idx + 1}</td>
-                      <td className="border px-2 py-1">
-                        <div className="flex items-center gap-2">
-                          <Avatar className="h-8 w-8">
-                            <AvatarImage src={r.avatar_url || undefined} alt={r.full_name || r.email || "Usuario"} />
-                            <AvatarFallback>{initials(r.full_name, r.email)}</AvatarFallback>
-                          </Avatar>
-                          <span>{r.full_name || "—"}</span>
-                        </div>
-                      </td>
-                      <td className="border px-2 py-1">{r.email || "—"}</td>
-                      <td className="border px-2 py-1 text-right font-semibold">{r.total_points}</td>
+            <MobileTable
+              items={filtered}
+              renderItem={(r, idx) => (
+                <div className="border rounded p-3 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="text-xs font-semibold w-6 text-center">{idx + 1}</div>
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={r.avatar_url || undefined} alt={r.full_name || r.email || "Usuario"} />
+                      <AvatarFallback>{initials(r.full_name, r.email)}</AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">{r.full_name || "—"}</div>
+                      <div className="text-xs text-muted-foreground truncate">{r.email || "—"}</div>
+                    </div>
+                  </div>
+                  <div className="text-right font-semibold">{r.total_points}</div>
+                </div>
+              )}
+              table={(
+                <table className="min-w-full border text-sm bg-white">
+                  <thead className="bg-muted">
+                    <tr>
+                      <th className="border px-2 py-1 w-12">#</th>
+                      <th className="border px-2 py-1">Estudiante</th>
+                      <th className="border px-2 py-1">Email</th>
+                      <th className="border px-2 py-1 text-right">Puntos Totales</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {filtered.map((r, idx) => (
+                      <tr key={r.user_id} className="hover:bg-muted/40">
+                        <td className="border px-2 py-1 text-center">{idx + 1}</td>
+                        <td className="border px-2 py-1">
+                          <div className="flex items-center gap-2">
+                            <Avatar className="h-8 w-8">
+                              <AvatarImage src={r.avatar_url || undefined} alt={r.full_name || r.email || "Usuario"} />
+                              <AvatarFallback>{initials(r.full_name, r.email)}</AvatarFallback>
+                            </Avatar>
+                            <span>{r.full_name || "—"}</span>
+                          </div>
+                        </td>
+                        <td className="border px-2 py-1">{r.email || "—"}</td>
+                        <td className="border px-2 py-1 text-right font-semibold">{r.total_points}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            />
           )}
         </CardContent>
       </Card>

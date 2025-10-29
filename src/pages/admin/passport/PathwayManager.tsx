@@ -13,6 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Edit, Trash2, Eye, EyeOff, Search, Route, ChevronUp, ChevronDown, Target } from 'lucide-react';
 import { Loader2 } from 'lucide-react';
+import MobileTable from '@/components/ui/MobileTable';
 
 interface PassportRoute {
   id: string;
@@ -641,7 +642,7 @@ const PathwayManager: React.FC = () => {
             </DialogHeader>
 
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Nombre *</Label>
                   <Input
@@ -744,104 +745,8 @@ const PathwayManager: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Pathways Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredPathways.map((pathway) => (
-          <Card key={pathway.id} className={`relative ${!pathway.active ? 'opacity-60' : ''}`}>
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
-                    <Route className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-lg">{pathway.name}</CardTitle>
-                    <Badge className={getPathwayTypeColor(pathway.pathway_type)}>
-                      {getPathwayTypeLabel(pathway.pathway_type)}
-                    </Badge>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => openStepsDialog(pathway)}
-                    title="Gestionar pasos"
-                  >
-                    <Target className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleLinkExistingActivities(pathway)}
-                    title="Vincular actividades existentes"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => openEditDialog(pathway)}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleToggleActive(pathway)}
-                  >
-                    {pathway.active ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="sm">
-                        <Trash2 className="h-4 w-4 text-red-500" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>¿Eliminar sendero?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Esta acción no se puede deshacer. El sendero "{pathway.name}" será eliminado permanentemente,
-                          incluyendo todos sus pasos.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => handleDeletePathway(pathway.id)}
-                          className="bg-red-600 hover:bg-red-700"
-                        >
-                          Eliminar
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground mb-3">
-                {pathway.description || 'Sin descripción'}
-              </p>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Pasos definidos:</span>
-                  <span className="font-medium">{pathway.steps?.length || 0}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>Estado:</span>
-                  <Badge variant={pathway.active ? "default" : "secondary"}>
-                    {pathway.active ? 'Activo' : 'Inactivo'}
-                  </Badge>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {filteredPathways.length === 0 && (
+      {/* Pathways List - Mobile cards on small screens, wide cards on desktop */}
+      {filteredPathways.length === 0 ? (
         <Card>
           <CardContent className="pt-6">
             <div className="text-center py-8">
@@ -851,11 +756,207 @@ const PathwayManager: React.FC = () => {
             </div>
           </CardContent>
         </Card>
+      ) : (
+        <MobileTable
+          items={filteredPathways}
+          renderItem={(pathway) => (
+            <Card className={`${!pathway.active ? 'opacity-60' : ''}`}>
+              <CardHeader className="pb-3">
+                <div className="flex items-start gap-3">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+                    <Route className="h-6 w-6" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <CardTitle className="text-lg mb-1">{pathway.name}</CardTitle>
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      <Badge className={getPathwayTypeColor(pathway.pathway_type)}>
+                        {getPathwayTypeLabel(pathway.pathway_type)}
+                      </Badge>
+                      <Badge variant={pathway.active ? "default" : "secondary"}>
+                        {pathway.active ? 'Activo' : 'Inactivo'}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground leading-relaxed mb-3">
+                      {pathway.description || 'Sin descripción'}
+                    </p>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
+                      <Target className="h-4 w-4" />
+                      <span>{pathway.steps?.length || 0} paso(s) definido(s)</span>
+                    </div>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openStepsDialog(pathway)}
+                    className="w-full"
+                  >
+                    <Target className="h-4 w-4 mr-1" />
+                    Pasos
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleLinkExistingActivities(pathway)}
+                    className="w-full"
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Vincular
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openEditDialog(pathway)}
+                    className="w-full"
+                  >
+                    <Edit className="h-4 w-4 mr-1" />
+                    Editar
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleToggleActive(pathway)}
+                    className="w-full"
+                  >
+                    {pathway.active ? <EyeOff className="h-4 w-4 mr-1" /> : <Eye className="h-4 w-4 mr-1" />}
+                    {pathway.active ? 'Desactivar' : 'Activar'}
+                  </Button>
+                </div>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm" className="w-full mt-2">
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Eliminar
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>¿Eliminar sendero?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Esta acción no se puede deshacer. El sendero "{pathway.name}" será eliminado permanentemente,
+                        incluyendo todos sus pasos.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => handleDeletePathway(pathway.id)}
+                        className="bg-red-600 hover:bg-red-700"
+                      >
+                        Eliminar
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </CardContent>
+            </Card>
+          )}
+          table={(
+            <div className="grid grid-cols-1 gap-6">
+              {filteredPathways.map((pathway) => (
+                <Card key={pathway.id} className={`relative ${!pathway.active ? 'opacity-60' : ''}`}>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-start gap-4 flex-1 min-w-0">
+                        <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+                          <Route className="h-7 w-7" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-3 mb-2">
+                            <CardTitle className="text-xl">{pathway.name}</CardTitle>
+                            <Badge className={getPathwayTypeColor(pathway.pathway_type)}>
+                              {getPathwayTypeLabel(pathway.pathway_type)}
+                            </Badge>
+                            <Badge variant={pathway.active ? "default" : "secondary"}>
+                              {pathway.active ? 'Activo' : 'Inactivo'}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground text-justify leading-relaxed">
+                            {pathway.description || 'Sin descripción'}
+                          </p>
+                          <div className="mt-3 flex items-center gap-6 text-sm">
+                            <div className="flex items-center gap-2">
+                              <Target className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-muted-foreground">Pasos definidos:</span>
+                              <span className="font-semibold">{pathway.steps?.length || 0}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openStepsDialog(pathway)}
+                          title="Gestionar pasos"
+                        >
+                          <Target className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleLinkExistingActivities(pathway)}
+                          title="Vincular actividades existentes"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openEditDialog(pathway)}
+                          title="Editar sendero"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleToggleActive(pathway)}
+                          title={pathway.active ? 'Desactivar' : 'Activar'}
+                        >
+                          {pathway.active ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="sm" title="Eliminar sendero">
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>¿Eliminar sendero?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Esta acción no se puede deshacer. El sendero "{pathway.name}" será eliminado permanentemente,
+                                incluyendo todos sus pasos.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleDeletePathway(pathway.id)}
+                                className="bg-red-600 hover:bg-red-700"
+                              >
+                                Eliminar
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </div>
+                  </CardHeader>
+                </Card>
+              ))}
+            </div>
+          )}
+        />
       )}
 
       {/* Steps Management Dialog */}
       <Dialog open={stepsDialogOpen} onOpenChange={setStepsDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+  <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Pasos del Sendero: {selectedPathway?.name}</DialogTitle>
             <DialogDescription>
@@ -873,7 +974,7 @@ const PathwayManager: React.FC = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Título del Paso *</Label>
                       <Input
@@ -951,7 +1052,7 @@ const PathwayManager: React.FC = () => {
                           <div className="text-sm font-medium">
                             {step.points_required} pts
                           </div>
-                          <div className="flex gap-1">
+                          <div className="flex gap-1 flex-wrap">
                             <Button
                               variant="ghost"
                               size="sm"

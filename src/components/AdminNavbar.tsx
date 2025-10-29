@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { BookOpen, Package, Users, Globe, Settings, ChevronDown, FileText, Image, Award, Medal, BarChart2, Trophy } from "lucide-react";
+import { BookOpen, Package, Users, Globe, Settings, ChevronDown, FileText, Image, Award, Medal, BarChart2, Trophy, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +27,7 @@ export const AdminNavbar = () => {
 
   const [user, setUser] = useState<UserInfo | null>(null);
   const [loading, setLoading] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -101,8 +103,8 @@ export const AdminNavbar = () => {
             </Link>
           </div>
 
-          {/* Middle Nav Controls */}
-          <div className="flex items-center gap-6">
+          {/* Middle Nav Controls (desktop) */}
+          <div className="hidden md:flex items-center gap-6">
             {/* Exchange Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -246,8 +248,139 @@ export const AdminNavbar = () => {
             </DropdownMenu>
           </div>
 
-          {/* Right: User identity */}
+          {/* Right: Mobile menu trigger + User identity */}
           <div className="flex items-center gap-3">
+            {/* Mobile menu button */}
+            <div className="md:hidden">
+              <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon" aria-label="Abrir menú">
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-[300px] sm:w-[400px] p-0">
+                  <SheetHeader>
+                    <SheetTitle>
+                      {user ? (
+                        <div className="text-left">
+                          <div className="text-base font-medium truncate">{user.name}</div>
+                          <div className="text-sm text-muted-foreground capitalize">{user.role}</div>
+                        </div>
+                      ) : (
+                        <div className="text-left">Menú Admin</div>
+                      )}
+                    </SheetTitle>
+                  </SheetHeader>
+
+                  {/* Scrollable content */}
+                  <div className="mt-4 px-4 pb-4 flex flex-col gap-4 overflow-y-auto max-h-[calc(100vh-6rem)] pr-2">
+                    {/* Exchange group */}
+                    <div>
+                      <div className="text-xs uppercase text-muted-foreground mb-2">Exchange</div>
+                      <div className="flex flex-col">
+                        <Button variant="ghost" className="justify-start" onClick={() => { navigate('/admin/catalog'); setMobileMenuOpen(false); }}>
+                          <BookOpen className="h-4 w-4 mr-2" /> Catálogo
+                        </Button>
+                        <Button variant="ghost" className="justify-start" onClick={() => { navigate('/admin/offerings'); setMobileMenuOpen(false); }}>
+                          <Package className="h-4 w-4 mr-2" /> Oferta
+                        </Button>
+                        <Button variant="ghost" className="justify-start" onClick={() => { navigate('/admin/registrations'); setMobileMenuOpen(false); }}>
+                          <Users className="h-4 w-4 mr-2" /> Registros
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* MOOC group */}
+                    <div>
+                      <div className="text-xs uppercase text-muted-foreground mb-2">MOOC</div>
+                      <div className="flex flex-col">
+                        <Button variant="ghost" className="justify-start" onClick={() => { navigate('/admin/mooc'); setMobileMenuOpen(false); }}>
+                          <BookOpen className="h-4 w-4 mr-2" /> Cursos
+                        </Button>
+                        <Button variant="ghost" className="justify-start" onClick={() => { navigate('/admin/mooc/certifications'); setMobileMenuOpen(false); }}>
+                          <Award className="h-4 w-4 mr-2" /> Certificaciones
+                        </Button>
+                        <Button variant="ghost" className="justify-start" onClick={() => { navigate('/admin/mooc/students'); setMobileMenuOpen(false); }}>
+                          <Users className="h-4 w-4 mr-2" /> Estudiantes
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Pasaporte group */}
+                    <div>
+                      <div className="text-xs uppercase text-muted-foreground mb-2">Pasaporte</div>
+                      <div className="flex flex-col">
+                        <Button variant="ghost" className="justify-start" onClick={() => { navigate('/admin/passport/config'); setMobileMenuOpen(false); }}>
+                          <Settings className="h-4 w-4 mr-2" /> Configuración
+                        </Button>
+                        <Button variant="ghost" className="justify-start" onClick={() => { navigate('/admin/passport/senderos'); setMobileMenuOpen(false); }}>
+                          <BookOpen className="h-4 w-4 mr-2" /> Senderos
+                        </Button>
+                        <Button variant="ghost" className="justify-start" onClick={() => { navigate('/admin/passport/catalogo'); setMobileMenuOpen(false); }}>
+                          <Trophy className="h-4 w-4 mr-2" /> Catálogo de Actividades
+                        </Button>
+                        <Button variant="ghost" className="justify-start" onClick={() => { navigate('/admin/passport/insignias'); setMobileMenuOpen(false); }}>
+                          <Medal className="h-4 w-4 mr-2" /> Insignias y Reconocimientos
+                        </Button>
+                        <Button variant="ghost" className="justify-start" onClick={() => { navigate('/admin/passport/solicitudes'); setMobileMenuOpen(false); }}>
+                          <Award className="h-4 w-4 mr-2" /> Solicitudes de Puntos
+                        </Button>
+                        <Button variant="ghost" className="justify-start" onClick={() => { navigate('/admin/passport/participantes'); setMobileMenuOpen(false); }}>
+                          <Users className="h-4 w-4 mr-2" /> Participantes
+                        </Button>
+                        <Button variant="ghost" className="justify-start" onClick={() => { navigate('/admin/passport/reportes'); setMobileMenuOpen(false); }}>
+                          <BarChart2 className="h-4 w-4 mr-2" /> Reporte de Pasaportes
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Buzón */}
+                    <div>
+                      <div className="text-xs uppercase text-muted-foreground mb-2">Buzón</div>
+                      <Button variant="ghost" className="justify-start" onClick={() => { navigate('/admin/buzon'); setMobileMenuOpen(false); }}>
+                        <FileText className="h-4 w-4 mr-2" /> Buzón
+                      </Button>
+                    </div>
+
+                    {/* Configuración */}
+                    <div>
+                      <div className="text-xs uppercase text-muted-foreground mb-2">Configuración</div>
+                      <div className="flex flex-col">
+                        <Button variant="ghost" className="justify-start" onClick={() => { navigate('/admin/carousel'); setMobileMenuOpen(false); }}>
+                          <Image className="h-4 w-4 mr-2" /> Carrusel
+                        </Button>
+                        <Button variant="ghost" className="justify-start" onClick={() => { navigate('/admin/certificates'); setMobileMenuOpen(false); }}>
+                          <FileText className="h-4 w-4 mr-2" /> Configuración de Certificados
+                        </Button>
+                        <Button variant="ghost" className="justify-start" onClick={() => { navigate('/admin/mooc/certifications?open=settings'); setMobileMenuOpen(false); }}>
+                          <Award className="h-4 w-4 mr-2" /> Agregar Firma Manuscrita
+                        </Button>
+                        <Button variant="ghost" className="justify-start" onClick={() => { navigate('/admin/professors'); setMobileMenuOpen(false); }}>
+                          <Users className="h-4 w-4 mr-2" /> Mis Profesores
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Auth actions */}
+                    <div className="pt-2 pb-2">
+                      {user ? (
+                        <Button
+                          variant="destructive"
+                          className="w-full"
+                          onClick={() => { handleLogout(); setMobileMenuOpen(false); }}
+                        >
+                          Cerrar sesión
+                        </Button>
+                      ) : (
+                        <Button className="w-full" onClick={() => { navigate('/auth'); setMobileMenuOpen(false); }}>
+                          Iniciar sesión
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </SheetContent>
+              </Sheet>
+            </div>
             {loading ? (
               <div className="h-9 w-28 animate-pulse rounded-md bg-muted" />
             ) : user ? (

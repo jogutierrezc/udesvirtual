@@ -11,6 +11,7 @@ interface CarouselSlide {
   video_url?: string | null;
   media_type?: string;
   link_url: string | null;
+  button_text?: string | null;
   order_index: number;
   active?: boolean;
   created_at?: string;
@@ -232,7 +233,7 @@ export const HeroCarousel = () => {
                     handleSlideClick(slide.link_url);
                   }}
                 >
-                  Explorar cursos
+                  {slide.button_text || "Explorar cursos"}
                 </Button>
               )}
             </div>

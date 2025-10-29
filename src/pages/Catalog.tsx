@@ -41,6 +41,8 @@ const Catalog = () => {
     country: "",
     participant_type: "",
   });
+  const [currentUser, setCurrentUser] = useState<{ id: string; full_name: string; email: string } | null>(null);
+  const [formPrefilled, setFormPrefilled] = useState(false);
   // Estado para mostrar el modal con el link
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [classLink, setClassLink] = useState<string>("");
@@ -48,6 +50,47 @@ const Catalog = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Load logged-in user basic profile to prefill registration
+  useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          setCurrentUser(null);
+          return;
+        }
+        const uid = session.user.id;
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("full_name, email")
+          .eq("id", uid)
+          .single();
+        const full_name = profile?.full_name || session.user.user_metadata?.full_name || session.user.email || "";
+        const email = profile?.email || session.user.email || "";
+        setCurrentUser({ id: uid, full_name, email });
+      } catch (e) {
+        console.error("Error loading user for prefill", e);
+      }
+    };
+    loadUser();
+  }, []);
+
+  const prefillRegistrationForm = () => {
+    if (!currentUser) return;
+    // Avoid overriding if user already typed values
+    if (formPrefilled) return;
+    const isUdes = currentUser.email?.toLowerCase().endsWith("@mail.udes.edu.co");
+    setRegistrationForm((prev) => ({
+      full_name: prev.full_name || currentUser.full_name || "",
+      phone: prev.phone || "",
+      email: prev.email || currentUser.email || "",
+      institution: prev.institution || (isUdes ? "Universidad de Santander (UDES)" : ""),
+      country: prev.country || "",
+      participant_type: prev.participant_type || "Estudiante",
+    }));
+    setFormPrefilled(true);
+  };
 
   const loadData = async () => {
     try {
@@ -485,7 +528,7 @@ const Catalog = () => {
                     <div className="flex gap-2 w-full">
                       <Dialog>
                         <DialogTrigger asChild>
-                          <Button variant="ghost" className="flex-1" onClick={() => setSelectedDetails(classItem)}>
+                          <Button variant="ghost" className="flex-1" onClick={() => { prefillRegistrationForm(); setSelectedDetails(classItem); }}>
                             <BookOpen className="h-4 w-4 mr-2" />
                             Ver más
                           </Button>
@@ -626,7 +669,7 @@ const Catalog = () => {
 
                       <Dialog open={selectedClass?.id === classItem.id} onOpenChange={(open) => !open && setSelectedClass(null)}>
                         <DialogTrigger asChild>
-                          <Button className="flex-1" onClick={() => setSelectedClass(classItem)}>
+                          <Button className="flex-1" onClick={() => { prefillRegistrationForm(); setSelectedClass(classItem); }}>
                             <UserPlus className="h-4 w-4 mr-2" />
                             Registrarse
                           </Button>

@@ -188,10 +188,10 @@ const AdminActivityRequests: React.FC = () => {
               className="backdrop-blur-xl bg-white/60 border border-white/40 shadow-lg"
             >
               <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                  <div className="flex-1 min-w-0">
                     <CardTitle className="text-lg mb-2">{request.passport_activities.name}</CardTitle>
-                    <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm text-gray-600 mb-3">
                       <div className="flex items-center gap-1">
                         <User className="h-4 w-4" />
                         {request.profiles.full_name} ({request.profiles.email})
@@ -213,7 +213,7 @@ const AdminActivityRequests: React.FC = () => {
                       </div>
                     )}
                   </div>
-                  <div className="text-right ml-4">
+                  <div className="text-left sm:text-right sm:ml-4">
                     <div className="text-lg font-bold text-gray-800">{request.passport_activities.points_awarded}</div>
                     <div className="text-xs text-gray-500">puntos</div>
                     <Badge className={`mt-2 ${getPathwayColor(request.passport_activities.pathway_type)}`}>
@@ -224,7 +224,7 @@ const AdminActivityRequests: React.FC = () => {
               </CardHeader>
 
               <CardContent>
-                <div className="flex items-center justify-end gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2 sm:gap-3">
                   <Button
                     variant="outline"
                     onClick={() => rejectRequest(request.id, 'Solicitud rechazada por el administrador')}

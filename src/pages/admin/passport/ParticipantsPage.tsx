@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Trophy, UserCheck, UserX } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import MobileTable from "@/components/ui/MobileTable";
 
 type Role = "student" | "professor";
 type Participant = {
@@ -220,80 +221,154 @@ export const ParticipantsPage: React.FC = () => {
           ) : filtered.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">No se encontraron participantes</div>
           ) : (
-            <div className="border rounded-md divide-y">
-              {filtered.map((p) => (
-                <div key={p.id} className="p-3 flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <Avatar className="h-10 w-10">
+            <MobileTable
+              items={filtered}
+              renderItem={(p) => (
+                <div className="border rounded-lg p-4 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <Avatar className="h-12 w-12">
                       <AvatarImage src={p.avatar_url || undefined} alt={p.full_name || p.email || "Usuario"} />
                       <AvatarFallback>{initials(p.full_name, p.email)}</AvatarFallback>
                     </Avatar>
-                    <div className="min-w-0">
-                      <div className="font-medium truncate flex items-center gap-2">
-                        <span className="truncate">{p.full_name || p.email || "Usuario"}</span>
-                        <Badge variant={p.role === "professor" ? "default" : "secondary"} className="flex-shrink-0">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-base truncate">{p.full_name || p.email || "Usuario"}</div>
+                      <div className="text-sm text-muted-foreground truncate">{p.email}</div>
+                      {(p.city || p.department) && (
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {p.city || ""}{p.city && p.department ? ", " : ""}{p.department || ""}
+                        </div>
+                      )}
+                      <div className="mt-2">
+                        <Badge variant={p.role === "professor" ? "default" : "secondary"} className="text-xs">
                           {p.role === "professor" ? "Profesor" : "Estudiante"}
                         </Badge>
-                      </div>
-                      <div className="text-sm text-muted-foreground truncate">
-                        {p.email}
-                        {(p.city || p.department) && (
-                          <>
-                            {" "}•{" "}
-                            {p.city || ""}{p.city && p.department ? ", " : ""}{p.department || ""}
-                          </>
+                        {p.campus && (
+                          <Badge variant="outline" className="ml-2 text-xs">
+                            {p.campus}
+                          </Badge>
                         )}
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button size="icon" variant="ghost" onClick={() => openAward(p)} aria-label="Asignar puntos">
-                            <Trophy className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Asignar puntos</TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            size="icon"
-                            variant={p.disabled ? "secondary" : "destructive"}
-                            onClick={async () => {
-                              try {
-                                const newDisabled = !p.disabled;
-                                const { error } = await (supabase.from("profiles") as any)
-                                  .update({ disabled: newDisabled })
-                                  .eq("id", p.id);
-                                if (error) throw error;
-                                setParticipants((prev) => prev.map((x) => (x.id === p.id ? { ...x, disabled: newDisabled } : x)));
-                                toast({ title: newDisabled ? "Cuenta deshabilitada" : "Cuenta habilitada", description: p.full_name || p.email || "Usuario" });
-                              } catch (e: any) {
-                                console.error(e);
-                                toast({ title: "Error", description: e?.message || "No se pudo actualizar el estado de la cuenta", variant: "destructive" });
-                              }
-                            }}
-                            aria-label={p.disabled ? "Habilitar cuenta" : "Deshabilitar cuenta"}
-                          >
-                            {p.disabled ? <UserCheck className="h-4 w-4" /> : <UserX className="h-4 w-4" />}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>{p.disabled ? "Habilitar" : "Deshabilitar"}</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => openAward(p)} className="flex-1">
+                      <Trophy className="h-4 w-4 mr-1" />
+                      Asignar Puntos
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={p.disabled ? "secondary" : "destructive"}
+                      onClick={async () => {
+                        try {
+                          const newDisabled = !p.disabled;
+                          const { error } = await (supabase.from("profiles") as any)
+                            .update({ disabled: newDisabled })
+                            .eq("id", p.id);
+                          if (error) throw error;
+                          setParticipants((prev) => prev.map((x) => (x.id === p.id ? { ...x, disabled: newDisabled } : x)));
+                          toast({ title: newDisabled ? "Cuenta deshabilitada" : "Cuenta habilitada", description: p.full_name || p.email || "Usuario" });
+                        } catch (e: any) {
+                          console.error(e);
+                          toast({ title: "Error", description: e?.message || "No se pudo actualizar el estado de la cuenta", variant: "destructive" });
+                        }
+                      }}
+                      className="flex-1"
+                    >
+                      {p.disabled ? <UserCheck className="h-4 w-4 mr-1" /> : <UserX className="h-4 w-4 mr-1" />}
+                      {p.disabled ? "Habilitar" : "Deshabilitar"}
+                    </Button>
                   </div>
                 </div>
-              ))}
-            </div>
+              )}
+              table={(
+                <table className="min-w-full border text-sm bg-white">
+                  <thead className="bg-muted">
+                    <tr>
+                      <th className="border px-3 py-2 text-left">Participante</th>
+                      <th className="border px-3 py-2 text-left">Email</th>
+                      <th className="border px-3 py-2 text-left">Rol</th>
+                      <th className="border px-3 py-2 text-left">Ubicación</th>
+                      <th className="border px-3 py-2 text-center">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((p) => (
+                      <tr key={p.id} className="hover:bg-muted/40">
+                        <td className="border px-3 py-2">
+                          <div className="flex items-center gap-2">
+                            <Avatar className="h-8 w-8">
+                              <AvatarImage src={p.avatar_url || undefined} alt={p.full_name || p.email || "Usuario"} />
+                              <AvatarFallback>{initials(p.full_name, p.email)}</AvatarFallback>
+                            </Avatar>
+                            <span className="font-medium">{p.full_name || p.email || "Usuario"}</span>
+                          </div>
+                        </td>
+                        <td className="border px-3 py-2">{p.email}</td>
+                        <td className="border px-3 py-2">
+                          <Badge variant={p.role === "professor" ? "default" : "secondary"}>
+                            {p.role === "professor" ? "Profesor" : "Estudiante"}
+                          </Badge>
+                        </td>
+                        <td className="border px-3 py-2 text-sm text-muted-foreground">
+                          {(p.city || p.department) ? (
+                            <>
+                              {p.city || ""}{p.city && p.department ? ", " : ""}{p.department || ""}
+                            </>
+                          ) : "—"}
+                        </td>
+                        <td className="border px-3 py-2">
+                          <div className="flex items-center justify-center gap-1">
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button size="icon" variant="ghost" onClick={() => openAward(p)} aria-label="Asignar puntos">
+                                    <Trophy className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Asignar puntos</TooltipContent>
+                              </Tooltip>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    size="icon"
+                                    variant={p.disabled ? "secondary" : "destructive"}
+                                    onClick={async () => {
+                                      try {
+                                        const newDisabled = !p.disabled;
+                                        const { error } = await (supabase.from("profiles") as any)
+                                          .update({ disabled: newDisabled })
+                                          .eq("id", p.id);
+                                        if (error) throw error;
+                                        setParticipants((prev) => prev.map((x) => (x.id === p.id ? { ...x, disabled: newDisabled } : x)));
+                                        toast({ title: newDisabled ? "Cuenta deshabilitada" : "Cuenta habilitada", description: p.full_name || p.email || "Usuario" });
+                                      } catch (e: any) {
+                                        console.error(e);
+                                        toast({ title: "Error", description: e?.message || "No se pudo actualizar el estado de la cuenta", variant: "destructive" });
+                                      }
+                                    }}
+                                    aria-label={p.disabled ? "Habilitar cuenta" : "Deshabilitar cuenta"}
+                                  >
+                                    {p.disabled ? <UserCheck className="h-4 w-4" /> : <UserX className="h-4 w-4" />}
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>{p.disabled ? "Habilitar" : "Deshabilitar"}</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            />
           )}
         </CardContent>
       </Card>
 
       {/* Modal para asignar puntos */}
       <Dialog open={awardOpen} onOpenChange={setAwardOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+  <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Asignar Puntos</DialogTitle>
             <DialogDescription>
@@ -303,7 +378,7 @@ export const ParticipantsPage: React.FC = () => {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label>Puntos</Label>
                 <Input type="number" value={awardPoints} min={1} onChange={(e) => setAwardPoints(parseInt(e.target.value || "0", 10))} />

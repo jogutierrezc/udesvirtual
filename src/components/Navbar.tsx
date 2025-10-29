@@ -135,6 +135,7 @@ export const Navbar = () => {
     // Si es estudiante, mostrar navegación personalizada
     if (user?.role === "student") {
       const studentLinks = [
+        { to: "/catalog", label: "Clases para el estudiante" },
         { to: "/mooc", label: "Oferta de Cursos" },
         { to: "/dashboard", label: "Mis Cursos" },
         { to: "/profile", label: "Mi Perfil" },

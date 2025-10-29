@@ -635,7 +635,7 @@ export const PassportPage = ({
 
         <Tabs defaultValue={defaultTab} className="w-full">
           {!singleSection && (
-          <TabsList className="grid grid-cols-7 w-full">
+          <TabsList className="w-full overflow-x-auto flex gap-2 p-1 rounded-md">
             <TabsTrigger value="config">
               <Settings className="h-4 w-4 mr-2" />
               Configuración
@@ -679,7 +679,7 @@ export const PassportPage = ({
               <CardContent className="space-y-4">
                 {settings && (
                   <>
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
                         <Label>Puntos mínimos para insignia</Label>
                         <Input
@@ -750,7 +750,7 @@ export const PassportPage = ({
                 {/* Form to create new activity */}
                 <div className="border rounded p-4 space-y-4 bg-muted/30">
                   <h3 className="font-semibold">Crear Nueva Actividad</h3>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label>Nombre</Label>
                       <Input
@@ -773,6 +773,7 @@ export const PassportPage = ({
                           <SelectItem value="intercambio">Intercambio</SelectItem>
                           <SelectItem value="semillero">Semillero</SelectItem>
                           <SelectItem value="clase_espejo">Clase Espejo</SelectItem>
+                          <SelectItem value="masterclass">Master Class</SelectItem>
                           <SelectItem value="mooc">MOOC</SelectItem>
                           <SelectItem value="evento">Evento</SelectItem>
                           <SelectItem value="proyecto">Proyecto</SelectItem>
@@ -846,7 +847,7 @@ export const PassportPage = ({
                   {editingActivity && (
                     <div className="border rounded p-4 space-y-4 bg-blue-50 mb-4">
                       <h4 className="font-semibold">Editando: {editingActivity.name}</h4>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <Label>Nombre</Label>
                           <Input
@@ -940,26 +941,26 @@ export const PassportPage = ({
 
                   <div className="space-y-2">
                     {activities.map((act) => (
-                      <div key={act.id} className={`border rounded p-3 flex items-center justify-between ${!act.active ? "bg-gray-50 opacity-75" : ""}`}>
-                        <div className="flex-1">
+                      <div key={act.id} className={`border rounded p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 ${!act.active ? "bg-gray-50 opacity-75" : ""}`}>
+                        <div className="flex-1 min-w-0">
                           <div className="font-medium">{act.name}</div>
                           <div className="text-xs text-muted-foreground">
                             {act.activity_type} • {act.pathway_type} • {act.complexity_level}
                           </div>
                           {act.description && (
-                            <div className="text-xs text-muted-foreground mt-1 max-w-md truncate">
+                            <div className="text-xs text-muted-foreground mt-1 sm:max-w-md truncate">
                               {act.description}
                             </div>
                           )}
                         </div>
-                        <div className="flex items-center gap-2">
-                          <div className="text-right mr-4">
+                        <div className="flex items-center sm:items-end justify-between sm:justify-end gap-2 w-full sm:w-auto">
+                          <div className="text-right mr-2 sm:mr-4">
                             <div className="font-bold text-lg">{act.points_awarded} pts</div>
                             <div className={`text-xs ${act.active ? "text-green-600" : "text-gray-400"}`}>
                               {act.active ? "Activo" : "Inactivo"}
                             </div>
                           </div>
-                          <div className="flex gap-1">
+                          <div className="flex gap-1 flex-wrap">
                             <Button
                               size="sm"
                               variant="outline"
@@ -1144,7 +1145,7 @@ export const PassportPage = ({
                 <CardDescription>Vista general del sistema de Pasaporte</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="border rounded p-4">
                     <div className="text-sm text-muted-foreground">Actividades Registradas</div>
                     <div className="text-3xl font-bold">{activities.length}</div>
@@ -1168,7 +1169,7 @@ export const PassportPage = ({
 
         {/* Modal para asignar puntos */}
         <Dialog open={awardModalOpen} onOpenChange={setAwardModalOpen}>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Asignar Puntos al Estudiante</DialogTitle>
               <DialogDescription>
@@ -1178,7 +1179,7 @@ export const PassportPage = ({
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label>Puntos</Label>
                   <Input
