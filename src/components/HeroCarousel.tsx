@@ -7,15 +7,20 @@ interface CarouselSlide {
   id: string;
   title: string;
   description: string | null;
-  image_url: string;
+  image_url: string | null;
   video_url?: string | null;
   media_type?: string;
   link_url: string | null;
   button_text?: string | null;
+  content_type?: 'static' | 'mooc' | 'coil' | 'clase_espejo' | 'masterclass';
+  content_id?: string | null;
   order_index: number;
   active?: boolean;
   created_at?: string;
   updated_at?: string;
+  // Datos dinámicos cargados
+  dynamicImage?: string;
+  dynamicVideo?: string;
 }
 
 export const HeroCarousel = () => {
@@ -38,17 +43,19 @@ export const HeroCarousel = () => {
 
       if (error) throw error;
       
-      let slidesData = data || [];
+      let slidesData: CarouselSlide[] = (data || []) as CarouselSlide[];
       
       // Si no hay slides activos, usar slides por defecto
       if (slidesData.length === 0) {
-        slidesData = [
+        const defaultSlides: CarouselSlide[] = [
           {
             id: "default-1",
             title: "Bienvenido a UDES Virtual",
             description: "Explora nuestra plataforma de cursos MOOC de alta calidad",
             image_url: "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=1920&h=720&fit=crop",
             link_url: "/catalog",
+            content_type: "static",
+            content_id: null,
             order_index: 1,
             active: true,
             created_at: new Date().toISOString(),
@@ -60,6 +67,8 @@ export const HeroCarousel = () => {
             description: "Cursos flexibles diseñados para tu éxito profesional",
             image_url: "https://images.unsplash.com/photo-1501504905252-473c47e087f8?w=1920&h=720&fit=crop",
             link_url: "/catalog",
+            content_type: "static",
+            content_id: null,
             order_index: 2,
             active: true,
             created_at: new Date().toISOString(),
@@ -70,32 +79,79 @@ export const HeroCarousel = () => {
             title: "Certificados verificables",
             description: "Obtén certificados al completar tus cursos",
             image_url: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=1920&h=720&fit=crop",
-            link_url: "/catalog", 
+            link_url: "/catalog",
+            content_type: "static",
+            content_id: null,
             order_index: 3,
             active: true,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           }
         ];
+        slidesData = defaultSlides;
+      } else {
+        // Cargar contenido dinámico para slides que lo requieran
+        slidesData = await Promise.all((slidesData as CarouselSlide[]).map(async (slide: CarouselSlide) => {
+          if (slide.content_type && slide.content_type !== 'static' && slide.content_id) {
+            try {
+              if (slide.content_type === 'mooc') {
+                const { data: courseData } = await supabase
+                  .from("mooc_courses")
+                  .select("course_image_url, intro_video_url")
+                  .eq("id", slide.content_id)
+                  .single();
+                
+                if (courseData) {
+                  return {
+                    ...slide,
+                    dynamicImage: courseData.course_image_url,
+                    dynamicVideo: courseData.intro_video_url,
+                  };
+                }
+              } else if (slide.content_type === 'coil') {
+                // COIL no tiene imagen por defecto, usar una genérica
+                return {
+                  ...slide,
+                  dynamicImage: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=1920&h=720&fit=crop",
+                };
+              } else if (slide.content_type === 'clase_espejo' || slide.content_type === 'masterclass') {
+                // Las clases tampoco tienen imagen, usar una genérica según el tipo
+                const defaultImage = slide.content_type === 'masterclass'
+                  ? "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=1920&h=720&fit=crop"
+                  : "https://images.unsplash.com/photo-1577896851231-70ef18881754?w=1920&h=720&fit=crop";
+                return {
+                  ...slide,
+                  dynamicImage: defaultImage,
+                };
+              }
+            } catch (err) {
+              console.error(`Error loading dynamic content for slide ${slide.id}:`, err);
+            }
+          }
+          return slide;
+        }));
       }
       
       setSlides(slidesData);
     } catch (error) {
       console.error("Error fetching carousel slides:", error);
       // En caso de error, usar slides por defecto
-      setSlides([
+      const fallbackSlide: CarouselSlide[] = [
         {
           id: "default-1",
           title: "Bienvenido a UDES Virtual",
           description: "Explora nuestra plataforma de cursos MOOC de alta calidad",
           image_url: "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=1920&h=720&fit=crop",
           link_url: "/catalog",
+          content_type: "static",
+          content_id: null,
           order_index: 1,
           active: true,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         }
-      ]);
+      ];
+      setSlides(fallbackSlide);
     } finally {
       setIsLoading(false);
     }
@@ -185,9 +241,9 @@ export const HeroCarousel = () => {
             style={{ cursor: slide.link_url ? "pointer" : "default" }}
           >
             {/* Media de fondo (imagen o video) */}
-            {slide.media_type === 'video' && slide.video_url ? (
+            {(slide.media_type === 'video' && slide.video_url) || slide.dynamicVideo ? (
               <video
-                src={slide.video_url}
+                src={slide.dynamicVideo || slide.video_url || ""}
                 autoPlay
                 muted
                 loop
@@ -195,7 +251,8 @@ export const HeroCarousel = () => {
                 className="w-full h-full object-cover"
                 onLoadedData={() => {
                   // Video cargado, asegurar que esté reproduciendo
-                  const video = document.querySelector(`video[src="${slide.video_url}"]`) as HTMLVideoElement;
+                  const videoSrc = slide.dynamicVideo || slide.video_url;
+                  const video = document.querySelector(`video[src="${videoSrc}"]`) as HTMLVideoElement;
                   if (video && index === currentIndex) {
                     video.play().catch(() => {
                       // Silenciar errores de autoplay
@@ -205,7 +262,7 @@ export const HeroCarousel = () => {
               />
             ) : (
               <img
-                src={slide.image_url}
+                src={slide.dynamicImage || slide.image_url || "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=1920&h=720&fit=crop"}
                 alt={slide.title}
                 className="w-full h-full object-cover"
               />

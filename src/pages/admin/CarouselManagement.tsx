@@ -31,11 +31,13 @@ interface CarouselSlide {
   id: string;
   title: string;
   description: string | null;
-  image_url: string;
+  image_url: string | null;
   video_url?: string | null;
   media_type?: string;
   link_url: string | null;
   button_text?: string | null;
+  content_type?: 'static' | 'mooc' | 'coil' | 'clase_espejo' | 'masterclass';
+  content_id?: string | null;
   order_index: number;
   active: boolean;
   created_at?: string;
@@ -50,19 +52,26 @@ interface SlideFormData {
   media_type: 'image' | 'video';
   link_url: string;
   button_text: string;
+  content_type: 'static' | 'mooc' | 'coil' | 'clase_espejo' | 'masterclass';
+  content_id: string;
   order_index: number;
   active: boolean;
 }
 
-export default function CarouselManagement() {
+export function CarouselManagement() {
   const [slides, setSlides] = useState<CarouselSlide[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [editingSlide, setEditingSlide] = useState<CarouselSlide | null>(null);
   const [slideToDelete, setSlideToDelete] = useState<string | null>(null);
+  const [editingSlide, setEditingSlide] = useState<CarouselSlide | null>(null);
   const [uploading, setUploading] = useState(false);
+  
+  // Estados para contenido dinámico
+  const [moocCourses, setMoocCourses] = useState<any[]>([]);
+  const [coilProposals, setCoilProposals] = useState<any[]>([]);
+  const [classes, setClasses] = useState<any[]>([]);
   const [formData, setFormData] = useState<SlideFormData>({
     title: "",
     description: "",
@@ -71,13 +80,49 @@ export default function CarouselManagement() {
     media_type: "image",
     link_url: "",
     button_text: "Explorar cursos",
+    content_type: "static",
+    content_id: "",
     order_index: 0,
     active: true,
   });
 
   useEffect(() => {
     fetchSlides();
+    fetchDynamicContent();
   }, []);
+
+  const fetchDynamicContent = async () => {
+    try {
+      // Cargar cursos MOOC aprobados
+      const { data: moocData } = await supabase
+        .from("mooc_courses")
+        .select("id, title, description, course_image_url, profession")
+        .eq("status", "approved")
+        .order("created_at", { ascending: false });
+
+      if (moocData) setMoocCourses(moocData);
+
+      // Cargar propuestas COIL aprobadas
+      const { data: coilData } = await supabase
+        .from("coil_proposals")
+        .select("id, course_name, academic_program, project_topics, full_name")
+        .eq("status", "approved")
+        .order("created_at", { ascending: false });
+
+      if (coilData) setCoilProposals(coilData);
+
+      // Cargar clases espejo y masterclass aprobadas
+      const { data: classesData } = await supabase
+        .from("classes")
+        .select("id, title, description, class_type, university, country")
+        .eq("status", "approved")
+        .order("created_at", { ascending: false });
+
+      if (classesData) setClasses(classesData);
+    } catch (error) {
+      console.error("Error loading dynamic content:", error);
+    }
+  };
 
   const fetchSlides = async () => {
     setFetchError(null);
@@ -198,19 +243,28 @@ export default function CarouselManagement() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.title) {
+    if (!formData.title.trim()) {
       toast.error("Título es obligatorio");
       return;
     }
 
-    if (formData.media_type === 'image' && !formData.image_url) {
-      toast.error("Imagen es obligatoria para slides de imagen");
-      return;
-    }
+    // Validar según content_type
+    if (formData.content_type === 'static') {
+      if (formData.media_type === 'image' && !formData.image_url) {
+        toast.error("Imagen es obligatoria para slides estáticos de imagen");
+        return;
+      }
 
-    if (formData.media_type === 'video' && !formData.video_url) {
-      toast.error("Video es obligatorio para slides de video");
-      return;
+      if (formData.media_type === 'video' && !formData.video_url) {
+        toast.error("Video es obligatorio para slides estáticos de video");
+        return;
+      }
+    } else {
+      // Contenido dinámico
+      if (!formData.content_id) {
+        toast.error(`Debes seleccionar un ${formData.content_type === 'mooc' ? 'curso MOOC' : formData.content_type === 'coil' ? 'proyecto COIL' : 'clase'}`);
+        return;
+      }
     }
 
     try {
@@ -221,11 +275,13 @@ export default function CarouselManagement() {
           .update({
             title: formData.title,
             description: formData.description || null,
-            image_url: formData.image_url,
+            image_url: formData.image_url || null,
             video_url: formData.video_url || null,
             media_type: formData.media_type,
             link_url: formData.link_url || null,
             button_text: formData.button_text || "Explorar cursos",
+            content_type: formData.content_type || "static",
+            content_id: formData.content_id || null,
             order_index: formData.order_index,
             active: formData.active,
           })
@@ -239,11 +295,13 @@ export default function CarouselManagement() {
           {
             title: formData.title,
             description: formData.description || null,
-            image_url: formData.image_url,
+            image_url: formData.image_url || null,
             video_url: formData.video_url || null,
             media_type: formData.media_type,
             link_url: formData.link_url || null,
             button_text: formData.button_text || "Explorar cursos",
+            content_type: formData.content_type || "static",
+            content_id: formData.content_id || null,
             order_index: formData.order_index,
             active: formData.active,
           },
@@ -267,11 +325,13 @@ export default function CarouselManagement() {
     setFormData({
       title: slide.title,
       description: slide.description || "",
-      image_url: slide.image_url,
+      image_url: slide.image_url || "",
       video_url: slide.video_url || "",
       media_type: (slide.media_type as 'image' | 'video') || "image",
       link_url: slide.link_url || "",
       button_text: slide.button_text || "Explorar cursos",
+      content_type: (slide.content_type as any) || "static",
+      content_id: slide.content_id || "",
       order_index: slide.order_index,
       active: slide.active,
     });
@@ -309,6 +369,8 @@ export default function CarouselManagement() {
       media_type: "image",
       link_url: "",
       button_text: "Explorar cursos",
+      content_type: "static",
+      content_id: "",
       order_index: slides.length,
       active: true,
     });
@@ -524,6 +586,108 @@ export default function CarouselManagement() {
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="content_type">Tipo de Contenido *</Label>
+              <select
+                id="content_type"
+                value={formData.content_type}
+                onChange={(e) =>
+                  setFormData({ ...formData, content_type: e.target.value as any, content_id: "" })
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9b87f5] focus:border-transparent"
+              >
+                <option value="static">Contenido Estático (manual)</option>
+                <option value="mooc">Curso MOOC</option>
+                <option value="coil">Proyecto COIL</option>
+                <option value="clase_espejo">Clase Espejo</option>
+                <option value="masterclass">Masterclass</option>
+              </select>
+              <p className="text-xs text-gray-500">
+                {formData.content_type === 'static' 
+                  ? 'Sube tu propia imagen/video y configura el contenido manualmente' 
+                  : `El contenido se cargará automáticamente desde los ${formData.content_type === 'mooc' ? 'cursos MOOC' : formData.content_type === 'coil' ? 'proyectos COIL' : 'clases'} aprobados`
+                }
+              </p>
+            </div>
+
+            {formData.content_type !== 'static' && (
+              <div className="space-y-2">
+                <Label htmlFor="content_id">
+                  Seleccionar {formData.content_type === 'mooc' ? 'Curso MOOC' : formData.content_type === 'coil' ? 'Proyecto COIL' : 'Clase'} *
+                </Label>
+                <select
+                  id="content_id"
+                  value={formData.content_id}
+                  onChange={(e) => {
+                    const selectedId = e.target.value;
+                    setFormData({ ...formData, content_id: selectedId });
+                    
+                    // Auto-llenar título y descripción según el contenido seleccionado
+                    if (selectedId) {
+                      if (formData.content_type === 'mooc') {
+                        const course = moocCourses.find(c => c.id === selectedId);
+                        if (course) {
+                          setFormData(prev => ({
+                            ...prev,
+                            title: course.title,
+                            description: course.description || `Curso de ${course.profession}`,
+                            link_url: `/mooc/${course.id}`,
+                          }));
+                        }
+                      } else if (formData.content_type === 'coil') {
+                        const coil = coilProposals.find(c => c.id === selectedId);
+                        if (coil) {
+                          setFormData(prev => ({
+                            ...prev,
+                            title: coil.course_name,
+                            description: `Proyecto COIL - ${coil.academic_program}`,
+                            link_url: "/coil",
+                          }));
+                        }
+                      } else {
+                        const classItem = classes.find(c => c.id === selectedId);
+                        if (classItem) {
+                          setFormData(prev => ({
+                            ...prev,
+                            title: classItem.title,
+                            description: `${classItem.class_type === 'mirror' ? 'Clase Espejo' : 'Masterclass'} con ${classItem.university}, ${classItem.country}`,
+                            link_url: "/catalog",
+                          }));
+                        }
+                      }
+                    }
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9b87f5] focus:border-transparent"
+                >
+                  <option value="">-- Seleccionar --</option>
+                  {formData.content_type === 'mooc' && moocCourses.map(course => (
+                    <option key={course.id} value={course.id}>
+                      {course.title} ({course.profession})
+                    </option>
+                  ))}
+                  {formData.content_type === 'coil' && coilProposals.map(coil => (
+                    <option key={coil.id} value={coil.id}>
+                      {coil.course_name} - {coil.full_name} ({coil.academic_program})
+                    </option>
+                  ))}
+                  {(formData.content_type === 'clase_espejo' || formData.content_type === 'masterclass') && 
+                    classes.filter(c => 
+                      (formData.content_type === 'clase_espejo' && c.class_type === 'mirror') ||
+                      (formData.content_type === 'masterclass' && c.class_type === 'masterclass')
+                    ).map(classItem => (
+                      <option key={classItem.id} value={classItem.id}>
+                        {classItem.title} - {classItem.university}, {classItem.country}
+                      </option>
+                    ))
+                  }
+                </select>
+                <p className="text-xs text-gray-500">
+                  Al seleccionar, el título y descripción se llenarán automáticamente
+                </p>
+              </div>
+            )}
+
+            {formData.content_type === 'static' && (
+            <div className="space-y-2">
               <Label htmlFor="media_type">Tipo de medio</Label>
               <select
                 id="media_type"
@@ -537,8 +701,9 @@ export default function CarouselManagement() {
                 <option value="video">Video</option>
               </select>
             </div>
+            )}
 
-            {formData.media_type === 'image' ? (
+            {formData.content_type === 'static' && formData.media_type === 'image' ? (
               <div className="space-y-2">
                 <Label htmlFor="image">Imagen * (Ancho completo x 720px)</Label>
                 <div className="flex gap-2">
@@ -579,7 +744,7 @@ export default function CarouselManagement() {
                   placeholder="https://ejemplo.com/imagen.jpg"
                 />
               </div>
-            ) : (
+            ) : formData.content_type === 'static' && formData.media_type === 'video' ? (
               <div className="space-y-2">
                 <Label htmlFor="video">Video * (MP4 recomendado, ancho completo x 720px)</Label>
                 <div className="flex gap-2">
@@ -620,7 +785,7 @@ export default function CarouselManagement() {
                   placeholder="https://ejemplo.com/video.mp4"
                 />
               </div>
-            )}
+            ) : null}
 
             <div className="space-y-2">
               <Label htmlFor="link_url">URL de enlace (opcional)</Label>
@@ -721,3 +886,5 @@ export default function CarouselManagement() {
     </div>
   );
 }
+
+export default CarouselManagement;
