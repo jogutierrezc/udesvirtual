@@ -35,7 +35,14 @@ import { OfferingsPage } from "./pages/admin/offerings/OfferingsPage";
 import { RegistrationsPage } from "./pages/admin/registrations/RegistrationsPage";
 import { MoocPage } from "./pages/admin/mooc/MoocPage";
 import { CarouselPage } from "./pages/admin/carousel/CarouselPage";
-import { PassportPage } from "./pages/admin/passport/PassportPage";
+// Legacy combined PassportPage route removed; keep component for internal wrappers
+import SettingsPage from "./pages/admin/passport/SettingsPage";
+import PathwaysPage from "./pages/admin/passport/PathwaysPage";
+import ActivitiesPage from "./pages/admin/passport/ActivitiesPage";
+import BadgesPage from "./pages/admin/passport/BadgesPage";
+import RequestsPage from "./pages/admin/passport/RequestsPage";
+import ParticipantsPage from "./pages/admin/passport/ParticipantsPage";
+import ReportsPage from "./pages/admin/passport/ReportsPage";
 import { CertificationsPage } from "./pages/admin/mooc/CertificationsPage";
 import { StudentsPage } from "./pages/admin/mooc/StudentsPage";
 import { AdminLayout } from "./pages/admin/layout/AdminLayout";
@@ -58,7 +65,7 @@ const AppContent = () => {
   // Verificar si es una ruta 404
   const is404 = !['/', '/auth', '/unauthorized', '/dashboard', '/catalog', '/professor-offerings', 
     '/coil-offerings', '/mooc', '/profile', '/profile-setup', '/welcome', '/welcome-profesor', '/profesores', '/professor/buzon', '/admin/catalog', '/admin/offerings', 
-    '/admin/registrations', '/admin/mooc', '/admin/mooc/certifications', '/admin/mooc/students', '/admin/carousel', '/admin/passport', '/admin', '/professor', '/professor/mis-estudiantes', '/lia', '/passport', '/celebration-test'].includes(location.pathname) && 
+  '/admin/registrations', '/admin/mooc', '/admin/mooc/certifications', '/admin/mooc/students', '/admin/carousel', '/admin', '/professor', '/professor/mis-estudiantes', '/lia', '/passport', '/celebration-test'].includes(location.pathname) && 
     !location.pathname.startsWith('/admin/') &&
     !location.pathname.startsWith('/mooc/') &&
     !location.pathname.startsWith('/courses/') &&
@@ -224,11 +231,71 @@ const AppContent = () => {
               } 
             />
             <Route 
-              path="/admin/passport" 
+              path="/admin/passport/config" 
               element={
                 <ProtectedRoute requireAdmin={true}>
                   <AdminLayout>
-                    <PassportPage />
+                    <SettingsPage />
+                  </AdminLayout>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/passport/senderos" 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <AdminLayout>
+                    <PathwaysPage />
+                  </AdminLayout>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/passport/catalogo" 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <AdminLayout>
+                    <ActivitiesPage />
+                  </AdminLayout>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/passport/insignias" 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <AdminLayout>
+                    <BadgesPage />
+                  </AdminLayout>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/passport/solicitudes" 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <AdminLayout>
+                    <RequestsPage />
+                  </AdminLayout>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/passport/participantes" 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <AdminLayout>
+                    <ParticipantsPage />
+                  </AdminLayout>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/passport/reportes" 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <AdminLayout>
+                    <ReportsPage />
                   </AdminLayout>
                 </ProtectedRoute>
               } 

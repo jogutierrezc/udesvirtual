@@ -38,7 +38,15 @@ type Badge = {
   active: boolean;
 };
 
-export const PassportPage = () => {
+type PassportTab = "config" | "pathways" | "activities" | "badges" | "requests" | "award" | "reports";
+
+export const PassportPage = ({
+  defaultTab = "config",
+  singleSection = false,
+}: {
+  defaultTab?: PassportTab;
+  singleSection?: boolean;
+} = {}) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [settings, setSettings] = useState<any>(null);
@@ -625,7 +633,8 @@ export const PassportPage = () => {
           {loading && <Loader2 className="h-5 w-5 animate-spin" />}
         </div>
 
-        <Tabs defaultValue="config" className="w-full">
+        <Tabs defaultValue={defaultTab} className="w-full">
+          {!singleSection && (
           <TabsList className="grid grid-cols-7 w-full">
             <TabsTrigger value="config">
               <Settings className="h-4 w-4 mr-2" />
@@ -656,6 +665,7 @@ export const PassportPage = () => {
               Reportes
             </TabsTrigger>
           </TabsList>
+          )}
 
           {/* Configuración Global */}
           <TabsContent value="config">

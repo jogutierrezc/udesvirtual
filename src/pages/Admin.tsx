@@ -20,7 +20,7 @@ import {
 import { Loader2, CheckCircle, XCircle, Users, BookOpen, GraduationCap, PlusCircle, Package, Globe, Edit2, Trash2, EyeOff, ChevronDown, Settings, FileText, Image } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
 import CarouselManagement from "@/pages/admin/CarouselManagement";
-import { PassportPage } from "@/pages/admin/passport/PassportPage";
+// Legacy combined PassportPage removed; use dedicated admin/passport routes instead
 import { TagInput } from "@/components/TagInput";
 import { ImportTeachersDialog } from "@/components/ImportTeachersDialog";
 import { CertificateSettings } from "@/pages/admin/CertificateSettings";
@@ -1500,7 +1500,23 @@ const Admin = () => {
 
           {/* Nuevo: Pasaporte */}
           <TabsContent value="passport">
-            <PassportPage />
+            <Card>
+              <CardHeader>
+                <CardTitle>Pasaporte Académico</CardTitle>
+                <CardDescription>Accede a los módulos segmentados</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <Button variant="outline" onClick={() => navigate('/admin/passport/config')}>Configuración</Button>
+                  <Button variant="outline" onClick={() => navigate('/admin/passport/senderos')}>Senderos</Button>
+                  <Button variant="outline" onClick={() => navigate('/admin/passport/catalogo')}>Catálogo de Actividades</Button>
+                  <Button variant="outline" onClick={() => navigate('/admin/passport/insignias')}>Insignias y Reconocimientos</Button>
+                  <Button variant="outline" onClick={() => navigate('/admin/passport/solicitudes')}>Solicitudes de Puntos</Button>
+                  <Button variant="outline" onClick={() => navigate('/admin/passport/participantes')}>Participantes</Button>
+                  <Button variant="outline" onClick={() => navigate('/admin/passport/reportes')}>Reporte de Pasaportes</Button>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Nuevo: Configuración de Certificados */}

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { BookOpen, Package, Users, Globe, Settings, ChevronDown, FileText, Image, Award } from "lucide-react";
+import { BookOpen, Package, Users, Globe, Settings, ChevronDown, FileText, Image, Award, Medal, BarChart2, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -157,18 +157,51 @@ export const AdminNavbar = () => {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Pasaporte Text Link */}
-            <button
-              onClick={() => navigate("/admin/passport")}
-              className={`flex items-center gap-2 text-sm font-medium px-2 py-1 rounded transition-colors ${
-                location.pathname.includes('/admin/passport')
-                  ? 'text-foreground bg-muted/50'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-              }`}
-            >
-              <FileText className="h-4 w-4" />
-              Pasaporte
-            </button>
+            {/* Pasaporte Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className={`flex items-center gap-2 text-sm font-medium px-2 py-1 rounded transition-colors ${
+                  location.pathname.includes('/admin/passport')
+                    ? 'text-foreground bg-muted/50'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                }`}>
+                  <FileText className="h-4 w-4" />
+                  Pasaporte
+                  <ChevronDown className="h-4 w-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem onClick={() => navigate('/admin/passport/config')}>
+                  <Settings className="h-4 w-4 mr-2" />
+                  Configuración
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/admin/passport/senderos')}>
+                  <BookOpen className="h-4 w-4 mr-2" />
+                  Senderos
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/admin/passport/catalogo')}>
+                  <Trophy className="h-4 w-4 mr-2" />
+                  Catálogo de Actividades
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/admin/passport/insignias')}>
+                  <Medal className="h-4 w-4 mr-2" />
+                  Insignias y Reconocimientos
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/admin/passport/solicitudes')}>
+                  <Award className="h-4 w-4 mr-2" />
+                  Solicitudes de Puntos
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/admin/passport/participantes')}>
+                  <Users className="h-4 w-4 mr-2" />
+                  Participantes
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/admin/passport/reportes')}>
+                  <BarChart2 className="h-4 w-4 mr-2" />
+                  Reporte de Pasaportes
+                </DropdownMenuItem>
+                {/* Legacy combined view removed */}
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             {/* Buzón link */}
             <button
