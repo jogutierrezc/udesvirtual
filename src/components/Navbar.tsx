@@ -129,6 +129,7 @@ export const Navbar = () => {
         { to: "/admin/registrations", label: "Registros" },
         { to: "/admin/mooc", label: "MOOC" },
         { to: "/admin/carousel", label: "Carrusel" },
+        { to: "/admin/resend-settings", label: "Configuración Resend" }, // <-- Asegurado
       ];
     }
     
@@ -173,6 +174,7 @@ export const Navbar = () => {
       { to: "/coil-offerings", label: "COIL" },
       { to: "/mooc", label: "MOOC" },
       { to: "/lia", label: "LIA" },
+      { to: "/faq", label: "FAQ" }, // <-- Agregado
     ];
 
     return base;

@@ -358,7 +358,7 @@ IMPORTANTE: Proporciona respuestas COMPLETAS y DETALLADAS usando TODA la informa
     const fullPrompt = `${liaSystemPrompt}\n\n---\n\nUsuario: ${userMessages}`;
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GOOGLE_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${GOOGLE_API_KEY}`,
       {
         method: "POST",
         headers: {
@@ -371,7 +371,7 @@ IMPORTANTE: Proporciona respuestas COMPLETAS y DETALLADAS usando TODA la informa
           }],
           generationConfig: {
             temperature: 0.7,
-            maxOutputTokens: 1000,
+            maxOutputTokens: 2000,
           },
         }),
       }

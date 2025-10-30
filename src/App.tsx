@@ -53,6 +53,9 @@ import Certificates from "./pages/Certificates";
 import CertificateView from "./pages/CertificateView";
 import Passport from "./pages/Passport";
 import CelebrationTest from "./components/CelebrationTest";
+import Faq from "./pages/Faq";
+import ResendSettings from "./pages/admin/ResendSettings";
+import { FaqAdminPage } from "./pages/admin/faq/FaqAdminPage";
 
 const queryClient = new QueryClient();
 
@@ -231,6 +234,16 @@ const AppContent = () => {
               } 
             />
             <Route 
+              path="/admin/faq" 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <AdminLayout>
+                    <FaqAdminPage />
+                  </AdminLayout>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
               path="/admin/passport/config" 
               element={
                 <ProtectedRoute requireAdmin={true}>
@@ -321,6 +334,16 @@ const AppContent = () => {
               } 
             />
             <Route 
+              path="/admin/resend-settings" 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <AdminLayout>
+                    <ResendSettings />
+                  </AdminLayout>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
               path="/admin" 
               element={
                 <ProtectedRoute requireAdmin={true}>
@@ -340,6 +363,7 @@ const AppContent = () => {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/lia" element={<Lia />} />
+            <Route path="/faq" element={<Faq />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

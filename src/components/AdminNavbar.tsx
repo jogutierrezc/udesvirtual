@@ -232,6 +232,10 @@ export const AdminNavbar = () => {
                   <Image className="h-4 w-4 mr-2" />
                   Carrusel
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/admin/faq")}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  FAQs
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/admin/certificates")}>
                   <FileText className="h-4 w-4 mr-2" />
                   Configuración de Certificados
@@ -348,6 +352,9 @@ export const AdminNavbar = () => {
                       <div className="flex flex-col">
                         <Button variant="ghost" className="justify-start" onClick={() => { navigate('/admin/carousel'); setMobileMenuOpen(false); }}>
                           <Image className="h-4 w-4 mr-2" /> Carrusel
+                        </Button>
+                        <Button variant="ghost" className="justify-start" onClick={() => { navigate('/admin/faq'); setMobileMenuOpen(false); }}>
+                          <FileText className="h-4 w-4 mr-2" /> FAQs
                         </Button>
                         <Button variant="ghost" className="justify-start" onClick={() => { navigate('/admin/certificates'); setMobileMenuOpen(false); }}>
                           <FileText className="h-4 w-4 mr-2" /> Configuración de Certificados
