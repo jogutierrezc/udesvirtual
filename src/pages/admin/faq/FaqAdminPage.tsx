@@ -123,12 +123,17 @@ export const FaqAdminPage: React.FC = () => {
       toast({ title: "Faltan datos", description: "Título y contenido son obligatorios." });
       return;
     }
+    
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser();
+    
     const payload = {
       title: title.trim(),
       content: content, // HTML desde el editor
       type,
       status: published ? "published" : "draft",
       sort_order: sortOrder || 0,
+      ...((!editing && user) && { created_by: user.id }), // Set author only on create
     };
     if (editing) {
       const { error } = await supabase.from("faqs" as any).update(payload).eq("id", editing.id);

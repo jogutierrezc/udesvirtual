@@ -54,6 +54,8 @@ import CertificateView from "./pages/CertificateView";
 import Passport from "./pages/Passport";
 import CelebrationTest from "./components/CelebrationTest";
 import Faq from "./pages/Faq";
+import FaqCategory from "./pages/FaqCategory";
+import FaqDetail from "./pages/FaqDetail";
 import ResendSettings from "./pages/admin/ResendSettings";
 import { FaqAdminPage } from "./pages/admin/faq/FaqAdminPage";
 
@@ -364,6 +366,8 @@ const AppContent = () => {
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/lia" element={<Lia />} />
             <Route path="/faq" element={<Faq />} />
+            <Route path="/faq/category/:category" element={<FaqCategory />} />
+            <Route path="/faq/:category/:id" element={<FaqDetail />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
