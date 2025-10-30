@@ -50,6 +50,7 @@ export const FaqAdminPage: React.FC = () => {
   const [content, setContent] = useState("");
   const [published, setPublished] = useState(false);
   const [sortOrder, setSortOrder] = useState<number>(0);
+  const [newFiles, setNewFiles] = useState<File[]>([]);
   // TipTap editor is encapsulated in RichTextEditor; no ref needed here
 
   const resetForm = () => {
@@ -59,6 +60,7 @@ export const FaqAdminPage: React.FC = () => {
     setContent("");
     setPublished(false);
     setSortOrder(0);
+    setNewFiles([]);
   };
 
   const load = async () => {
@@ -104,6 +106,7 @@ export const FaqAdminPage: React.FC = () => {
     setContent(row.content);
     setPublished(row.status === "published");
     setSortOrder(row.sort_order || 0);
+    setNewFiles([]);
     setOpen(true);
   };
 
@@ -127,12 +130,36 @@ export const FaqAdminPage: React.FC = () => {
     // Get current user
     const { data: { user } } = await supabase.auth.getUser();
     
+    // Upload attachments if any
+    const uploadedAttachments: Array<{ name: string; url: string }> = [];
+    if (newFiles.length > 0) {
+      for (const file of newFiles) {
+        const safeName = file.name.replace(/\s+/g, "_");
+        const objectPath = `${user?.id || 'anon'}/${Date.now()}_${safeName}`;
+        const { error: upErr } = await supabase.storage.from('faq-materials').upload(objectPath, file, {
+          cacheControl: '3600',
+          upsert: false,
+        });
+        if (upErr) {
+          toast({ title: "Error al subir archivo", description: `${file.name}: ${upErr.message}` });
+          continue;
+        }
+        const { data: pub } = supabase.storage.from('faq-materials').getPublicUrl(objectPath);
+        if (pub?.publicUrl) {
+          uploadedAttachments.push({ name: file.name, url: pub.publicUrl });
+        }
+      }
+    }
+    
     const payload = {
       title: title.trim(),
       content: content, // HTML desde el editor
       type,
       status: published ? "published" : "draft",
       sort_order: sortOrder || 0,
+      ...(uploadedAttachments.length > 0 && {
+        attachments: editing ? [...(editing.attachments || []), ...uploadedAttachments] : uploadedAttachments
+      }),
       ...((!editing && user) && { created_by: user.id }), // Set author only on create
     };
     if (editing) {
@@ -222,6 +249,24 @@ export const FaqAdminPage: React.FC = () => {
                   <Label htmlFor="sort">Orden</Label>
                   <Input id="sort" type="number" className="w-24" value={sortOrder} onChange={(e) => setSortOrder(parseInt(e.target.value || "0", 10))} />
                 </div>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="attachments">Material complementario (PDF, DOCX, PPTX, XLSX, imágenes)</Label>
+                <Input
+                  id="attachments"
+                  type="file"
+                  multiple
+                  accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.csv,image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  onChange={(e) => {
+                    const files = e.target.files ? Array.from(e.target.files) : [];
+                    setNewFiles(files);
+                  }}
+                />
+                {newFiles.length > 0 && (
+                  <div className="text-sm text-muted-foreground">
+                    {newFiles.length} archivo(s) seleccionado(s): {newFiles.map(f => f.name).join(', ')}
+                  </div>
+                )}
               </div>
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => { setOpen(false); resetForm(); }}>Cancelar</Button>

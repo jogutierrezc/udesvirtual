@@ -16,6 +16,7 @@ type FaqItem = {
   created_at: string;
   created_by: string | null;
   updated_at: string;
+  attachments?: Array<{ name: string; url: string }> | null;
 };
 
 type Profile = {
@@ -53,7 +54,7 @@ const FaqDetail: React.FC = () => {
       try {
         const { data: faqData, error: faqError } = await supabase
           .from('faqs' as any)
-          .select('id,title,content,type,created_at,created_by,updated_at')
+          .select('id,title,content,type,created_at,created_by,updated_at,attachments')
           .eq('id', id)
           .eq('status', 'published')
           .single();
@@ -100,6 +101,20 @@ const FaqDetail: React.FC = () => {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
+  };
+
+  const getFileIcon = (name: string) => {
+    const ext = name.split('.').pop()?.toLowerCase();
+    if (!ext) return null;
+    if (ext === 'pdf') return 'pdf';
+    if (['doc', 'docx'].includes(ext)) return 'doc';
+    if (['xls', 'xlsx', 'csv'].includes(ext)) return 'xls';
+    if (['ppt', 'pptx'].includes(ext)) return 'ppt';
+    if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)) return 'img';
+    if (['zip', 'rar', '7z'].includes(ext)) return 'zip';
+    if (['txt', 'md'].includes(ext)) return 'txt';
+    if (['js', 'ts', 'json', 'html', 'css'].includes(ext)) return 'code';
+    return 'file';
   };
 
   const copyContent = async () => {
@@ -203,6 +218,31 @@ const FaqDetail: React.FC = () => {
               className="prose prose-lg max-w-none animate-in fade-in duration-1000 delay-500 text-justify"
               dangerouslySetInnerHTML={{ __html: faq.content }}
             />
+
+            {/* Attachments */}
+            {faq.attachments && (faq.attachments as any[]).length > 0 && (
+              <div className="mt-8 pt-6 border-t border-gray-200">
+                <h3 className="text-xl font-semibold mb-3">Material complementario</h3>
+                <ul className="space-y-2">
+                  {(faq.attachments as any[]).map((att: any, idx: number) => {
+                    const kind = getFileIcon(att.name || '');
+                    return (
+                      <li key={idx} className="flex items-center justify-between bg-gray-50 rounded-md p-3">
+                        <div className="flex items-center gap-3">
+                          <span className="inline-flex h-8 w-8 items-center justify-center rounded bg-blue-100 text-blue-700 text-xs font-semibold uppercase">
+                            {kind === 'pdf' ? 'PDF' : kind === 'doc' ? 'DOC' : kind === 'xls' ? 'XLS' : kind === 'ppt' ? 'PPT' : kind === 'img' ? 'IMG' : kind === 'zip' ? 'ZIP' : kind === 'txt' ? 'TXT' : kind === 'code' ? '</>' : 'FILE'}
+                          </span>
+                          <span className="text-sm font-medium text-gray-900">{att.name || 'Archivo'}</span>
+                        </div>
+                        <a href={att.url} target="_blank" rel="noopener noreferrer">
+                          <Button variant="outline" size="sm">Descargar</Button>
+                        </a>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
           </Card>
 
           {/* Help CTA */}
