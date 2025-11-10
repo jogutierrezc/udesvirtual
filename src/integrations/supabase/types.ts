@@ -798,6 +798,7 @@ export type Database = {
           duration_hours: number
           id: string
           order_index: number
+          section_id: string | null
           title: string
           updated_at: string | null
           video_url: string | null
@@ -815,6 +816,7 @@ export type Database = {
           duration_hours: number
           id?: string
           order_index: number
+          section_id?: string | null
           title: string
           updated_at?: string | null
           video_url?: string | null
@@ -832,6 +834,7 @@ export type Database = {
           duration_hours?: number
           id?: string
           order_index?: number
+          section_id?: string | null
           title?: string
           updated_at?: string | null
           video_url?: string | null
@@ -844,6 +847,48 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "mooc_lessons_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "mooc_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mooc_lessons_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "mooc_course_sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mooc_course_sections: {
+        Row: {
+          id: string
+          course_id: string
+          title: string
+          description: string | null
+          order_index: number | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          course_id: string
+          title: string
+          description?: string | null
+          order_index?: number | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          course_id?: string
+          title?: string
+          description?: string | null
+          order_index?: number | null
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mooc_course_sections_course_id_fkey"
             columns: ["course_id"]
             isOneToOne: false
             referencedRelation: "mooc_courses"

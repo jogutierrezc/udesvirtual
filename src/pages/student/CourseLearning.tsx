@@ -15,7 +15,9 @@ import {
   Loader2,
   PlayCircle,
   Lock,
-  BookOpen
+  BookOpen,
+  ChevronDown,
+  ChevronRight
 } from "lucide-react";
 
 type Lesson = {
@@ -34,6 +36,7 @@ type Lesson = {
   live_date?: string | null;
   live_time?: string | null;
   exam?: { id: string; title: string; passed: boolean; attempts: number } | null;
+  section_id?: string | null;
 };
 
 type Course = {
@@ -53,6 +56,8 @@ export default function CourseLearning() {
   const [loading, setLoading] = useState(true);
   const [course, setCourse] = useState<Course | null>(null);
   const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [sections, setSections] = useState<Array<{ id: string; title: string; order_index: number }>>([]);
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
   const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null);
   const [progress, setProgress] = useState(0);
   const [completing, setCompleting] = useState(false);
@@ -223,12 +228,29 @@ export default function CourseLearning() {
           live_url: lesson.live_url,
           live_date: lesson.live_date,
           live_time: lesson.live_time,
+          section_id: (lesson as any).section_id || null,
           // @ts-ignore extend with readings
           readings: readingsByLesson.get(lesson.id) || [],
           exam: examsByLesson.get(lesson.id) || null,
         } as any));
 
-        setLessons(lessonsWithProgress);
+  setLessons(lessonsWithProgress);
+
+        // Cargar secciones reales para encabezados
+        const { data: sectionsData } = await supabase
+          .from('mooc_course_sections')
+          .select('id, title, order_index')
+          .eq('course_id', courseId)
+          .order('order_index', { ascending: true });
+        const mappedSections = (sectionsData || []).map((s: any) => ({ id: s.id, title: s.title, order_index: s.order_index || 0 }));
+        setSections(mappedSections);
+        // Inicialmente todas las secciones abiertas
+        const initialOpen: Record<string, boolean> = {};
+        mappedSections.forEach(s => { initialOpen[s.id] = true; });
+        if (lessonsWithProgress.some(l => !l.section_id)) {
+          initialOpen['__unsectioned'] = true;
+        }
+        setOpenSections(initialOpen);
 
         // Seleccionar la primera lección no completada o la primera
         const firstIncomplete = lessonsWithProgress.find(l => !l.completed);
@@ -407,6 +429,20 @@ export default function CourseLearning() {
   };
 
   const selectLesson = (lesson: Lesson) => {
+    setCurrentLesson(lesson);
+    setVideoWatched(false);
+  };
+
+  const toggleSection = (id: string) => {
+    setOpenSections(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const selectLessonAndExpand = (lesson: Lesson) => {
+    if (lesson.section_id) {
+      setOpenSections(prev => ({ ...prev, [lesson.section_id!]: true }));
+    } else {
+      setOpenSections(prev => ({ ...prev, ['__unsectioned']: true }));
+    }
     setCurrentLesson(lesson);
     setVideoWatched(false);
   };
@@ -693,7 +729,7 @@ export default function CourseLearning() {
             )}
           </div>
 
-          {/* Sidebar con lecciones */}
+          {/* Sidebar con secciones y lecciones */}
           <div>
             <Card>
               <CardHeader>
@@ -701,52 +737,191 @@ export default function CourseLearning() {
               </CardHeader>
               <CardContent className="p-0">
                 <ScrollArea className="h-[calc(100vh-300px)]">
-                  <div className="p-4 space-y-2">
-                    {lessons.map((lesson, index) => (
-                      <button
-                        key={lesson.id}
-                        onClick={() => selectLesson(lesson)}
-                        className={`w-full text-left p-3 rounded-lg border transition-all ${
-                          currentLesson?.id === lesson.id
-                            ? "border-primary bg-primary/5"
-                            : "border-transparent hover:bg-muted"
-                        }`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="mt-1">
-                            {lesson.completed ? (
-                              <CheckCircle2 className="h-5 w-5 text-green-600" />
-                            ) : currentLesson?.id === lesson.id ? (
-                              <PlayCircle className="h-5 w-5 text-primary" />
-                            ) : (
-                              <Circle className="h-5 w-5 text-muted-foreground" />
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium leading-tight mb-1">
-                              {index + 1}. {lesson.title}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {lesson.duration_hours}h
-                              {lesson.video_url && " • Video"}
-                              {lesson.readings && lesson.readings.length > 0 && ` • ${lesson.readings.length} lecturas`}
-                              {lesson.exam && (
-                                <span className={`ml-2 inline-flex items-center gap-1 ${
-                                  lesson.exam.passed 
-                                    ? "text-green-600" 
-                                    : lesson.exam.attempts > 0 
-                                    ? "text-orange-600" 
-                                    : "text-muted-foreground"
-                                }`}>
-                                  • Examen
-                                  {lesson.exam.passed && " ✓"}
-                                </span>
+                  <div className="p-4 space-y-4">
+                    {sections.length === 0 ? (
+                      <div className="space-y-2">
+                        {lessons.map((lesson, index) => (
+                          <button
+                            key={lesson.id}
+                            onClick={() => selectLesson(lesson)}
+                            className={`w-full text-left p-3 rounded-lg border transition-all ${
+                              currentLesson?.id === lesson.id
+                                ? "border-primary bg-primary/5"
+                                : "border-transparent hover:bg-muted"
+                            }`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className="mt-1">
+                                {lesson.completed ? (
+                                  <CheckCircle2 className="h-5 w-5 text-green-600" />
+                                ) : currentLesson?.id === lesson.id ? (
+                                  <PlayCircle className="h-5 w-5 text-primary" />
+                                ) : (
+                                  <Circle className="h-5 w-5 text-muted-foreground" />
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium leading-tight mb-1">
+                                  {index + 1}. {lesson.title}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {lesson.duration_hours}h
+                                  {lesson.video_url && " • Video"}
+                                  {lesson.readings && lesson.readings.length > 0 && ` • ${lesson.readings.length} lecturas`}
+                                  {lesson.exam && (
+                                    <span className={`ml-2 inline-flex items-center gap-1 ${
+                                      lesson.exam.passed 
+                                        ? "text-green-600" 
+                                        : lesson.exam.attempts > 0 
+                                        ? "text-orange-600" 
+                                        : "text-muted-foreground"
+                                    }`}>
+                                      • Examen
+                                      {lesson.exam.passed && " ✓"}
+                                    </span>
+                                  )}
+                                </p>
+                              </div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {sections.map((section, sIdx) => {
+                          const arr = lessons.filter(l => (l as any).section_id === section.id).sort((a,b)=>a.order_index-b.order_index);
+                          const totalHours = arr.reduce((sum, l) => sum + (l.duration_hours || 0), 0);
+                          return (
+                            <div key={section.id} className="space-y-2">
+                              <div
+                                className="flex items-center justify-between cursor-pointer select-none"
+                                onClick={() => toggleSection(section.id)}
+                              >
+                                <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+                                  {openSections[section.id] ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                                  {section.order_index}. {section.title}
+                                </h4>
+                                <div className="text-[10px] text-muted-foreground font-medium">
+                                  {arr.length} lecciones • {totalHours}h
+                                </div>
+                              </div>
+                              {openSections[section.id] && (
+                                arr.length === 0 ? (
+                                  <div className="text-xs text-muted-foreground italic">(Sin lecciones aún)</div>
+                                ) : (
+                                  arr.map((lesson, index) => (
+                                    <button
+                                      key={lesson.id}
+                                      onClick={() => selectLessonAndExpand(lesson)}
+                                      className={`w-full text-left p-3 rounded-lg border transition-all ${
+                                        currentLesson?.id === lesson.id
+                                          ? "border-primary bg-primary/5"
+                                          : "border-transparent hover:bg-muted"
+                                      }`}
+                                    >
+                                      <div className="flex items-start gap-3">
+                                        <div className="mt-1">
+                                          {lesson.completed ? (
+                                            <CheckCircle2 className="h-5 w-5 text-green-600" />
+                                          ) : currentLesson?.id === lesson.id ? (
+                                            <PlayCircle className="h-5 w-5 text-primary" />
+                                          ) : (
+                                            <Circle className="h-5 w-5 text-muted-foreground" />
+                                          )}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <p className="text-sm font-medium leading-tight mb-1">
+                                            {lesson.order_index}. {lesson.title}
+                                          </p>
+                                          <p className="text-xs text-muted-foreground">
+                                            {lesson.duration_hours}h
+                                            {lesson.video_url && " • Video"}
+                                            {lesson.readings && lesson.readings.length > 0 && ` • ${lesson.readings.length} lecturas`}
+                                            {lesson.exam && (
+                                              <span className={`ml-2 inline-flex items-center gap-1 ${
+                                                lesson.exam.passed 
+                                                  ? "text-green-600" 
+                                                  : lesson.exam.attempts > 0 
+                                                  ? "text-orange-600" 
+                                                  : "text-muted-foreground"
+                                              }`}>
+                                                • Examen
+                                                {lesson.exam.passed && " ✓"}
+                                              </span>
+                                            )}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    </button>
+                                  ))
+                                )
                               )}
-                            </p>
+                            </div>
+                          );
+                        })}
+                        {lessons.filter(l => !(l as any).section_id).length > 0 && (
+                          <div className="space-y-2">
+                            <div
+                              className="flex items-center justify-between cursor-pointer select-none"
+                              onClick={() => toggleSection('__unsectioned')}
+                            >
+                              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+                                {openSections['__unsectioned'] ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                                Sin sección
+                              </h4>
+                              <div className="text-[10px] text-muted-foreground font-medium">
+                                {lessons.filter(l => !(l as any).section_id).length} lecciones • {lessons.filter(l => !(l as any).section_id).reduce((sum,l)=>sum+(l.duration_hours||0),0)}h
+                              </div>
+                            </div>
+                            {openSections['__unsectioned'] && lessons.filter(l => !(l as any).section_id).map((lesson, index) => (
+                              <button
+                                key={lesson.id}
+                                onClick={() => selectLessonAndExpand(lesson)}
+                                className={`w-full text-left p-3 rounded-lg border transition-all ${
+                                  currentLesson?.id === lesson.id
+                                    ? "border-primary bg-primary/5"
+                                    : "border-transparent hover:bg-muted"
+                                }`}
+                              >
+                                <div className="flex items-start gap-3">
+                                  <div className="mt-1">
+                                    {lesson.completed ? (
+                                      <CheckCircle2 className="h-5 w-5 text-green-600" />
+                                    ) : currentLesson?.id === lesson.id ? (
+                                      <PlayCircle className="h-5 w-5 text-primary" />
+                                    ) : (
+                                      <Circle className="h-5 w-5 text-muted-foreground" />
+                                    )}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium leading-tight mb-1">
+                                      {lesson.order_index}. {lesson.title}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {lesson.duration_hours}h
+                                      {lesson.video_url && " • Video"}
+                                      {lesson.readings && lesson.readings.length > 0 && ` • ${lesson.readings.length} lecturas`}
+                                      {lesson.exam && (
+                                        <span className={`ml-2 inline-flex items-center gap-1 ${
+                                          lesson.exam.passed 
+                                            ? "text-green-600" 
+                                            : lesson.exam.attempts > 0 
+                                            ? "text-orange-600" 
+                                            : "text-muted-foreground"
+                                        }`}>
+                                          • Examen
+                                          {lesson.exam.passed && " ✓"}
+                                        </span>
+                                      )}
+                                    </p>
+                                  </div>
+                                </div>
+                              </button>
+                            ))}
                           </div>
-                        </div>
-                      </button>
-                    ))}
+                        )}
+                      </div>
+                    )}
                   </div>
                 </ScrollArea>
               </CardContent>

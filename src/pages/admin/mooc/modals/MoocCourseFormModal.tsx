@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, X } from "lucide-react";
+import { Loader2, Plus, X, ChevronDown, ChevronRight } from "lucide-react";
 import { ExamList } from "@/pages/professor/components/ExamList";
 import { MoocExamForm } from "@/pages/professor/components/MoocExamForm";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -47,6 +47,15 @@ type Lesson = {
   live_url?: string;
   live_date?: string; // ISO date
   live_time?: string; // HH:mm
+  // sección opcional
+  section_id?: string | null;
+};
+
+type Section = {
+  id?: string;
+  title: string;
+  description: string;
+  order_index: number;
 };
 
 type Props = {
@@ -82,6 +91,10 @@ export const MoocCourseFormModal = ({ open, onOpenChange, editingCourse, onSave 
 
   const [tagInput, setTagInput] = useState("");
   const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [sections, setSections] = useState<Section[]>([]);
+  const [newSection, setNewSection] = useState<Section>({ title: '', description: '', order_index: (sections.length + 1) });
+  const [addingSection, setAddingSection] = useState(false);
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (editingCourse) {
@@ -99,6 +112,7 @@ export const MoocCourseFormModal = ({ open, onOpenChange, editingCourse, onSave 
         passport_complexity: editingCourse.passport_complexity || "basico"
       });
       loadLessons(editingCourse.id);
+      loadSections(editingCourse.id);
     } else {
       resetForm();
     }
@@ -123,7 +137,8 @@ export const MoocCourseFormModal = ({ open, onOpenChange, editingCourse, onSave 
         live_platform: l.live_platform || '',
         live_url: l.live_url || '',
         live_date: l.live_date || '',
-        live_time: l.live_time || ''
+        live_time: l.live_time || '',
+        section_id: l.section_id || null
       }));
 
       setLessons(normalized);
@@ -151,6 +166,31 @@ export const MoocCourseFormModal = ({ open, onOpenChange, editingCourse, onSave 
       }
     } catch (error) {
       console.error("Error loading lessons:", error);
+    }
+  };
+
+  const loadSections = async (courseId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('mooc_course_sections')
+        .select('*')
+        .eq('course_id', courseId)
+        .order('order_index', { ascending: true });
+      if (error) throw error;
+      const mapped = (data || []).map((s: any) => ({
+        id: s.id,
+        title: s.title,
+        description: s.description || '',
+        order_index: s.order_index || 0
+      }));
+      setSections(mapped);
+      // Inicializar todas las secciones como abiertas (incluye grupo sin sección)
+      const initialOpen: Record<string, boolean> = {};
+      mapped.forEach((s: any) => { if (s.id) initialOpen[s.id] = true; });
+      initialOpen['__unsectioned'] = true;
+      setOpenSections(initialOpen);
+    } catch (e) {
+      console.error('Error loading sections', e);
     }
   };
 
@@ -239,9 +279,45 @@ export const MoocCourseFormModal = ({ open, onOpenChange, editingCourse, onSave 
         live_platform: '',
         live_url: '',
         live_date: '',
-        live_time: ''
+        live_time: '',
+        section_id: null
       }
     ]);
+    // Abrir el grupo "Sin sección" automáticamente
+    setOpenSections(prev => ({ ...prev, ['__unsectioned']: true }));
+  };
+
+  const handleAddSection = async () => {
+    if (!editingCourse) {
+      toast({ title: 'Primero guarda el curso', description: 'Debes guardar el curso antes de crear secciones', variant: 'destructive' });
+      return;
+    }
+    if (!newSection.title.trim()) {
+      toast({ title: 'Título requerido', description: 'La sección necesita un título', variant: 'destructive' });
+      return;
+    }
+    setAddingSection(true);
+    try {
+      const { data, error } = await supabase
+        .from('mooc_course_sections')
+        .insert([{ 
+          course_id: editingCourse.id, 
+          title: newSection.title.trim(),
+          description: newSection.description.trim() || null,
+          order_index: newSection.order_index || sections.length + 1
+        }])
+        .select()
+        .single();
+      if (error) throw error;
+      setSections(prev => [...prev, { id: data.id, title: data.title, description: data.description || '', order_index: data.order_index }]);
+      setNewSection({ title: '', description: '', order_index: sections.length + 2 });
+      toast({ title: 'Sección creada', description: 'La sección fue agregada correctamente' });
+    } catch (e:any) {
+      console.error('Error creating section', e);
+      toast({ title: 'Error', description: e.message || 'No se pudo crear la sección', variant: 'destructive' });
+    } finally {
+      setAddingSection(false);
+    }
   };
 
   const handleLessonFilesChange = (index: number, files: FileList | null) => {
@@ -302,6 +378,15 @@ export const MoocCourseFormModal = ({ open, onOpenChange, editingCourse, onSave 
       updated[index] = { ...updated[index], [field]: value };
       return updated;
     });
+    // Si se cambia la sección, expandir la correspondiente
+    if (field === 'section_id') {
+      const sid = value || '__unsectioned';
+      setOpenSections(prev => ({ ...prev, [sid]: true }));
+    }
+  };
+
+  const toggleSection = (id: string) => {
+    setOpenSections(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
   const validateCourse = () => {
@@ -413,7 +498,8 @@ export const MoocCourseFormModal = ({ open, onOpenChange, editingCourse, onSave 
             live_platform: lesson.live_platform || null,
             live_url: lesson.live_url || null,
             live_date: lesson.live_date || null,
-            live_time: lesson.live_time || null
+            live_time: lesson.live_time || null,
+            section_id: lesson.section_id || null
           };
 
           const { data: insertedLesson, error: insertLessonError } = await supabase
@@ -688,52 +774,63 @@ export const MoocCourseFormModal = ({ open, onOpenChange, editingCourse, onSave 
 
 
           {/* Tab de lecciones y exámenes */}
-          <TabsContent value="lessons" className="space-y-4">
-            <div className="flex justify-between items-center gap-2">
-              <Label>Lecciones del Curso ({lessons.length})</Label>
-              <div className="flex gap-2">
-                <Button type="button" onClick={handleAddLesson} size="sm">
-                  <Plus className="h-4 w-4 mr-1" />
-                  Agregar Lección
-                </Button>
-                {editingCourse ? (
-                  <Button type="button" onClick={() => { setEditingExam(null); setShowExamForm(true); }} size="sm" variant="secondary">
-                    <Plus className="h-4 w-4 mr-1" />
-                    Agregar Examen
+          <TabsContent value="lessons" className="space-y-6">
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-wrap items-center gap-3 justify-between">
+                <Label className="text-base font-semibold">Lecciones del Curso ({lessons.length})</Label>
+                <div className="flex gap-2">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      placeholder="Nueva sección"
+                      className="h-8 w-40"
+                      value={newSection.title}
+                      onChange={e => setNewSection(s => ({ ...s, title: e.target.value }))}
+                      disabled={!editingCourse}
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={!editingCourse || addingSection || !newSection.title.trim()}
+                      onClick={handleAddSection}
+                    >
+                      {addingSection ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  <Button type="button" onClick={handleAddLesson} size="sm">
+                    <Plus className="h-4 w-4 mr-1" /> Agregar Lección
                   </Button>
-                ) : (
-                  <Button 
-                    type="button" 
-                    size="sm" 
-                    variant="secondary" 
-                    disabled 
-                    title="Primero debes guardar el curso antes de crear exámenes"
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    Agregar Examen
-                  </Button>
-                )}
+                  {editingCourse ? (
+                    <Button type="button" onClick={() => { setEditingExam(null); setShowExamForm(true); }} size="sm" variant="secondary">
+                      <Plus className="h-4 w-4 mr-1" /> Examen
+                    </Button>
+                  ) : (
+                    <Button type="button" size="sm" variant="secondary" disabled title="Guarda el curso primero">Examen</Button>
+                  )}
+                </div>
               </div>
+              {sections.length > 0 && (
+                <div className="flex flex-wrap gap-2 text-xs">
+                  {sections.sort((a,b)=>(a.order_index||0)-(b.order_index||0)).map(s => (
+                    <span key={s.id} className="px-2 py-1 rounded bg-muted">{s.order_index}. {s.title}</span>
+                  ))}
+                </div>
+              )}
             </div>
 
             {!editingCourse && (
               <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md text-sm text-yellow-800">
-                💡 <strong>Nota:</strong> Primero debes guardar el curso para poder agregar exámenes.
+                💡 <strong>Nota:</strong> Guarda el curso para poder agregar exámenes y secciones persistentes.
               </div>
             )}
 
-            {/* Lista de exámenes creados */}
             {editingCourse && (
               <ExamList
                 courseId={editingCourse.id}
-                onEdit={(exam: any) => {
-                  setEditingExam(exam);
-                  setShowExamForm(true);
-                }}
+                onEdit={(exam: any) => { setEditingExam(exam); setShowExamForm(true); }}
               />
             )}
 
-            {/* Modal para crear/editar examen */}
             {showExamForm && editingCourse && (
               <Dialog open={showExamForm} onOpenChange={setShowExamForm}>
                 <DialogContent className="max-w-[95vw] w-[95vw] h-[95vh] p-0 overflow-hidden">
@@ -742,215 +839,275 @@ export const MoocCourseFormModal = ({ open, onOpenChange, editingCourse, onSave 
                       courseId={editingCourse.id}
                       exam={editingExam}
                       lessons={lessons.map(l => ({ id: l.id || '', title: l.title, order_index: l.order_index }))}
-                      onClose={(refresh) => { 
-                        setShowExamForm(false); 
-                        setEditingExam(null);
-                      }}
+                      onClose={() => { setShowExamForm(false); setEditingExam(null); }}
                     />
                   </div>
                 </DialogContent>
               </Dialog>
             )}
 
-            {lessons.length === 0 ? (
-              <Card>
-                <CardContent className="py-8 text-center text-muted-foreground">
-                  No hay lecciones agregadas
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="space-y-4">
-                {lessons.map((lesson, index) => (
-                  <Card key={index}>
-                    <CardContent className="pt-6 space-y-3">
-                      <div className="flex justify-between items-center">
-                        <Label>Lección {index + 1}</Label>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div className="space-y-2">
-                          <Label>Título</Label>
-                          <Input
-                            value={lesson.title}
-                            onChange={(e) => handleLessonChange(index, "title", e.target.value)}
-                            placeholder="Título de la lección"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label>Duración (horas)</Label>
-                          <Input
-                            type="number"
-                            min="1"
-                            value={lesson.duration_hours}
-                            onChange={(e) => handleLessonChange(index, "duration_hours", parseInt(e.target.value))}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Descripción</Label>
-                        <Textarea
-                          value={lesson.description}
-                          onChange={(e) => handleLessonChange(index, "description", e.target.value)}
-                          placeholder="Descripción de la lección"
-                          rows={2}
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Contenido</Label>
-                        <Textarea
-                          value={lesson.content}
-                          onChange={(e) => handleLessonChange(index, "content", e.target.value)}
-                          placeholder="Contenido detallado de la lección"
-                          rows={3}
-                        />
-                      </div>
-
-                      <div className="space-y-3 border-t pt-3">
-                        <Label>Tipo de contenido multimedia</Label>
-                        <Select
-                          value={lesson.content_type || 'video'}
-                          onValueChange={(value) => handleLessonChange(index, "content_type", value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Seleccionar tipo" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="video">Video grabado (YouTube/Vimeo)</SelectItem>
-                            <SelectItem value="live_session">Encuentro sincrónico (Meet/Teams/Zoom)</SelectItem>
-                          </SelectContent>
-                        </Select>
-
-                        {lesson.content_type === 'video' ? (
-                          <div className="space-y-2">
-                            <Label>URL del Video</Label>
-                            <Input
-                              value={lesson.video_url}
-                              onChange={(e) => handleLessonChange(index, "video_url", e.target.value)}
-                              placeholder="https://youtube.com/..."
-                            />
-                          </div>
-                        ) : (
-                          <div className="space-y-3 p-3 bg-blue-50 rounded-md">
+            {sections.sort((a,b) => (a.order_index||0)-(b.order_index||0)).map(section => {
+              const arr = lessons.filter(l=>l.section_id===section.id);
+              const totalHours = arr.reduce((sum, l) => sum + (l.duration_hours || 0), 0);
+              const isOpen = openSections[section.id!];
+              return (
+                <div key={section.id} className="space-y-4">
+                  <div className="flex items-center justify-between cursor-pointer select-none" onClick={() => toggleSection(section.id!)}>
+                    <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+                      {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                      {section.order_index}. {section.title}
+                    </h4>
+                    <div className="text-xs text-muted-foreground font-medium">{arr.length} lecciones • {totalHours}h</div>
+                  </div>
+                  {isOpen && (
+                    arr.length === 0 ? (
+                      <div className="text-xs italic text-muted-foreground">(Sin lecciones en esta sección)</div>
+                    ) : (
+                      arr.map((lesson, idx) => (
+                        <Card key={lesson.id || `s${section.id}-l${idx}`}> 
+                          <CardContent className="pt-6 space-y-3">
+                            <div className="flex justify-between items-start flex-wrap gap-2">
+                              <Label className="font-semibold">Lección {lesson.order_index}</Label>
+                              <div className="flex gap-2">
+                                <Select value={lesson.section_id || 'none'} onValueChange={(val)=>handleLessonChange(lessons.indexOf(lesson),'section_id', val === 'none' ? null : val)}>
+                                  <SelectTrigger className="h-8 w-44"><SelectValue placeholder="Sección" /></SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="none">(Sin sección)</SelectItem>
+                                    {sections.sort((a,b)=>(a.order_index||0)-(b.order_index||0)).map(s => (
+                                      <SelectItem key={s.id} value={s.id!}>{s.order_index}. {s.title}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <Button variant="ghost" size="sm" onClick={() => handleRemoveLesson(lessons.indexOf(lesson))}>
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              <div className="space-y-2">
+                                <Label>Título</Label>
+                                <Input value={lesson.title} onChange={e=>handleLessonChange(lessons.indexOf(lesson),'title', e.target.value)} />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Duración (horas)</Label>
+                                <Input type="number" min={1} value={lesson.duration_hours} onChange={e=>handleLessonChange(lessons.indexOf(lesson),'duration_hours', parseInt(e.target.value)||1)} />
+                              </div>
+                            </div>
                             <div className="space-y-2">
-                              <Label>Plataforma</Label>
-                              <Select
-                                value={lesson.live_platform || ''}
-                                onValueChange={(value) => handleLessonChange(index, "live_platform", value)}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Seleccionar plataforma" />
-                                </SelectTrigger>
+                              <Label>Descripción</Label>
+                              <Textarea rows={2} value={lesson.description} onChange={e=>handleLessonChange(lessons.indexOf(lesson),'description', e.target.value)} />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Contenido</Label>
+                              <Textarea rows={3} value={lesson.content} onChange={e=>handleLessonChange(lessons.indexOf(lesson),'content', e.target.value)} />
+                            </div>
+                            <div className="space-y-3 border-t pt-3">
+                              <Label>Tipo de contenido multimedia</Label>
+                              <Select value={lesson.content_type || 'video'} onValueChange={val=>handleLessonChange(lessons.indexOf(lesson),'content_type', val)}>
+                                <SelectTrigger><SelectValue placeholder="Tipo" /></SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="Google Meet">Google Meet</SelectItem>
-                                  <SelectItem value="Microsoft Teams">Microsoft Teams</SelectItem>
-                                  <SelectItem value="Zoom">Zoom</SelectItem>
-                                  <SelectItem value="Webex">Webex</SelectItem>
-                                  <SelectItem value="Otra">Otra</SelectItem>
+                                  <SelectItem value="video">Video</SelectItem>
+                                  <SelectItem value="live_session">Encuentro sincrónico</SelectItem>
                                 </SelectContent>
                               </Select>
-                            </div>
-
-                            <div className="space-y-2">
-                              <Label>URL del encuentro</Label>
-                              <Input
-                                value={lesson.live_url || ''}
-                                onChange={(e) => handleLessonChange(index, "live_url", e.target.value)}
-                                placeholder="https://meet.google.com/xxx-yyyy-zzz"
-                              />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-3">
-                              <div className="space-y-2">
-                                <Label>Fecha</Label>
-                                <Input
-                                  type="date"
-                                  value={lesson.live_date || ''}
-                                  onChange={(e) => handleLessonChange(index, "live_date", e.target.value)}
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label>Hora</Label>
-                                <Input
-                                  type="time"
-                                  value={lesson.live_time || ''}
-                                  onChange={(e) => handleLessonChange(index, "live_time", e.target.value)}
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Lecturas (PDF)</Label>
-                        
-                        {/* Mostrar lecturas existentes */}
-                        {lesson.existingReadings && lesson.existingReadings.length > 0 && (
-                          <div className="mb-3 p-3 bg-secondary/50 rounded-md">
-                            <div className="text-sm font-medium mb-2">Lecturas actuales:</div>
-                            <div className="space-y-2">
-                              {lesson.existingReadings.map((reading) => (
-                                <div key={reading.id} className="flex items-center justify-between text-sm">
-                                  <span className="flex-1 truncate">{reading.file_name}</span>
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleRemoveExistingReading(index, reading.id)}
-                                    className="ml-2"
-                                  >
-                                    <X className="h-4 w-4" />
-                                  </Button>
+                              {lesson.content_type === 'video' ? (
+                                <div className="space-y-2">
+                                  <Label>URL del Video</Label>
+                                  <Input value={lesson.video_url} onChange={e=>handleLessonChange(lessons.indexOf(lesson),'video_url', e.target.value)} placeholder="https://..." />
                                 </div>
-                              ))}
+                              ) : (
+                                <div className="space-y-3 p-3 bg-blue-50 rounded-md">
+                                  <div className="space-y-2">
+                                    <Label>Plataforma</Label>
+                                    <Select value={lesson.live_platform || ''} onValueChange={v=>handleLessonChange(lessons.indexOf(lesson),'live_platform', v)}>
+                                      <SelectTrigger><SelectValue placeholder="Plataforma" /></SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="Google Meet">Google Meet</SelectItem>
+                                        <SelectItem value="Microsoft Teams">Microsoft Teams</SelectItem>
+                                        <SelectItem value="Zoom">Zoom</SelectItem>
+                                        <SelectItem value="Webex">Webex</SelectItem>
+                                        <SelectItem value="Otra">Otra</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label>URL del encuentro</Label>
+                                    <Input value={lesson.live_url || ''} onChange={e=>handleLessonChange(lessons.indexOf(lesson),'live_url', e.target.value)} placeholder="https://meet.google.com/..." />
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-2">
+                                      <Label>Fecha</Label>
+                                      <Input type="date" value={lesson.live_date || ''} onChange={e=>handleLessonChange(lessons.indexOf(lesson),'live_date', e.target.value)} />
+                                    </div>
+                                    <div className="space-y-2">
+                                      <Label>Hora</Label>
+                                      <Input type="time" value={lesson.live_time || ''} onChange={e=>handleLessonChange(lessons.indexOf(lesson),'live_time', e.target.value)} />
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                            <div className="space-y-2 border-t pt-3">
+                              <Label>Lecturas (PDF)</Label>
+                              {lesson.existingReadings && lesson.existingReadings.length > 0 && (
+                                <div className="space-y-2">
+                                  {lesson.existingReadings.map(reading => (
+                                    <div key={reading.id} className="flex items-center justify-between p-2 rounded border bg-muted/50">
+                                      <div className="text-sm font-medium truncate max-w-[200px]">{reading.title}</div>
+                                      <Button variant="ghost" size="sm" onClick={()=>handleRemoveExistingReading(lessons.indexOf(lesson), reading.id)}>
+                                        <X className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              <Input type="file" multiple accept="application/pdf" onChange={e=>handleLessonFilesChange(lessons.indexOf(lesson), e.target.files)} />
+                              {lesson.newFiles && lesson.newFiles.length > 0 && (
+                                <div className="text-xs text-muted-foreground">{lesson.newFiles.length} archivo(s) listos para subir</div>
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))
+                    )
+                  )}
+                </div>
+              );
+            })}
+
+            {/* Lecciones sin sección */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between cursor-pointer select-none"
+                onClick={() => toggleSection('__unsectioned')}
+              >
+                <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+                  {openSections['__unsectioned'] ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                  Sin sección
+                </h4>
+                <div className="text-xs text-muted-foreground font-medium">
+                  {lessons.filter(l=>!l.section_id).length} lecciones • {lessons.filter(l=>!l.section_id).reduce((s, l)=> s + (l.duration_hours || 0), 0)}h
+                </div>
+              </div>
+              {openSections['__unsectioned'] && lessons.filter(l=>!l.section_id).length === 0 && (
+                <div className="text-xs italic text-muted-foreground">(No hay lecciones sin sección)</div>
+              )}
+              {openSections['__unsectioned'] && lessons.filter(l=>!l.section_id).map((lesson, idx)=> (
+                <Card key={lesson.id || `unsec-${idx}`}> 
+                  <CardContent className="pt-6 space-y-3">
+                    <div className="flex justify-between items-start flex-wrap gap-2">
+                      <Label className="font-semibold">Lección {lesson.order_index}</Label>
+                      <div className="flex gap-2">
+                        <Select value={lesson.section_id || 'none'} onValueChange={(val)=>handleLessonChange(lessons.indexOf(lesson),'section_id', val === 'none' ? null : val)}>
+                          <SelectTrigger className="h-8 w-44"><SelectValue placeholder="Sección" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">(Sin sección)</SelectItem>
+                            {sections.sort((a,b)=>(a.order_index||0)-(b.order_index||0)).map(s => (
+                              <SelectItem key={s.id} value={s.id!}>{s.order_index}. {s.title}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button variant="ghost" size="sm" onClick={() => handleRemoveLesson(lessons.indexOf(lesson))}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label>Título</Label>
+                        <Input value={lesson.title} onChange={e=>handleLessonChange(lessons.indexOf(lesson),'title', e.target.value)} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Duración (horas)</Label>
+                        <Input type="number" min={1} value={lesson.duration_hours} onChange={e=>handleLessonChange(lessons.indexOf(lesson),'duration_hours', parseInt(e.target.value)||1)} />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Descripción</Label>
+                      <Textarea rows={2} value={lesson.description} onChange={e=>handleLessonChange(lessons.indexOf(lesson),'description', e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Contenido</Label>
+                      <Textarea rows={3} value={lesson.content} onChange={e=>handleLessonChange(lessons.indexOf(lesson),'content', e.target.value)} />
+                    </div>
+                    <div className="space-y-3 border-t pt-3">
+                      <Label>Tipo de contenido multimedia</Label>
+                      <Select value={lesson.content_type || 'video'} onValueChange={val=>handleLessonChange(lessons.indexOf(lesson),'content_type', val)}>
+                        <SelectTrigger><SelectValue placeholder="Tipo" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="video">Video</SelectItem>
+                          <SelectItem value="live_session">Encuentro sincrónico</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {lesson.content_type === 'video' ? (
+                        <div className="space-y-2">
+                          <Label>URL del Video</Label>
+                          <Input value={lesson.video_url} onChange={e=>handleLessonChange(lessons.indexOf(lesson),'video_url', e.target.value)} placeholder="https://..." />
+                        </div>
+                      ) : (
+                        <div className="space-y-3 p-3 bg-blue-50 rounded-md">
+                          <div className="space-y-2">
+                            <Label>Plataforma</Label>
+                            <Select value={lesson.live_platform || ''} onValueChange={v=>handleLessonChange(lessons.indexOf(lesson),'live_platform', v)}>
+                              <SelectTrigger><SelectValue placeholder="Plataforma" /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Google Meet">Google Meet</SelectItem>
+                                <SelectItem value="Microsoft Teams">Microsoft Teams</SelectItem>
+                                <SelectItem value="Zoom">Zoom</SelectItem>
+                                <SelectItem value="Webex">Webex</SelectItem>
+                                <SelectItem value="Otra">Otra</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>URL del encuentro</Label>
+                            <Input value={lesson.live_url || ''} onChange={e=>handleLessonChange(lessons.indexOf(lesson),'live_url', e.target.value)} placeholder="https://meet.google.com/..." />
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-2">
+                              <Label>Fecha</Label>
+                              <Input type="date" value={lesson.live_date || ''} onChange={e=>handleLessonChange(lessons.indexOf(lesson),'live_date', e.target.value)} />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Hora</Label>
+                              <Input type="time" value={lesson.live_time || ''} onChange={e=>handleLessonChange(lessons.indexOf(lesson),'live_time', e.target.value)} />
                             </div>
                           </div>
-                        )}
-                        
-                        <input
-                          type="file"
-                          accept="application/pdf"
-                          multiple
-                          onChange={(e) => handleLessonFilesChange(index, e.target.files)}
-                        />
-                        {lesson.newFiles && lesson.newFiles.length > 0 && (
-                          <div className="mt-2 text-sm">
-                            Archivos nuevos seleccionados:
-                            <ul className="list-disc list-inside">
-                              {lesson.newFiles.map((f, idx) => (
-                                <li key={idx}>{f.name}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
+                        </div>
+                      )}
+                    </div>
+                    <div className="space-y-2 border-t pt-3">
+                      <Label>Lecturas (PDF)</Label>
+                      {lesson.existingReadings && lesson.existingReadings.length > 0 && (
+                        <div className="space-y-2">
+                          {lesson.existingReadings.map(reading => (
+                            <div key={reading.id} className="flex items-center justify-between p-2 rounded border bg-muted/50">
+                              <div className="text-sm font-medium truncate max-w-[200px]">{reading.title}</div>
+                              <Button variant="ghost" size="sm" onClick={()=>handleRemoveExistingReading(lessons.indexOf(lesson), reading.id)}>
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <Input type="file" multiple accept="application/pdf" onChange={e=>handleLessonFilesChange(lessons.indexOf(lesson), e.target.files)} />
+                      {lesson.newFiles && lesson.newFiles.length > 0 && (
+                        <div className="text-xs text-muted-foreground">{lesson.newFiles.length} archivo(s) listos para subir</div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t">
+              <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>Cancelar</Button>
+              <Button onClick={handleSubmit} disabled={loading}>
+                {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                {editingCourse ? 'Guardar Cambios' : 'Crear Curso'}
+              </Button>
+            </div>
           </TabsContent>
         </Tabs>
-
-        {/* Botones de acción */}
-        <div className="flex justify-end gap-2 pt-4 border-t">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-            Cancelar
-          </Button>
-          <Button onClick={handleSubmit} disabled={loading}>
-            {loading ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Guardando...
-              </>
-            ) : (
-              "Guardar Curso"
-            )}
-          </Button>
-        </div>
       </DialogContent>
     </Dialog>
   );
