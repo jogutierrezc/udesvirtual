@@ -6,6 +6,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { HeroCarousel } from "@/components/HeroCarousel";
+import Navbar from "@/components/Navbar";
 
 const Index = () => {
   const [stats, setStats] = useState({
@@ -15,9 +16,24 @@ const Index = () => {
     coilProposals: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [hasSession, setHasSession] = useState(false);
 
   useEffect(() => {
     loadStats();
+  }, []);
+
+  useEffect(() => {
+    // Detect auth session to switch navbar on home
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setHasSession(!!session);
+    })();
+    const { data: authSub } = supabase.auth.onAuthStateChange((_evt, session) => {
+      setHasSession(!!session);
+    });
+    return () => {
+      try { authSub.subscription.unsubscribe(); } catch {}
+    };
   }, []);
 
   const loadStats = async () => {
@@ -94,6 +110,36 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 relative overflow-hidden">
+      {/* Home-only top bar: switch to user Navbar if logged in */}
+      {hasSession ? (
+        <Navbar />
+      ) : (
+        <div className="w-full border-b bg-white/70 backdrop-blur supports-[backdrop-filter]:bg-white/60 sticky top-0 z-50">
+          <div className="mx-auto max-w-7xl px-4 h-14 flex items-center justify-between">
+            <Link to="/" className="flex items-center gap-3">
+              <img
+                src="https://udes.edu.co/images/logo/logo-con-acreditada-color.png"
+                alt="UDES E-Exchange"
+                className="h-8 w-auto object-contain"
+              />
+              <span className="hidden sm:inline text-sm font-medium text-gray-700">UDES E-Exchange</span>
+            </Link>
+            <div className="hidden md:flex items-center gap-2 text-sm">
+              <Link to="/catalog" className="px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100">Catálogo</Link>
+              <Link to="/mooc" className="px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100">MOOC</Link>
+              <Link to="/profesores" className="px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100">Profesores</Link>
+              <Link to="/lia" className="px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100">LIA</Link>
+              <Link to="/faq" className="px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100">FAQ</Link>
+            </div>
+            <div>
+              <Link to="/auth">
+                <Button size="sm">Iniciar sesión</Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Carrusel Hero */}
       <HeroCarousel />
 
@@ -240,7 +286,7 @@ const Index = () => {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold mb-4 text-gray-800">
-              ¿Por qué elegir UDES Virtual?
+              ¿Por qué elegir UDES E-Exchange?
             </h2>
             <p className="text-gray-600 text-lg">Conecta tu futuro con el mundo</p>
           </div>
@@ -293,7 +339,7 @@ const Index = () => {
               </h2>
               <p className="text-xl text-white/90 max-w-2xl mx-auto">
                 Únete a miles de estudiantes que ya están explorando oportunidades 
-                internacionales con UDES Virtual
+                internacionales con UDES E-Exchange
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
                 <Link to="/auth">

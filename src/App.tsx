@@ -80,7 +80,8 @@ const AppContent = () => {
   // Ocultar navbar en 404 o en rutas específicas
   // Para las rutas de administración usamos un navbar específico (AdminNavbar) dentro del layout,
   // por eso ocultamos el Navbar principal cuando la ruta comienza con /admin
-  const shouldHideNavbar = is404 || hideNavbarRoutes.includes(location.pathname) || location.pathname.startsWith('/admin');
+  // Hide global Navbar on index as it has its own top bar
+  const shouldHideNavbar = is404 || hideNavbarRoutes.includes(location.pathname) || location.pathname.startsWith('/admin') || location.pathname === '/';
 
   return (
     <>
