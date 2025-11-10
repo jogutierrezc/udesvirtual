@@ -50,6 +50,7 @@ export default function StudentExamPage() {
   const [showInvalidationDialog, setShowInvalidationDialog] = useState(false);
   const [showDisclaimerDialog, setShowDisclaimerDialog] = useState(true);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [termsChecked, setTermsChecked] = useState(false);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -355,6 +356,7 @@ export default function StudentExamPage() {
   const progressPercent = questions.length > 0 ? (Object.keys(answers).length / questions.length) * 100 : 0;
 
   const handleAcceptTerms = () => {
+    if (!termsChecked) return;
     setAcceptedTerms(true);
     setShowDisclaimerDialog(false);
   };
@@ -440,8 +442,8 @@ export default function StudentExamPage() {
               <input
                 type="checkbox"
                 id="accept-terms"
-                checked={acceptedTerms}
-                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                checked={termsChecked}
+                onChange={(e) => setTermsChecked(e.target.checked)}
                 className="mt-1 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
               />
               <label htmlFor="accept-terms" className="text-sm text-foreground cursor-pointer">
@@ -460,7 +462,7 @@ export default function StudentExamPage() {
               </Button>
               <Button
                 onClick={handleAcceptTerms}
-                disabled={!acceptedTerms}
+                disabled={!termsChecked}
                 className="bg-indigo-600 hover:bg-indigo-700"
               >
                 <CheckCircle2 className="h-4 w-4 mr-2" />

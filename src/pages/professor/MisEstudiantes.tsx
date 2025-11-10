@@ -64,15 +64,18 @@ export default function MisEstudiantes() {
         if (userIds.length > 0) {
           const { data: profiles } = await supabase
             .from('profiles')
-            .select('id, full_name, email')
+            .select('id, full_name, email, city, department')
             .in('id', userIds);
           profilesMap = (profiles || []).reduce((acc: any, p: any) => ({ ...acc, [p.id]: p }), {});
         }
 
-        const enriched = (enrollments || []).map((en: any) => ({
-          ...en,
-          profile: profilesMap[en.user_id] || { id: en.user_id, full_name: en.user_id, email: '' }
-        }));
+        const enriched = (enrollments || []).map((en: any) => {
+          const p = profilesMap[en.user_id];
+          return {
+            ...en,
+            profile: p ? p : { id: en.user_id, full_name: en.user_id, email: '', city: '', department: '' }
+          };
+        });
 
         return { ...c, enrollments: enriched };
       }));
@@ -136,6 +139,11 @@ export default function MisEstudiantes() {
                           <div className="min-w-0">
                             <div className="text-sm font-medium truncate">{en.profile?.full_name || en.user_id}</div>
                             <div className="text-xs text-muted-foreground truncate">{en.profile?.email}</div>
+                            {(en.profile?.city || en.profile?.department) && (
+                              <div className="text-[11px] text-muted-foreground truncate">
+                                {en.profile?.city || 'Ciudad desconocida'}{en.profile?.department ? ` • ${en.profile.department}` : ''}
+                              </div>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
