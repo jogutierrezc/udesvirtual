@@ -31,6 +31,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import StudentDashboard from "./pages/student/StudentDashboard";
 import CourseLearning from "./pages/student/CourseLearning";
 import ReadingView from "./pages/student/ReadingView";
+import StudentExamPage from "./pages/student/StudentExamPage";
 import { CatalogPage } from "./pages/admin/catalog/CatalogPage";
 import { OfferingsPage } from "./pages/admin/offerings/OfferingsPage";
 import { RegistrationsPage } from "./pages/admin/registrations/RegistrationsPage";
@@ -118,6 +119,14 @@ const AppContent = () => {
         <Route 
           path="/courses/:courseId/lessons/:lessonId/reading/:readingId"
           element={<ProtectedRoute><ReadingView /></ProtectedRoute>}
+        />
+        <Route 
+          path="/mooc/:courseId/exam/:examId" 
+          element={
+            <ProtectedRoute>
+              <StudentExamPage />
+            </ProtectedRoute>
+          } 
         />
         <Route 
           path="/profile" 
