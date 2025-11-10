@@ -57,35 +57,40 @@ export const MoocExamQuestionEditor = ({ examId }: { examId: string }) => {
   };
 
   return (
-    <Card className="mb-6">
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Preguntas del examen</CardTitle>
-        <Button variant="outline" onClick={handleCreate}>
-          <PlusCircle className="h-4 w-4 mr-2" /> Nueva pregunta
-        </Button>
-      </CardHeader>
-      <CardContent>
-        {loading ? (
-          <div className="flex items-center gap-2"><Loader2 className="animate-spin" /> Cargando...</div>
-        ) : questions.length === 0 ? (
-          <div className="text-muted-foreground">No hay preguntas creadas para este examen.</div>
-        ) : (
-          <div className="space-y-3">
-            {questions.map((q) => (
-              <div key={q.id} className="flex items-center justify-between border rounded p-3">
-                <div>
-                  <div className="font-medium">{q.prompt}</div>
-                  <div className="text-xs text-muted-foreground">{QUESTION_TYPES.find(t => t.value === q.type)?.label}</div>
+    <div className="space-y-4">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Preguntas del examen ({questions.length})</CardTitle>
+          <Button variant="outline" onClick={handleCreate}>
+            <PlusCircle className="h-4 w-4 mr-2" /> Nueva pregunta
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex items-center gap-2"><Loader2 className="animate-spin" /> Cargando...</div>
+          ) : questions.length === 0 ? (
+            <div className="text-muted-foreground">No hay preguntas creadas para este examen.</div>
+          ) : (
+            <div className="space-y-3">
+              {questions.map((q) => (
+                <div key={q.id} className="flex items-center justify-between border rounded p-3">
+                  <div className="flex-1">
+                    <div className="font-medium">{q.prompt}</div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {QUESTION_TYPES.find(t => t.value === q.type)?.label} • {q.points} punto(s)
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => handleEdit(q)}><Edit className="h-4 w-4" /></Button>
+                    <Button size="sm" variant="destructive" onClick={() => handleDelete(q.id)}><Trash2 className="h-4 w-4" /></Button>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline" onClick={() => handleEdit(q)}><Edit className="h-4 w-4" /></Button>
-                  <Button size="sm" variant="destructive" onClick={() => handleDelete(q.id)}><Trash2 className="h-4 w-4" /></Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </CardContent>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      
       {showForm && (
         <QuestionForm
           examId={examId}
@@ -93,7 +98,7 @@ export const MoocExamQuestionEditor = ({ examId }: { examId: string }) => {
           onClose={handleFormClose}
         />
       )}
-    </Card>
+    </div>
   );
 };
 
@@ -131,6 +136,11 @@ function QuestionForm({ examId, question, onClose }: { examId: string, question?
   };
 
   const handleSave = async () => {
+    if (!form.prompt.trim()) {
+      alert("La pregunta es obligatoria");
+      return;
+    }
+
     setSaving(true);
     let res;
     if (question) {
@@ -139,7 +149,7 @@ function QuestionForm({ examId, question, onClose }: { examId: string, question?
         prompt: form.prompt,
         order_index: form.order_index,
         points: form.points,
-      }).eq("id", question.id);
+      }).eq("id", question.id).select();
     } else {
       res = await supabase.from("mooc_exam_questions").insert({
         exam_id: examId,
@@ -147,9 +157,9 @@ function QuestionForm({ examId, question, onClose }: { examId: string, question?
         prompt: form.prompt,
         order_index: form.order_index,
         points: form.points,
-      });
+      }).select();
     }
-    if (!res.error) {
+    if (!res.error && res.data) {
       // Opciones (solo para selección)
       if (["single_choice","multiple_choice","true_false"].includes(form.type)) {
         const qid = question ? question.id : res.data[0].id;
@@ -171,19 +181,20 @@ function QuestionForm({ examId, question, onClose }: { examId: string, question?
       onClose(true);
     } else {
       setSaving(false);
+      alert("Error al guardar la pregunta");
     }
   };
 
   return (
-    <Card className="mb-6">
+    <Card className="border-2 border-primary">
       <CardHeader>
-        <CardTitle>{question ? "Editar pregunta" : "Nueva pregunta"}</CardTitle>
+        <CardTitle className="text-lg">{question ? "Editar pregunta" : "Nueva pregunta"}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Tipo</label>
-            <select name="type" value={form.type} onChange={handleChange} className="w-full border rounded px-2 py-1">
+            <label className="block text-sm font-medium mb-1">Tipo de pregunta</label>
+            <select name="type" value={form.type} onChange={handleChange} className="w-full border rounded px-3 py-2">
               {QUESTION_TYPES.map((t) => (
                 <option key={t.value} value={t.value}>{t.label}</option>
               ))}
@@ -199,35 +210,57 @@ function QuestionForm({ examId, question, onClose }: { examId: string, question?
           </div>
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Enunciado</label>
-          <Textarea name="prompt" value={form.prompt} onChange={handleChange} rows={2} />
+          <label className="block text-sm font-medium mb-1">Enunciado de la pregunta *</label>
+          <Textarea name="prompt" value={form.prompt} onChange={handleChange} rows={3} placeholder="Escribe la pregunta aquí..." />
         </div>
         {["single_choice","multiple_choice","true_false"].includes(form.type) && (
-          <div className="mt-4">
-            <label className="block text-sm font-medium mb-1">Opciones</label>
-            <div className="flex gap-2 mb-2">
-              <Input value={optionText} onChange={e => setOptionText(e.target.value)} placeholder="Texto de la opción" />
-              <Button variant="outline" onClick={handleAddOption}>Agregar</Button>
+          <div className="mt-4 p-4 bg-secondary/30 rounded-lg">
+            <label className="block text-sm font-medium mb-3">Opciones de respuesta</label>
+            <div className="flex gap-2 mb-3">
+              <Input 
+                value={optionText} 
+                onChange={e => setOptionText(e.target.value)} 
+                placeholder="Escribe una opción de respuesta" 
+                onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), handleAddOption())}
+              />
+              <Button variant="outline" onClick={handleAddOption}>
+                <PlusCircle className="h-4 w-4 mr-1" /> Agregar
+              </Button>
             </div>
-            <div className="space-y-2">
-              {form.options.map((opt, idx) => (
-                <div key={idx} className="flex items-center gap-2">
-                  <Input value={opt.text} onChange={e => handleOptionChange(idx, "text", e.target.value)} className="flex-1" />
-                  <label className="flex items-center gap-1 text-xs">
-                    <input type={form.type === "multiple_choice" ? "checkbox" : "radio"}
-                      checked={!!opt.is_correct}
-                      onChange={e => handleOptionChange(idx, "is_correct", e.target.checked)} />
-                    Correcta
-                  </label>
-                  <Button size="sm" variant="destructive" onClick={() => handleDeleteOption(idx)}><Trash2 className="h-4 w-4" /></Button>
-                </div>
-              ))}
+            {form.options.length === 0 ? (
+              <div className="text-sm text-muted-foreground italic">No hay opciones agregadas</div>
+            ) : (
+              <div className="space-y-2">
+                {form.options.map((opt, idx) => (
+                  <div key={idx} className="flex items-center gap-2 bg-background p-2 rounded border">
+                    <input
+                      type="checkbox"
+                      checked={opt.is_correct}
+                      onChange={(e) => handleOptionChange(idx, "is_correct", e.target.checked)}
+                      className="h-4 w-4"
+                    />
+                    <Input
+                      value={opt.text}
+                      onChange={(e) => handleOptionChange(idx, "text", e.target.value)}
+                      className="flex-1"
+                    />
+                    <Button size="sm" variant="destructive" onClick={() => handleDeleteOption(idx)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="text-xs text-muted-foreground mt-2">
+              ✓ Marca las opciones correctas
             </div>
           </div>
         )}
-        <div className="flex gap-2 mt-4">
+        <div className="flex gap-2 pt-4 border-t">
           <Button variant="outline" onClick={() => onClose(false)} disabled={saving}>Cancelar</Button>
-          <Button onClick={handleSave} disabled={saving}>{saving ? <Loader2 className="animate-spin h-4 w-4" /> : "Guardar"}</Button>
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? <><Loader2 className="animate-spin h-4 w-4 mr-2" /> Guardando...</> : "Guardar pregunta"}
+          </Button>
         </div>
       </CardContent>
     </Card>

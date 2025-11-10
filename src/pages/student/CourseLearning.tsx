@@ -27,6 +27,13 @@ type Lesson = {
   content: string | null;
   video_url: string | null;
   completed: boolean;
+  readings?: Array<{ id: string; title: string; type?: string; file_name?: string; completed?: boolean }>;
+  content_type?: string | null;
+  live_platform?: string | null;
+  live_url?: string | null;
+  live_date?: string | null;
+  live_time?: string | null;
+  exam?: { id: string; title: string; passed: boolean; attempts: number } | null;
 };
 
 type Course = {
@@ -128,6 +135,80 @@ export default function CourseLearning() {
           (progressData as any)?.map((p: any) => [p.lesson_id, p.completed]) || []
         );
 
+        // Also load readings for these lessons and the student's reading progress
+        const lessonIds = lessonsData.map((l: any) => l.id);
+        const { data: readingsData } = await supabase
+          .from('mooc_readings')
+          .select('*')
+          .in('lesson_id', lessonIds)
+          .order('sort_order', { ascending: true });
+
+        const readingIds = (readingsData || []).map((r: any) => r.id);
+        const { data: readingProgressData } = await supabase
+          .from('student_reading_progress')
+          .select('reading_id,completed')
+          .eq('user_id', user.id)
+          .in('reading_id', readingIds || []);
+
+        const readingProgressMap = new Map((readingProgressData || []).map((r: any) => [r.reading_id, r.completed]));
+
+        const readingsByLesson = new Map<string, any[]>();
+        (readingsData || []).forEach((r: any) => {
+          const arr = readingsByLesson.get(r.lesson_id) || [];
+          arr.push({ ...r, completed: Boolean(readingProgressMap.get(r.id)) });
+          readingsByLesson.set(r.lesson_id, arr);
+        });
+
+        // Cargar exámenes vinculados a lecciones
+        const { data: examsData } = await supabase
+          .from('mooc_exams')
+          .select('id, title, lesson_id, passing_score')
+          .eq('course_id', courseId)
+          .eq('status', 'published')
+          .not('lesson_id', 'is', null);
+
+        // Cargar intentos del estudiante para esos exámenes
+        const examIds = (examsData || []).map((e: any) => e.id);
+        let examAttemptsMap = new Map<string, { passed: boolean; attempts: number }>();
+        if (examIds.length > 0) {
+          const { data: attemptsData } = await supabase
+            .from('mooc_exam_attempts')
+            .select('exam_id, passed')
+            .eq('user_id', user.id)
+            .in('exam_id', examIds)
+            .order('created_at', { ascending: false });
+
+          // Agrupar por exam_id y determinar si pasó algún intento
+          (attemptsData || []).forEach((att: any) => {
+            const existing = examAttemptsMap.get(att.exam_id);
+            if (!existing) {
+              examAttemptsMap.set(att.exam_id, { 
+                passed: att.passed || false, 
+                attempts: 1 
+              });
+            } else {
+              examAttemptsMap.set(att.exam_id, {
+                passed: existing.passed || att.passed || false,
+                attempts: existing.attempts + 1
+              });
+            }
+          });
+        }
+
+        // Mapear exámenes a lecciones
+        const examsByLesson = new Map<string, any>();
+        (examsData || []).forEach((exam: any) => {
+          if (exam.lesson_id) {
+            const attemptInfo = examAttemptsMap.get(exam.id) || { passed: false, attempts: 0 };
+            examsByLesson.set(exam.lesson_id, {
+              id: exam.id,
+              title: exam.title,
+              passed: attemptInfo.passed,
+              attempts: attemptInfo.attempts
+            });
+          }
+        });
+
         const lessonsWithProgress: Lesson[] = lessonsData.map(lesson => ({
           id: lesson.id,
           title: lesson.title,
@@ -137,7 +218,15 @@ export default function CourseLearning() {
           content: lesson.content,
           video_url: lesson.video_url,
           completed: Boolean(progressMap.get(lesson.id)),
-        }));
+          content_type: lesson.content_type,
+          live_platform: lesson.live_platform,
+          live_url: lesson.live_url,
+          live_date: lesson.live_date,
+          live_time: lesson.live_time,
+          // @ts-ignore extend with readings
+          readings: readingsByLesson.get(lesson.id) || [],
+          exam: examsByLesson.get(lesson.id) || null,
+        } as any));
 
         setLessons(lessonsWithProgress);
 
@@ -334,7 +423,7 @@ export default function CourseLearning() {
     currentLesson.completed || 
     !currentLesson.video_url || 
     videoWatched
-  );
+  ) && (!currentLesson.exam || currentLesson.exam.passed);
 
   return (
     <div className="min-h-screen bg-background">
@@ -393,8 +482,51 @@ export default function CourseLearning() {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {/* Video */}
-                    {currentLesson.video_url && (
+                    {/* Video o Encuentro Sincrónico */}
+                    {currentLesson.content_type === 'live_session' ? (
+                      <Card className="bg-blue-50 border-blue-200">
+                        <CardHeader>
+                          <CardTitle className="text-lg flex items-center gap-2">
+                            <PlayCircle className="h-5 w-5" />
+                            Encuentro Sincrónico
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          {currentLesson.live_platform && (
+                            <div>
+                              <span className="text-sm font-medium text-muted-foreground">Plataforma:</span>
+                              <p className="text-lg font-semibold">{currentLesson.live_platform}</p>
+                            </div>
+                          )}
+                          {currentLesson.live_date && (
+                            <div>
+                              <span className="text-sm font-medium text-muted-foreground">Fecha:</span>
+                              <p className="text-lg font-semibold">
+                                {new Date(currentLesson.live_date).toLocaleDateString('es-ES', {
+                                  weekday: 'long',
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric'
+                                })}
+                              </p>
+                            </div>
+                          )}
+                          {currentLesson.live_time && (
+                            <div>
+                              <span className="text-sm font-medium text-muted-foreground">Hora:</span>
+                              <p className="text-lg font-semibold">{currentLesson.live_time}</p>
+                            </div>
+                          )}
+                          {currentLesson.live_url && (
+                            <Button asChild className="w-full mt-4" size="lg">
+                              <a href={currentLesson.live_url} target="_blank" rel="noopener noreferrer">
+                                Unirse al encuentro
+                              </a>
+                            </Button>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ) : currentLesson.video_url ? (
                       (() => {
                         const embed = getEmbedUrl(currentLesson.video_url);
                         // Si no hay embed válido, mostramos botón para abrir en nueva pestaña
@@ -423,7 +555,7 @@ export default function CourseLearning() {
                           </div>
                         );
                       })()
-                    )}
+                    ) : null}
 
                     {/* Contenido de texto */}
                     {currentLesson.content && (
@@ -442,6 +574,78 @@ export default function CourseLearning() {
                       </Card>
                     )}
 
+                    {/* Lecturas asociadas */}
+                    {currentLesson.readings && currentLesson.readings.length > 0 && (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-lg flex items-center gap-2">
+                            <BookOpen className="h-5 w-5" />
+                            Lecturas
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          {currentLesson.readings.map((r) => (
+                            <div key={r.id} className="flex items-center justify-between p-3 border rounded-md">
+                              <div className="flex items-center gap-3">
+                                <div className="font-medium">{r.title}</div>
+                                {r.type === 'file' && r.file_name && (
+                                  <div className="text-xs text-muted-foreground">{r.file_name}</div>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {r.completed ? (
+                                  <div className="text-sm text-green-600 font-semibold">Completada</div>
+                                ) : (
+                                  <div className="text-sm text-muted-foreground">Pendiente</div>
+                                )}
+                                <Button asChild size="sm">
+                                  <a href={`/courses/${courseId}/lessons/${currentLesson.id}/reading/${r.id}`}>Abrir</a>
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* Examen vinculado a la lección */}
+                    {currentLesson.exam && (
+                      <Card className={currentLesson.exam.passed ? "border-green-500 bg-green-50" : "border-orange-500 bg-orange-50"}>
+                        <CardHeader>
+                          <CardTitle className="text-lg flex items-center gap-2">
+                            <Check className="h-5 w-5" />
+                            Examen de la lección
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          <div className="flex items-center justify-between p-3 border rounded-md bg-background">
+                            <div>
+                              <div className="font-semibold">{currentLesson.exam.title}</div>
+                              <div className="text-sm text-muted-foreground mt-1">
+                                {currentLesson.exam.passed ? (
+                                  <span className="text-green-600 font-medium">✓ Aprobado</span>
+                                ) : currentLesson.exam.attempts > 0 ? (
+                                  <span className="text-orange-600">Intentos realizados: {currentLesson.exam.attempts}</span>
+                                ) : (
+                                  <span>No iniciado</span>
+                                )}
+                              </div>
+                            </div>
+                            <Button asChild variant={currentLesson.exam.passed ? "outline" : "default"}>
+                              <a href={`/mooc/${courseId}/exam/${currentLesson.exam.id}`}>
+                                {currentLesson.exam.passed ? "Ver resultado" : "Realizar examen"}
+                              </a>
+                            </Button>
+                          </div>
+                          {!currentLesson.exam.passed && (
+                            <div className="text-sm text-orange-800 bg-orange-100 p-3 rounded-md">
+                              ⚠️ <strong>Importante:</strong> Debes aprobar este examen para completar la lección
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    )}
+
                     {/* Botón de completar */}
                     {!currentLesson.completed && (
                       <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
@@ -450,6 +654,8 @@ export default function CourseLearning() {
                           <p className="text-sm text-muted-foreground">
                             {currentLesson.video_url && !videoWatched
                               ? "Mira el video completo para continuar"
+                              : currentLesson.exam && !currentLesson.exam.passed
+                              ? "Debes aprobar el examen para completar esta lección"
                               : "Marca como completada para avanzar"}
                           </p>
                         </div>
@@ -523,6 +729,19 @@ export default function CourseLearning() {
                             <p className="text-xs text-muted-foreground">
                               {lesson.duration_hours}h
                               {lesson.video_url && " • Video"}
+                              {lesson.readings && lesson.readings.length > 0 && ` • ${lesson.readings.length} lecturas`}
+                              {lesson.exam && (
+                                <span className={`ml-2 inline-flex items-center gap-1 ${
+                                  lesson.exam.passed 
+                                    ? "text-green-600" 
+                                    : lesson.exam.attempts > 0 
+                                    ? "text-orange-600" 
+                                    : "text-muted-foreground"
+                                }`}>
+                                  • Examen
+                                  {lesson.exam.passed && " ✓"}
+                                </span>
+                              )}
                             </p>
                           </div>
                         </div>

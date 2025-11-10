@@ -801,6 +801,11 @@ export type Database = {
           title: string
           updated_at: string | null
           video_url: string | null
+          content_type: string | null
+          live_platform: string | null
+          live_url: string | null
+          live_date: string | null
+          live_time: string | null
         }
         Insert: {
           content?: string | null
@@ -813,6 +818,11 @@ export type Database = {
           title: string
           updated_at?: string | null
           video_url?: string | null
+          content_type?: string | null
+          live_platform?: string | null
+          live_url?: string | null
+          live_date?: string | null
+          live_time?: string | null
         }
         Update: {
           content?: string | null
@@ -825,6 +835,11 @@ export type Database = {
           title?: string
           updated_at?: string | null
           video_url?: string | null
+          content_type?: string | null
+          live_platform?: string | null
+          live_url?: string | null
+          live_date?: string | null
+          live_time?: string | null
         }
         Relationships: [
           {
@@ -832,6 +847,96 @@ export type Database = {
             columns: ["course_id"]
             isOneToOne: false
             referencedRelation: "mooc_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mooc_readings: {
+        Row: {
+          id: string
+          lesson_id: string
+          title: string
+          content: string | null
+          storage_path: string | null
+          file_name: string | null
+          type: string | null
+          sort_order: number | null
+          created_by: string
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          lesson_id: string
+          title: string
+          content?: string | null
+          storage_path?: string | null
+          file_name?: string | null
+          type?: string | null
+          sort_order?: number | null
+          created_by: string
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          lesson_id?: string
+          title?: string
+          content?: string | null
+          storage_path?: string | null
+          file_name?: string | null
+          type?: string | null
+          sort_order?: number | null
+          created_by?: string
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mooc_readings_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "mooc_lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mooc_readings_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_reading_progress: {
+        Row: {
+          user_id: string
+          reading_id: string
+          completed: boolean | null
+          completed_at: string | null
+        }
+        Insert: {
+          user_id: string
+          reading_id: string
+          completed?: boolean | null
+          completed_at?: string | null
+        }
+        Update: {
+          user_id?: string
+          reading_id?: string
+          completed?: boolean | null
+          completed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_reading_progress_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_reading_progress_reading_id_fkey"
+            columns: ["reading_id"]
+            isOneToOne: false
+            referencedRelation: "mooc_readings"
             referencedColumns: ["id"]
           },
         ]

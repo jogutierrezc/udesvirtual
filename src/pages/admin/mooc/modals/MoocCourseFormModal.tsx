@@ -36,6 +36,17 @@ type Lesson = {
   order_index: number;
   content: string;
   video_url: string;
+  // archivos de lectura (PDF) que el profesor puede adjuntar antes de guardar
+  newFiles?: File[];
+  // lecturas existentes cargadas desde la BD
+  existingReadings?: Array<{ id: string; title: string; file_name: string; storage_path: string }>;
+  // tipo de contenido: video grabado o encuentro sincrónico
+  content_type?: 'video' | 'live_session';
+  // datos del encuentro sincrónico
+  live_platform?: string; // Meet, Teams, Zoom, etc
+  live_url?: string;
+  live_date?: string; // ISO date
+  live_time?: string; // HH:mm
 };
 
 type Props = {
@@ -106,9 +117,38 @@ export const MoocCourseFormModal = ({ open, onOpenChange, editingCourse, onSave 
       const normalized = (data || []).map((l: any) => ({
         ...l,
         video_url: getEmbedUrl(l.video_url) || l.video_url || "",
+        newFiles: [],
+        existingReadings: [],
+        content_type: l.content_type || 'video',
+        live_platform: l.live_platform || '',
+        live_url: l.live_url || '',
+        live_date: l.live_date || '',
+        live_time: l.live_time || ''
       }));
 
       setLessons(normalized);
+
+      // Cargar lecturas para cada lección
+      for (let i = 0; i < normalized.length; i++) {
+        const lessonId = normalized[i].id;
+        if (lessonId) {
+          const { data: readingsData } = await supabase
+            .from("mooc_readings")
+            .select("id, title, file_name, storage_path")
+            .eq("lesson_id", lessonId)
+            .order("sort_order");
+          
+          if (readingsData && readingsData.length > 0) {
+            setLessons(prev => {
+              const updated = [...prev];
+              if (updated[i]) {
+                updated[i] = { ...updated[i], existingReadings: readingsData };
+              }
+              return updated;
+            });
+          }
+        }
+      }
     } catch (error) {
       console.error("Error loading lessons:", error);
     }
@@ -192,9 +232,64 @@ export const MoocCourseFormModal = ({ open, onOpenChange, editingCourse, onSave 
         duration_hours: 1,
         order_index: prev.length + 1,
         content: "",
-        video_url: ""
+        video_url: "",
+        newFiles: [],
+        existingReadings: [],
+        content_type: 'video',
+        live_platform: '',
+        live_url: '',
+        live_date: '',
+        live_time: ''
       }
     ]);
+  };
+
+  const handleLessonFilesChange = (index: number, files: FileList | null) => {
+    if (!files) return;
+    const arr = Array.from(files).filter(f => f.type === 'application/pdf');
+    setLessons(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], newFiles: arr };
+      return updated;
+    });
+  };
+
+  const handleRemoveExistingReading = async (lessonIndex: number, readingId: string) => {
+    if (!confirm("¿Eliminar esta lectura?")) return;
+    
+    try {
+      // Eliminar de la BD
+      const { error } = await supabase
+        .from("mooc_readings")
+        .delete()
+        .eq("id", readingId);
+      
+      if (error) throw error;
+
+      // Actualizar el estado local
+      setLessons(prev => {
+        const updated = [...prev];
+        if (updated[lessonIndex]) {
+          updated[lessonIndex] = {
+            ...updated[lessonIndex],
+            existingReadings: (updated[lessonIndex].existingReadings || []).filter(r => r.id !== readingId)
+          };
+        }
+        return updated;
+      });
+
+      toast({
+        title: "Lectura eliminada",
+        description: "La lectura ha sido eliminada correctamente"
+      });
+    } catch (error: any) {
+      console.error("Error deleting reading:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar la lectura",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleRemoveLesson = (index: number) => {
@@ -288,28 +383,98 @@ export const MoocCourseFormModal = ({ open, onOpenChange, editingCourse, onSave 
         courseId = newCourse.id;
       }
 
-      // Guardar lecciones
+      // Guardar lecciones y lecturas (PDF)
       if (courseId && lessons.length > 0) {
-        // Eliminar lecciones existentes
-        await supabase
-          .from("mooc_lessons")
-          .delete()
-          .eq("course_id", courseId);
+        // Si estamos editando, eliminar lecciones previas sin lecturas asociadas
+        // Las lecturas existentes ya están en la BD y las mantenemos
+        if (editingCourse) {
+          try {
+            await supabase
+              .from("mooc_lessons")
+              .delete()
+              .eq("course_id", courseId as string);
+          } catch (e) {
+            console.warn("Error removing old lessons", e);
+          }
+        }
 
-        // Insertar nuevas lecciones
-        const lessonsToInsert = lessons.map((lesson, index) => ({
-          ...lesson,
-          // Asegurarse de guardar la URL en formato embebible
-          video_url: getEmbedUrl(lesson.video_url) || lesson.video_url,
-          course_id: courseId,
-          order_index: index + 1
-        }));
+        // Insertar lecciones una por una para obtener el id y poder asociar archivos
+        for (let i = 0; i < lessons.length; i++) {
+          const lesson = lessons[i];
+          const lessonPayload: any = {
+            title: lesson.title,
+            description: lesson.description,
+            duration_hours: lesson.duration_hours,
+            order_index: i + 1,
+            content: lesson.content,
+            video_url: getEmbedUrl(lesson.video_url) || lesson.video_url,
+            course_id: courseId,
+            content_type: lesson.content_type || 'video',
+            live_platform: lesson.live_platform || null,
+            live_url: lesson.live_url || null,
+            live_date: lesson.live_date || null,
+            live_time: lesson.live_time || null
+          };
 
-        const { error: lessonsError } = await supabase
-          .from("mooc_lessons")
-          .insert(lessonsToInsert);
+          const { data: insertedLesson, error: insertLessonError } = await supabase
+            .from("mooc_lessons")
+            .insert([lessonPayload])
+            .select()
+            .single();
 
-        if (lessonsError) throw lessonsError;
+          if (insertLessonError) throw insertLessonError;
+
+          const lessonId = insertedLesson.id;
+
+          // Si había lecturas existentes, actualizarles el lesson_id
+          if (lesson.existingReadings && lesson.existingReadings.length > 0) {
+            const readingIds = lesson.existingReadings.map(r => r.id);
+            await supabase
+              .from("mooc_readings")
+              .update({ lesson_id: lessonId })
+              .in("id", readingIds);
+          }
+
+          // Subir archivos asociados (PDFs) al bucket 'mooc-readings' y crear registros en mooc_readings
+          if (lesson.newFiles && lesson.newFiles.length > 0) {
+            for (const file of lesson.newFiles) {
+              try {
+                const filePath = `${courseId}/${lessonId}/${Date.now()}_${file.name}`;
+                const { error: uploadError } = await supabase.storage
+                  .from("mooc-readings")
+                  .upload(filePath, file, { upsert: false });
+
+                if (uploadError) {
+                  console.warn("Error uploading reading file", uploadError);
+                  continue;
+                }
+
+                // Crear registro en la tabla mooc_readings
+                const { error: readingInsertError } = await supabase
+                  .from("mooc_readings")
+                  .insert([
+                    {
+                      lesson_id: lessonId,
+                      title: file.name.replace(/\.pdf$/i, ""),
+                      content: null,
+                      storage_path: filePath,
+                      file_name: file.name,
+                      type: "file",
+                      sort_order: null,
+                      created_by: user.id,
+                      created_at: new Date().toISOString()
+                    }
+                  ]);
+
+                if (readingInsertError) {
+                  console.warn("Error creating mooc_readings row", readingInsertError);
+                }
+              } catch (e) {
+                console.error("Error processing reading file", e);
+              }
+            }
+          }
+        }
       }
 
       toast({
@@ -531,31 +696,58 @@ export const MoocCourseFormModal = ({ open, onOpenChange, editingCourse, onSave 
                   <Plus className="h-4 w-4 mr-1" />
                   Agregar Lección
                 </Button>
-                <Button type="button" onClick={() => { setEditingExam(null); setShowExamForm(true); }} size="sm" variant="secondary">
-                  <Plus className="h-4 w-4 mr-1" />
-                  Agregar Examen
-                </Button>
+                {editingCourse ? (
+                  <Button type="button" onClick={() => { setEditingExam(null); setShowExamForm(true); }} size="sm" variant="secondary">
+                    <Plus className="h-4 w-4 mr-1" />
+                    Agregar Examen
+                  </Button>
+                ) : (
+                  <Button 
+                    type="button" 
+                    size="sm" 
+                    variant="secondary" 
+                    disabled 
+                    title="Primero debes guardar el curso antes de crear exámenes"
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Agregar Examen
+                  </Button>
+                )}
               </div>
             </div>
 
+            {!editingCourse && (
+              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md text-sm text-yellow-800">
+                💡 <strong>Nota:</strong> Primero debes guardar el curso para poder agregar exámenes.
+              </div>
+            )}
+
             {/* Lista de exámenes creados */}
-            <ExamList
-              courseId={editingCourse?.id}
-              onEdit={(exam: any) => {
-                setEditingExam(exam);
-                setShowExamForm(true);
-              }}
-            />
+            {editingCourse && (
+              <ExamList
+                courseId={editingCourse.id}
+                onEdit={(exam: any) => {
+                  setEditingExam(exam);
+                  setShowExamForm(true);
+                }}
+              />
+            )}
 
             {/* Modal para crear/editar examen */}
-            {showExamForm && (
+            {showExamForm && editingCourse && (
               <Dialog open={showExamForm} onOpenChange={setShowExamForm}>
-                <DialogContent className="max-w-2xl">
-                  <MoocExamForm
-                    courseId={editingCourse?.id}
-                    exam={editingExam}
-                    onClose={() => { setShowExamForm(false); setEditingExam(null); }}
-                  />
+                <DialogContent className="max-w-[95vw] w-[95vw] h-[95vh] p-0 overflow-hidden">
+                  <div className="h-full overflow-y-auto p-6">
+                    <MoocExamForm
+                      courseId={editingCourse.id}
+                      exam={editingExam}
+                      lessons={lessons.map(l => ({ id: l.id || '', title: l.title, order_index: l.order_index }))}
+                      onClose={(refresh) => { 
+                        setShowExamForm(false); 
+                        setEditingExam(null);
+                      }}
+                    />
+                  </div>
                 </DialogContent>
               </Dialog>
             )}
@@ -616,13 +808,124 @@ export const MoocCourseFormModal = ({ open, onOpenChange, editingCourse, onSave 
                         />
                       </div>
 
+                      <div className="space-y-3 border-t pt-3">
+                        <Label>Tipo de contenido multimedia</Label>
+                        <Select
+                          value={lesson.content_type || 'video'}
+                          onValueChange={(value) => handleLessonChange(index, "content_type", value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccionar tipo" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="video">Video grabado (YouTube/Vimeo)</SelectItem>
+                            <SelectItem value="live_session">Encuentro sincrónico (Meet/Teams/Zoom)</SelectItem>
+                          </SelectContent>
+                        </Select>
+
+                        {lesson.content_type === 'video' ? (
+                          <div className="space-y-2">
+                            <Label>URL del Video</Label>
+                            <Input
+                              value={lesson.video_url}
+                              onChange={(e) => handleLessonChange(index, "video_url", e.target.value)}
+                              placeholder="https://youtube.com/..."
+                            />
+                          </div>
+                        ) : (
+                          <div className="space-y-3 p-3 bg-blue-50 rounded-md">
+                            <div className="space-y-2">
+                              <Label>Plataforma</Label>
+                              <Select
+                                value={lesson.live_platform || ''}
+                                onValueChange={(value) => handleLessonChange(index, "live_platform", value)}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Seleccionar plataforma" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Google Meet">Google Meet</SelectItem>
+                                  <SelectItem value="Microsoft Teams">Microsoft Teams</SelectItem>
+                                  <SelectItem value="Zoom">Zoom</SelectItem>
+                                  <SelectItem value="Webex">Webex</SelectItem>
+                                  <SelectItem value="Otra">Otra</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label>URL del encuentro</Label>
+                              <Input
+                                value={lesson.live_url || ''}
+                                onChange={(e) => handleLessonChange(index, "live_url", e.target.value)}
+                                placeholder="https://meet.google.com/xxx-yyyy-zzz"
+                              />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="space-y-2">
+                                <Label>Fecha</Label>
+                                <Input
+                                  type="date"
+                                  value={lesson.live_date || ''}
+                                  onChange={(e) => handleLessonChange(index, "live_date", e.target.value)}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Hora</Label>
+                                <Input
+                                  type="time"
+                                  value={lesson.live_time || ''}
+                                  onChange={(e) => handleLessonChange(index, "live_time", e.target.value)}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
                       <div className="space-y-2">
-                        <Label>URL del Video</Label>
-                        <Input
-                          value={lesson.video_url}
-                          onChange={(e) => handleLessonChange(index, "video_url", e.target.value)}
-                          placeholder="https://youtube.com/..."
+                        <Label>Lecturas (PDF)</Label>
+                        
+                        {/* Mostrar lecturas existentes */}
+                        {lesson.existingReadings && lesson.existingReadings.length > 0 && (
+                          <div className="mb-3 p-3 bg-secondary/50 rounded-md">
+                            <div className="text-sm font-medium mb-2">Lecturas actuales:</div>
+                            <div className="space-y-2">
+                              {lesson.existingReadings.map((reading) => (
+                                <div key={reading.id} className="flex items-center justify-between text-sm">
+                                  <span className="flex-1 truncate">{reading.file_name}</span>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleRemoveExistingReading(index, reading.id)}
+                                    className="ml-2"
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        <input
+                          type="file"
+                          accept="application/pdf"
+                          multiple
+                          onChange={(e) => handleLessonFilesChange(index, e.target.files)}
                         />
+                        {lesson.newFiles && lesson.newFiles.length > 0 && (
+                          <div className="mt-2 text-sm">
+                            Archivos nuevos seleccionados:
+                            <ul className="list-disc list-inside">
+                              {lesson.newFiles.map((f, idx) => (
+                                <li key={idx}>{f.name}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
