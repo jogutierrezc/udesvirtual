@@ -14,6 +14,75 @@ export type Database = {
   }
   public: {
     Tables: {
+      academic_qualifications: {
+        Row: {
+          created_at: string | null
+          degree: string
+          id: string
+          institution: string
+          user_id: string
+          year: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          degree: string
+          id?: string
+          institution: string
+          user_id: string
+          year?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          degree?: string
+          id?: string
+          institution?: string
+          user_id?: string
+          year?: number | null
+        }
+        Relationships: []
+      }
+      certificate_settings: {
+        Row: {
+          created_at: string | null
+          default_signature_profile_id: string | null
+          id: string
+          logo_url: string | null
+          primary_color: string | null
+          qr_base_url: string | null
+          secondary_color: string | null
+          signature_name: string | null
+          signature_title: string | null
+          updated_at: string | null
+          verification_url: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          default_signature_profile_id?: string | null
+          id?: string
+          logo_url?: string | null
+          primary_color?: string | null
+          qr_base_url?: string | null
+          secondary_color?: string | null
+          signature_name?: string | null
+          signature_title?: string | null
+          updated_at?: string | null
+          verification_url?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          default_signature_profile_id?: string | null
+          id?: string
+          logo_url?: string | null
+          primary_color?: string | null
+          qr_base_url?: string | null
+          secondary_color?: string | null
+          signature_name?: string | null
+          signature_title?: string | null
+          updated_at?: string | null
+          verification_url?: string | null
+        }
+        Relationships: []
+      }
       class_registrations: {
         Row: {
           class_id: string
@@ -183,6 +252,36 @@ export type Database = {
         }
         Relationships: []
       }
+      contact_messages: {
+        Row: {
+          created_at: string | null
+          id: string
+          message: string
+          read: boolean | null
+          recipient_id: string | null
+          sender_id: string | null
+          subject: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          message: string
+          read?: boolean | null
+          recipient_id?: string | null
+          sender_id?: string | null
+          subject: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          message?: string
+          read?: boolean | null
+          recipient_id?: string | null
+          sender_id?: string | null
+          subject?: string
+        }
+        Relationships: []
+      }
       course_offerings: {
         Row: {
           allied_institution: string | null
@@ -249,102 +348,6 @@ export type Database = {
         }
         Relationships: []
       }
-      offering_requests: {
-        Row: {
-          created_at: string | null
-          created_by: string | null
-          id: string
-          offering_id: string
-          full_name: string
-          country: string
-          department: string | null
-          university_representing: string
-          institutional_email: string
-          proposal_type: string
-          message: string | null
-          read: boolean | null
-        }
-        Insert: {
-          created_at?: string | null
-          created_by?: string | null
-          id?: string
-          offering_id: string
-          full_name: string
-          country: string
-          department?: string | null
-          university_representing: string
-          institutional_email: string
-          proposal_type: string
-          message?: string | null
-          read?: boolean | null
-        }
-        Update: {
-          created_at?: string | null
-          created_by?: string | null
-          id?: string
-          offering_id?: string
-          full_name?: string
-          country?: string
-          department?: string | null
-          university_representing?: string
-          institutional_email?: string
-          proposal_type?: string
-          message?: string | null
-          read?: boolean | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "offering_requests_offering_id_fkey"
-            columns: ["offering_id"]
-            isOneToOne: false
-            referencedRelation: "course_offerings"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "offering_requests_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
-      hero_carousel: {
-        Row: {
-          id: string
-          title: string
-          description: string | null
-          image_url: string
-          link_url: string | null
-          order_index: number
-          active: boolean
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          title: string
-          description?: string | null
-          image_url: string
-          link_url?: string | null
-          order_index?: number
-          active?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          title?: string
-          description?: string | null
-          image_url?: string
-          link_url?: string | null
-          order_index?: number
-          active?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       mooc_certificates: {
         Row: {
           course_id: string
@@ -352,6 +355,8 @@ export type Database = {
           id: string
           issued_at: string
           md5_hash: string | null
+          signature_code: string | null
+          signature_filename: string | null
           user_id: string
           verification_code: string
         }
@@ -361,6 +366,8 @@ export type Database = {
           id?: string
           issued_at?: string
           md5_hash?: string | null
+          signature_code?: string | null
+          signature_filename?: string | null
           user_id: string
           verification_code: string
         }
@@ -370,6 +377,8 @@ export type Database = {
           id?: string
           issued_at?: string
           md5_hash?: string | null
+          signature_code?: string | null
+          signature_filename?: string | null
           user_id?: string
           verification_code?: string
         }
@@ -827,6 +836,172 @@ export type Database = {
           },
         ]
       }
+      passport_activities: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          points: number | null
+          route_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          points?: number | null
+          route_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          points?: number | null
+          route_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "passport_activities_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "passport_routes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      passport_activity_requests: {
+        Row: {
+          activity_id: string
+          id: string
+          requested_at: string | null
+          route_id: string | null
+          status: Database["public"]["Enums"]["request_status"] | null
+          user_id: string
+        }
+        Insert: {
+          activity_id: string
+          id?: string
+          requested_at?: string | null
+          route_id?: string | null
+          status?: Database["public"]["Enums"]["request_status"] | null
+          user_id: string
+        }
+        Update: {
+          activity_id?: string
+          id?: string
+          requested_at?: string | null
+          route_id?: string | null
+          status?: Database["public"]["Enums"]["request_status"] | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "passport_activity_requests_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "passport_activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "passport_activity_requests_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "passport_routes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      passport_points_ledger: {
+        Row: {
+          activity_id: string | null
+          completed_at: string | null
+          id: string
+          points: number
+          user_id: string
+        }
+        Insert: {
+          activity_id?: string | null
+          completed_at?: string | null
+          id?: string
+          points: number
+          user_id: string
+        }
+        Update: {
+          activity_id?: string | null
+          completed_at?: string | null
+          id?: string
+          points?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "passport_points_ledger_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "passport_activities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      passport_route_activities: {
+        Row: {
+          activity_id: string
+          id: string
+          order_index: number | null
+          route_id: string
+        }
+        Insert: {
+          activity_id: string
+          id?: string
+          order_index?: number | null
+          route_id: string
+        }
+        Update: {
+          activity_id?: string
+          id?: string
+          order_index?: number | null
+          route_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "passport_route_activities_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "passport_activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "passport_route_activities_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "passport_routes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      passport_routes: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           address: string | null
@@ -887,6 +1062,57 @@ export type Database = {
         }
         Relationships: []
       }
+      publications: {
+        Row: {
+          created_at: string | null
+          id: string
+          journal: string | null
+          title: string
+          url: string | null
+          user_id: string
+          year: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          journal?: string | null
+          title: string
+          url?: string | null
+          user_id: string
+          year?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          journal?: string | null
+          title?: string
+          url?: string | null
+          user_id?: string
+          year?: number | null
+        }
+        Relationships: []
+      }
+      signature_profiles: {
+        Row: {
+          created_at: string | null
+          filename: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          filename: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          filename?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       teachers: {
         Row: {
           campus: string
@@ -943,6 +1169,33 @@ export type Database = {
           },
         ]
       }
+      udes_relationships: {
+        Row: {
+          created_at: string | null
+          end_date: string | null
+          id: string
+          relationship_type: string
+          start_date: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          end_date?: string | null
+          id?: string
+          relationship_type: string
+          start_date?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          end_date?: string | null
+          id?: string
+          relationship_type?: string
+          start_date?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -977,17 +1230,34 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      approve_activity_request: {
+        Args: { p_request_id: string }
+        Returns: undefined
+      }
       calculate_course_duration: {
         Args: { course_id_param: string }
         Returns: number
       }
       compute_exam_score: { Args: { p_attempt_id: string }; Returns: undefined }
+      get_route_activities: {
+        Args: { p_route_id: string }
+        Returns: {
+          description: string
+          id: string
+          name: string
+          points: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
+      }
+      reject_activity_request: {
+        Args: { p_request_id: string }
+        Returns: undefined
       }
     }
     Enums: {
