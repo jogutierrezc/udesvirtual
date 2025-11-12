@@ -148,7 +148,7 @@ export default function MisEstudiantes() {
                         </div>
                         <div className="flex items-center gap-2">
                           <div className="text-xs text-muted-foreground text-right mr-2">{en.progress || 0}% • {en.completed ? 'OK' : 'En curso'}</div>
-                          <Button size="icon" variant="ghost" onClick={() => navigate(`/professor/course/${course.id}/student/${en.user_id}`)} aria-label="Ver">
+                          <Button size="icon" variant="ghost" onClick={() => navigate(`/professor/course/${course.id}/student/${en.user_id}`)} aria-label="Ver detalles estudiante">
                             <Eye className="h-4 w-4" />
                           </Button>
                           <Button size="icon" variant="ghost" onClick={() => navigate(`/professor/course/${course.id}`)} aria-label="Evaluar">

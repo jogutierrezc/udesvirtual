@@ -12,6 +12,7 @@ import Dashboard from "./pages/Dashboard";
 import Catalog from "./pages/Catalog";
 import Professor from "./pages/Professor";
 import MisEstudiantes from "./pages/professor/MisEstudiantes";
+import StudentDetail from "./pages/professor/StudentDetail";
 import ProfessorInbox from "./pages/professor/Inbox";
 import Lia from "./pages/Lia";
 import Mooc from "./pages/Mooc";
@@ -108,6 +109,14 @@ const AppContent = () => {
         <Route path="/coil-offerings" element={<CoilOfferings />} />
         <Route path="/mooc" element={<Mooc />} />
         <Route path="/mooc/:id" element={<MoocDetail />} />
+        <Route 
+          path="/professor/course/:courseId/student/:studentId" 
+          element={
+            <ProtectedRoute>
+              <StudentDetail />
+            </ProtectedRoute>
+          } 
+        />
         <Route 
           path="/courses/:courseId/learn" 
           element={
