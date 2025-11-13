@@ -510,7 +510,7 @@ export default function CourseLearning() {
                           {currentLesson.title}
                         </CardTitle>
                         {currentLesson.description && (
-                          <div className="text-muted-foreground">
+                          <div className="text-muted-foreground text-justify">
                             <div dangerouslySetInnerHTML={{ __html: sanitizeLessonHtml(currentLesson.description) }} />
                           </div>
                         )}
@@ -609,7 +609,7 @@ export default function CourseLearning() {
                           </CardTitle>
                         </CardHeader>
                         <CardContent>
-                          <div className="prose prose-sm max-w-none">
+                          <div className="prose prose-sm max-w-none text-justify">
                             <div dangerouslySetInnerHTML={{ __html: sanitizeLessonHtml(currentLesson.content) }} />
                           </div>
                         </CardContent>
