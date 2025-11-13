@@ -5,10 +5,17 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Menu } from "lucide-react";
+import { Menu, ChevronDown } from "lucide-react";
 import { useIsUdesEmail } from "@/hooks/useIsUdesEmail";
 
 type AppRole = "admin" | "professor" | "student";
+
+interface NavLink {
+  to?: string;
+  label: string;
+  isDropdown?: boolean;
+  children?: { to: string; label: string }[];
+}
 
 interface UserInfo {
   id: string;
@@ -18,7 +25,7 @@ interface UserInfo {
   avatarUrl?: string;
 }
 
-export const Navbar = () => {
+export const Navbar = ({ topOffset = 0 }: { topOffset?: number }) => {
   const [user, setUser] = useState<UserInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [unreadCount, setUnreadCount] = useState<number>(0);
@@ -123,7 +130,7 @@ export const Navbar = () => {
     };
   }, []);
 
-  const links = useMemo(() => {
+  const links = useMemo<NavLink[]>(() => {
         // Si es admin, mostrar navegación de administrador
     if (user?.role === "admin") {
       return [
@@ -168,10 +175,16 @@ export const Navbar = () => {
 
     const base = [
       { to: "/", label: "Inicio" },
-      { to: "/profesores", label: "Profesores" },
-      { to: "/catalog", label: "Catálogo" },
-      { to: "/professor-offerings", label: "Oferta" },
-      { to: "/coil-offerings", label: "COIL" },
+      { 
+        label: "E-Exchange", 
+        isDropdown: true,
+        children: [
+          { to: "/profesores", label: "Profesores UDES" },
+          { to: "/catalog", label: "Catálogo UDES" },
+          { to: "/professor-offerings", label: "Oferta Virtual" },
+          { to: "/coil-offerings", label: "Proyectos COIL" },
+        ]
+      },
       { to: "/mooc", label: "MOOC" },
       { to: "/lia", label: "LIA" },
       { to: "/faq", label: "FAQ" }, // <-- Agregado
@@ -192,7 +205,7 @@ export const Navbar = () => {
   };
 
   return (
-    <nav className="w-full border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
+    <nav className="w-full border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky z-50" style={{ top: topOffset }}>
       <div className="mx-auto max-w-6xl px-4 h-14 flex items-center justify-between">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-4 py-1">
@@ -209,20 +222,40 @@ export const Navbar = () => {
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center gap-2">
           {links.map((l) => (
-            <NavLink
-              key={l.to}
-              to={l.to}
-              className={({ isActive }) =>
-                `px-3 py-2 rounded-md text-sm font-medium ${isActive ? "bg-primary/10 text-primary" : "text-foreground/80 hover:text-foreground"}`
-              }
-            >
-              <span className="inline-flex items-center gap-2">
-                <span>{l.label}</span>
-                {l.to === '/professor/buzon' && unreadCount > 0 && (
-                  <span className="inline-flex items-center justify-center bg-red-600 text-white text-xs font-semibold rounded-full h-5 w-5">{unreadCount > 99 ? '99+' : unreadCount}</span>
-                )}
-              </span>
-            </NavLink>
+            l.isDropdown ? (
+              <DropdownMenu key={l.label}>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="px-3 py-2 h-auto text-sm font-medium text-foreground/80 hover:text-foreground">
+                    {l.label}
+                    <ChevronDown className="ml-1 h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  {l.children?.map((child) => (
+                    <DropdownMenuItem key={child.to} asChild>
+                      <Link to={child.to} className="cursor-pointer">
+                        {child.label}
+                      </Link>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <NavLink
+                key={l.to}
+                to={l.to}
+                className={({ isActive }) =>
+                  `px-3 py-2 rounded-md text-sm font-medium ${isActive ? "bg-primary/10 text-primary" : "text-foreground/80 hover:text-foreground"}`
+                }
+              >
+                <span className="inline-flex items-center gap-2">
+                  <span>{l.label}</span>
+                  {l.to === '/professor/buzon' && unreadCount > 0 && (
+                    <span className="inline-flex items-center justify-center bg-red-600 text-white text-xs font-semibold rounded-full h-5 w-5">{unreadCount > 99 ? '99+' : unreadCount}</span>
+                  )}
+                </span>
+              </NavLink>
+            )
           ))}
         </div>
 
@@ -300,14 +333,32 @@ export const Navbar = () => {
                 {/* Navigation Links */}
                 <div className="flex flex-col gap-2">
                   {links.map((l) => (
-                    <Link
-                      key={l.to}
-                      to={l.to}
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="px-4 py-3 rounded-md text-sm font-medium hover:bg-muted transition-colors"
-                    >
-                      {l.label}
-                    </Link>
+                    l.isDropdown ? (
+                      <div key={l.label} className="flex flex-col">
+                        <div className="px-4 py-2 text-sm font-semibold text-muted-foreground">
+                          {l.label}
+                        </div>
+                        {l.children?.map((child) => (
+                          <Link
+                            key={child.to}
+                            to={child.to}
+                            onClick={() => setMobileMenuOpen(false)}
+                            className="pl-8 pr-4 py-2 rounded-md text-sm font-medium hover:bg-muted transition-colors"
+                          >
+                            {child.label}
+                          </Link>
+                        ))}
+                      </div>
+                    ) : (
+                      <Link
+                        key={l.to}
+                        to={l.to}
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="px-4 py-3 rounded-md text-sm font-medium hover:bg-muted transition-colors"
+                      >
+                        {l.label}
+                      </Link>
+                    )
                   ))}
                 </div>
 

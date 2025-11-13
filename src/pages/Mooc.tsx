@@ -11,11 +11,7 @@ import {
   PlayCircle, 
   Clock, 
   Users, 
-  Star,
   Search,
-  Filter,
-  TrendingUp,
-  Award,
   Loader2
 } from "lucide-react";
 
@@ -43,6 +39,17 @@ export default function Mooc() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Categorías predefinidas
+  const predefinedCategories = [
+    "Negocios y Finanzas",
+    "Ciencia y Tecnología",
+    "Salud y Bienestar",
+    "Ciencias Sociales y Humanidades",
+    "Educación y Desarrollo Profesional",
+    "Arte, Cultura e Idiomas",
+    "Sostenibilidad y Gestión de Riesgos"
+  ];
 
   useEffect(() => {
     loadCourses();
@@ -113,72 +120,15 @@ export default function Mooc() {
   };
 
   // Obtener categorías únicas de los tags
-  const categories = ["Todos", ...Array.from(new Set(courses.flatMap(c => c.tags || [])))];
+  const categories = ["all", ...predefinedCategories];
 
   const filteredCourses = courses.filter(course => {
-    const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         course.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         course.profession.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === "all" || course.tags?.includes(selectedCategory);
-    return matchesSearch && matchesCategory;
+    return matchesCategory;
   });
-
-  // Los primeros 3 cursos son destacados
-  const featuredCourses = courses.slice(0, 3);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-      {/* Hero Section */}
-      <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white">
-        <div className="container mx-auto px-4 py-12 md:py-20">
-          <div className="max-w-4xl mx-auto text-center space-y-6">
-            <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full text-sm">
-              <TrendingUp className="h-4 w-4" />
-              <span>Plataforma de Aprendizaje UDES</span>
-            </div>
-            <h1 className="text-4xl md:text-6xl font-bold">
-              Aprende a tu ritmo
-            </h1>
-            <p className="text-xl md:text-2xl text-white/90">
-              Cursos virtuales de calidad con videos, contenido interactivo y certificados
-            </p>
-            
-            {/* Search Bar */}
-            <div className="max-w-2xl mx-auto">
-              <div className="relative">
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                <Input
-                  placeholder="Buscar cursos por título, tema o instructor..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-12 pr-4 py-6 text-lg bg-white/95 backdrop-blur-sm border-0 shadow-xl"
-                />
-              </div>
-            </div>
-
-            {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-6">
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-                <div className="text-3xl font-bold">{loading ? "..." : courses.length}</div>
-                <div className="text-sm text-white/80">Cursos</div>
-              </div>
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-                <div className="text-3xl font-bold">{loading ? "..." : courses.reduce((sum, c) => sum + (c.lesson_count || 0), 0)}</div>
-                <div className="text-sm text-white/80">Lecciones</div>
-              </div>
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-                <div className="text-3xl font-bold">{loading ? "..." : courses.reduce((sum, c) => sum + (c.total_duration || 0), 0)}h</div>
-                <div className="text-sm text-white/80">Contenido</div>
-              </div>
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-                <div className="text-3xl font-bold">100%</div>
-                <div className="text-sm text-white/80">Online</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <div className="container mx-auto px-4 py-8 md:py-12">
         {loading ? (
           <div className="flex items-center justify-center py-20">
@@ -186,114 +136,81 @@ export default function Mooc() {
           </div>
         ) : (
           <>
-            {/* Featured Courses */}
-            {featuredCourses.length > 0 && (
-              <section className="mb-12">
-                <div className="flex items-center gap-3 mb-6">
-                  <Award className="h-6 w-6 text-yellow-500" />
-                  <h2 className="text-2xl md:text-3xl font-bold">Cursos Destacados</h2>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {featuredCourses.map((course) => (
-                    <Card key={course.id} className="group hover:shadow-2xl transition-all duration-300 overflow-hidden">
-                      <div className="relative h-48 overflow-hidden bg-gradient-to-br from-indigo-100 to-purple-100">
-                        {course.course_image_url ? (
-                          <img 
-                            src={course.course_image_url} 
-                            alt={course.title}
-                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <BookOpen className="h-16 w-16 text-indigo-300" />
-                          </div>
-                        )}
-                        <div className="absolute top-3 right-3">
-                          <Badge className="bg-yellow-500 text-white border-0">
-                            <Star className="h-3 w-3 mr-1" />
-                            Destacado
-                          </Badge>
-                        </div>
-                      </div>
-                      <CardHeader>
-                        <CardTitle className="line-clamp-2 group-hover:text-indigo-600 transition-colors">
-                          {course.title}
-                        </CardTitle>
-                        <CardDescription className="line-clamp-2">
-                          {course.description}
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        {course.creator && (
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Users className="h-4 w-4" />
-                            <span>{course.creator.full_name}</span>
-                          </div>
-                        )}
-                        
-                        <div className="grid grid-cols-2 gap-2 text-sm">
-                          <div className="flex items-center gap-1">
-                            <PlayCircle className="h-4 w-4 text-indigo-600" />
-                            <span>{course.lesson_count || 0} lecciones</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Clock className="h-4 w-4 text-pink-600" />
-                            <span>{course.total_duration || 0}h</span>
-                          </div>
-                        </div>
+            {/* Header con título */}
+            <div className="text-center mb-8">
+              <div className="inline-flex items-center gap-2 bg-gradient-to-r from-green-500 to-green-600 text-white px-4 py-2 rounded-full text-sm mb-4">
+                <BookOpen className="h-4 w-4" />
+                EXPLORA LOS CURSOS
+              </div>
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-4">
+                Selecciona la categoría de tu interés, explora los contenidos de los MOOC e inscríbete:
+              </h2>
+            </div>
 
-                        {course.tags && course.tags.length > 0 && (
-                          <div className="flex flex-wrap gap-1">
-                            {course.tags.slice(0, 2).map((tag, idx) => (
-                              <Badge key={idx} variant="outline" className="text-xs">
-                                {tag}
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
+            {/* Título de categorías */}
+            <div className="text-center mb-8">
+              <h3 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-green-500 to-green-600 bg-clip-text text-transparent">
+                {selectedCategory === "all" ? "Selecciona una categoría" : selectedCategory}
+              </h3>
+            </div>
 
-                        <Button 
-                          className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700" 
-                          onClick={() => navigate(`/mooc/${course.id}`)}
-                        >
-                          <BookOpen className="h-4 w-4 mr-2" />
-                          Ver Curso
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {/* Filters */}
-            <section className="mb-8">
-              <div className="flex items-center gap-3 mb-6">
-                <Filter className="h-6 w-6 text-indigo-600" />
-                <h2 className="text-2xl md:text-3xl font-bold">Todos los Cursos</h2>
-                <span className="text-muted-foreground">({filteredCourses.length})</span>
+            {/* Botones de categorías */}
+            <section className="mb-12">
+              <div className="flex flex-wrap justify-center gap-3 mb-8">
+                {predefinedCategories.map((category) => (
+                  <Button
+                    key={category}
+                    variant={selectedCategory === category ? "default" : "outline"}
+                    onClick={() => setSelectedCategory(category)}
+                    size="lg"
+                    className={`rounded-full px-6 ${
+                      selectedCategory === category 
+                        ? "bg-gray-800 hover:bg-gray-900 text-white" 
+                        : "border-2 border-gray-800 text-gray-800 hover:bg-gray-100"
+                    }`}
+                  >
+                    {category}
+                  </Button>
+                ))}
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                <div className="flex-1">
-                  <div className="flex gap-2 flex-wrap">
-                    {categories.map((category) => (
-                      <Button
-                        key={category}
-                        variant={selectedCategory === (category === "Todos" ? "all" : category) ? "default" : "outline"}
-                        onClick={() => setSelectedCategory(category === "Todos" ? "all" : category)}
-                        size="sm"
-                      >
-                        {category}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
+              {/* Botón "Ver todos los cursos" */}
+              <div className="text-center">
+                <Button
+                  variant={selectedCategory === "all" ? "default" : "outline"}
+                  onClick={() => setSelectedCategory("all")}
+                  size="lg"
+                  className={`rounded-full px-8 ${
+                    selectedCategory === "all" 
+                      ? "bg-green-600 hover:bg-green-700 text-white" 
+                      : "border-2 border-green-600 text-green-600 hover:bg-green-50"
+                  }`}
+                >
+                  Ver todos los cursos
+                </Button>
               </div>
             </section>
 
             {/* All Courses */}
             <section>
+              {selectedCategory !== "all" && filteredCourses.length > 0 && (
+                <div className="mb-6">
+                  <h4 className="text-2xl font-bold text-gray-800">
+                    {selectedCategory} 
+                    <span className="text-gray-500 text-lg ml-2">({filteredCourses.length} {filteredCourses.length === 1 ? 'curso' : 'cursos'})</span>
+                  </h4>
+                </div>
+              )}
+              
+              {selectedCategory === "all" && courses.length > 0 && (
+                <div className="mb-6">
+                  <h4 className="text-2xl font-bold text-gray-800">
+                    Todos los cursos disponibles
+                    <span className="text-gray-500 text-lg ml-2">({courses.length} {courses.length === 1 ? 'curso' : 'cursos'})</span>
+                  </h4>
+                </div>
+              )}
+
               {filteredCourses.length === 0 ? (
                 <Card className="p-12">
                   <div className="text-center space-y-4">
@@ -304,16 +221,13 @@ export default function Mooc() {
                     <p className="text-muted-foreground">
                       {courses.length === 0 
                         ? "Aún no hay cursos disponibles. ¡Vuelve pronto!"
-                        : "Intenta con otros términos de búsqueda o filtros"}
+                        : "Intenta con otra categoría"}
                     </p>
                     {courses.length > 0 && (
                       <Button 
-                        onClick={() => {
-                          setSearchTerm("");
-                          setSelectedCategory("all");
-                        }}
+                        onClick={() => setSelectedCategory("all")}
                       >
-                        Limpiar filtros
+                        Ver todos los cursos
                       </Button>
                     )}
                   </div>

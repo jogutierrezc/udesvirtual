@@ -64,6 +64,7 @@ import FaqCategory from "./pages/FaqCategory";
 import FaqDetail from "./pages/FaqDetail";
 import ResendSettings from "./pages/admin/ResendSettings";
 import { FaqAdminPage } from "./pages/admin/faq/FaqAdminPage";
+import ForUdesProfessors from "./pages/landing/ForUdesProfessors";
 
 const queryClient = new QueryClient();
 
@@ -419,6 +420,7 @@ const AppContent = () => {
           {/* Public profile view by id (public) */}
           <Route path="/profile/:id" element={<PublicProfile />} />
         <Route path="/profesores" element={<Profesores />} />
+            <Route path="/profesores-udes" element={<ForUdesProfessors />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/lia" element={<Lia />} />

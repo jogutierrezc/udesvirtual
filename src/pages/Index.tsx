@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { HeroCarousel } from "@/components/HeroCarousel";
 import Navbar from "@/components/Navbar";
+import TopNavigationBar from "@/components/TopNavigationBar";
 
 const Index = () => {
   const [stats, setStats] = useState({
@@ -111,10 +112,13 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 relative overflow-hidden">
       {/* Home-only top bar: switch to user Navbar if logged in */}
+      {/* Top audience navigation */}
+      <TopNavigationBar />
+
       {hasSession ? (
-        <Navbar />
+        <Navbar topOffset={40} />
       ) : (
-        <div className="w-full border-b bg-white/70 backdrop-blur supports-[backdrop-filter]:bg-white/60 sticky top-0 z-50">
+        <div className="w-full border-b bg-white/70 backdrop-blur supports-[backdrop-filter]:bg-white/60 sticky z-50" style={{ top: 40 }}>
           <div className="mx-auto max-w-7xl px-4 h-14 flex items-center justify-between">
             <Link to="/" className="flex items-center gap-3">
               <img
@@ -122,7 +126,6 @@ const Index = () => {
                 alt="UDES E-Exchange"
                 className="h-8 w-auto object-contain"
               />
-              <span className="hidden sm:inline text-sm font-medium text-gray-700">UDES E-Exchange</span>
             </Link>
             <div className="hidden md:flex items-center gap-2 text-sm">
               <Link to="/catalog" className="px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100">Catálogo</Link>
@@ -140,7 +143,7 @@ const Index = () => {
         </div>
       )}
 
-      {/* Carrusel Hero */}
+  {/* Carrusel Hero */}
       <HeroCarousel />
 
       {/* Elementos decorativos de fondo */}
