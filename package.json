@@ -69,6 +69,7 @@
   "react-quill": "^2.0.0",
   "quill": "^2.0.3",
   "highlight.js": "^11.9.0",
+  "dompurify": "^2.3.10",
   "katex": "^0.16.9",
   "@tiptap/extension-code-block-lowlight": "^2.7.2",
   "lowlight": "^3.1.0",

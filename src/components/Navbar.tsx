@@ -37,14 +37,17 @@ export const Navbar = () => {
 
         const userId = session.user.id;
 
-        const [profileRes, roleRes] = await Promise.all([
+        const [profileRes, rolesRes] = await Promise.all([
           supabase.from("profiles").select("full_name,email").eq("id", userId).single(),
-          supabase.from("user_roles").select("role").eq("user_id", userId).single(),
+          // A user can have multiple roles; fetch all and resolve precedence below
+          supabase.from("user_roles").select("role").eq("user_id", userId),
         ]);
 
         const name = profileRes.data?.full_name || session.user.user_metadata?.full_name || session.user.email || "Usuario";
         const email = profileRes.data?.email || session.user.email || "";
-        const role = (roleRes.data?.role as AppRole) || "student";
+        const rolesArr = (rolesRes.data || []).map((r: any) => r.role);
+        // precedence: admin > professor > student
+        const role: AppRole = rolesArr.includes("admin") ? "admin" : rolesArr.includes("professor") ? "professor" : "student";
         const avatarUrl = session.user.user_metadata?.avatar_url;
 
         if (mounted) {
@@ -147,10 +150,7 @@ export const Navbar = () => {
         studentLinks.push({ to: "/passport", label: "Pasaporte" });
       }
       
-      // Agregar enlace de prueba para admins
-      if (user?.role === "admin") {
-        studentLinks.push({ to: "/celebration-test", label: "🧪 Test Celebraciones" });
-      }
+      // (no admin-specific link inside student links)
       
       return studentLinks;
     }

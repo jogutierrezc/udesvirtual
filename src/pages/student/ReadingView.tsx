@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { sanitizeLessonHtml } from '@/lib/html';
 import { X } from 'lucide-react';
 
 const ReadingView: React.FC = () => {
@@ -139,7 +140,7 @@ const ReadingView: React.FC = () => {
               )}
             </div>
           ) : (
-            <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: reading.content || '' }} />
+            <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: sanitizeLessonHtml(reading.content) }} />
           )}
         </Card>
       </div>

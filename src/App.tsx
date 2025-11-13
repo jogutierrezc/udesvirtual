@@ -37,6 +37,9 @@ import { CatalogPage } from "./pages/admin/catalog/CatalogPage";
 import { OfferingsPage } from "./pages/admin/offerings/OfferingsPage";
 import { RegistrationsPage } from "./pages/admin/registrations/RegistrationsPage";
 import { MoocPage } from "./pages/admin/mooc/MoocPage";
+import CertificateTemplateAdmin from "./pages/admin/mooc/CertificateTemplateAdmin";
+import CourseEditorPage from "./pages/admin/mooc/CourseEditorPage";
+import LessonEditorPage from "./pages/admin/mooc/LessonEditorPage";
 import { CarouselPage } from "./pages/admin/carousel/CarouselPage";
 // Legacy combined PassportPage route removed; keep component for internal wrappers
 import SettingsPage from "./pages/admin/passport/SettingsPage";
@@ -73,7 +76,7 @@ const AppContent = () => {
   // Verificar si es una ruta 404
   const is404 = !['/', '/auth', '/unauthorized', '/dashboard', '/catalog', '/professor-offerings', 
     '/coil-offerings', '/mooc', '/profile', '/profile-setup', '/welcome', '/welcome-profesor', '/profesores', '/professor/buzon', '/admin/catalog', '/admin/offerings', 
-  '/admin/registrations', '/admin/mooc', '/admin/mooc/certifications', '/admin/mooc/students', '/admin/carousel', '/admin', '/professor', '/professor/mis-estudiantes', '/lia', '/passport', '/celebration-test'].includes(location.pathname) && 
+  '/admin/registrations', '/admin/mooc', '/admin/mooc/certifications', '/admin/mooc/students', '/admin/mooc/templates', '/admin/carousel', '/admin', '/professor', '/professor/mis-estudiantes', '/lia', '/passport', '/celebration-test'].includes(location.pathname) && 
     !location.pathname.startsWith('/admin/') &&
     !location.pathname.startsWith('/mooc/') &&
     !location.pathname.startsWith('/courses/') &&
@@ -230,11 +233,41 @@ const AppContent = () => {
               } 
             />
             <Route 
+              path="/admin/mooc/course/:courseId/edit"
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <AdminLayout>
+                    <CourseEditorPage />
+                  </AdminLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route 
+              path="/admin/mooc/course/:courseId/lesson/:lessonId/edit"
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <AdminLayout>
+                    <LessonEditorPage />
+                  </AdminLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route 
               path="/admin/mooc/certifications" 
               element={
                 <ProtectedRoute requireAdmin={true}>
                   <AdminLayout>
                     <CertificationsPage />
+                  </AdminLayout>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/mooc/templates" 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <AdminLayout>
+                    <CertificateTemplateAdmin />
                   </AdminLayout>
                 </ProtectedRoute>
               } 

@@ -16,6 +16,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { XCircle } from 'lucide-react';
 
 type Question = {
   id: string;
@@ -46,6 +55,8 @@ export default function StudentExamPage() {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [attemptId, setAttemptId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [attemptResult, setAttemptResult] = useState<null | { score_numeric: number; score_percent: number; passed: boolean }>(null);
+  const [showResultDialog, setShowResultDialog] = useState(false);
   const [invalidated, setInvalidated] = useState(false);
   const [showInvalidationDialog, setShowInvalidationDialog] = useState(false);
   const [showDisclaimerDialog, setShowDisclaimerDialog] = useState(true);
@@ -330,7 +341,26 @@ export default function StudentExamPage() {
           : 'Tu examen ha sido enviado y calificado.',
       });
 
-      navigate(`/courses/${courseId}/learn`);
+      // Fetch computed score for the attempt and show only the score to the student
+      try {
+        const { data: attemptData, error: attemptFetchError } = await supabase
+          .from('mooc_exam_attempts')
+          .select('score_numeric, score_percent, passed')
+          .eq('id', attemptId)
+          .single();
+
+        if (!attemptFetchError && attemptData) {
+          setAttemptResult({
+            score_numeric: attemptData.score_numeric ?? 0,
+            score_percent: attemptData.score_percent ?? 0,
+            passed: !!attemptData.passed,
+          });
+        } else {
+          console.warn('No se pudo obtener el resultado del intento', attemptFetchError);
+        }
+      } catch (err) {
+        console.error('Error fetching attempt result:', err);
+      }
     } catch (error: any) {
       console.error('Error submitting exam:', error);
       toast({
@@ -525,58 +555,76 @@ export default function StudentExamPage() {
           </CardHeader>
         </Card>
 
-        {/* Questions */}
-        {questions.map((question, idx) => (
-          <Card key={question.id}>
-            <CardHeader>
-            <CardTitle className="text-lg">
-              Pregunta {idx + 1}
-            </CardTitle>
-              <p className="text-base">{question.prompt}</p>
-            </CardHeader>
-            <CardContent>
-              <RadioGroup
-                value={answers[question.id] || ''}
-                onValueChange={(value) => handleAnswerChange(question.id, value)}
-              >
-                {question.mooc_exam_options.map((option) => (
-                  <div key={option.id} className="flex items-center space-x-2 p-3 border rounded hover:bg-muted">
-                    <RadioGroupItem value={option.id} id={option.id} />
-                    <Label htmlFor={option.id} className="flex-1 cursor-pointer">
-                      {option.text}
-                    </Label>
-                  </div>
-                ))}
-              </RadioGroup>
+        {/* If we have an attemptResult (just submitted), show only the score to the student */}
+        {attemptResult ? (
+          <Card>
+            <CardContent className="text-center py-12">
+              <div className="text-sm text-muted-foreground">Resultado del Examen</div>
+              <div className="text-5xl font-bold mt-4">{attemptResult.score_numeric}</div>
+              <div className="text-lg text-muted-foreground mt-2">{attemptResult.score_percent}%</div>
+              <div className={`mt-4 inline-flex items-center px-4 py-2 rounded ${attemptResult.passed ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                {attemptResult.passed ? 'Aprobado' : 'No aprobado'}
+              </div>
+              <div className="mt-6">
+                <div className="flex items-center justify-center gap-3">
+                  <Button type="button" onClick={() => setShowResultDialog(true)} variant="outline">Ver resultado</Button>
+                  <Button type="button" onClick={() => navigate(`/courses/${courseId}/learn`)}>Volver al curso</Button>
+                </div>
+              </div>
             </CardContent>
           </Card>
-        ))}
+        ) : (
+          <>
+            {/* Questions */}
+            {questions.map((question, idx) => (
+              <Card key={question.id}>
+                <CardHeader>
+                  <CardTitle className="text-lg">Pregunta {idx + 1}</CardTitle>
+                  <p className="text-base">{question.prompt}</p>
+                </CardHeader>
+                <CardContent>
+                  <RadioGroup
+                    value={answers[question.id] || ''}
+                    onValueChange={(value) => handleAnswerChange(question.id, value)}
+                  >
+                    {question.mooc_exam_options.map((option) => (
+                      <div key={option.id} className="flex items-center space-x-2 p-3 border rounded hover:bg-muted">
+                        <RadioGroupItem value={option.id} id={option.id} />
+                        <Label htmlFor={option.id} className="flex-1 cursor-pointer">
+                          {option.text}
+                        </Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                </CardContent>
+              </Card>
+            ))}
 
-        {/* Submit */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">
-                  Asegúrate de haber respondido todas las preguntas antes de enviar.
-                </p>
-              </div>
-              <Button onClick={() => handleSubmit(false)} disabled={submitting || invalidated} size="lg">
-                {submitting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Enviando...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="h-4 w-4 mr-2" />
-                    Enviar examen
-                  </>
-                )}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+            {/* Submit */}
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Asegúrate de haber respondido todas las preguntas antes de enviar.</p>
+                  </div>
+                  <Button onClick={() => handleSubmit(false)} disabled={submitting || invalidated} size="lg">
+                    {submitting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Enviando...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                        Enviar examen
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
 
       {/* Invalidation Dialog */}
@@ -597,6 +645,44 @@ export default function StudentExamPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Result Dialog */}
+      <Dialog open={showResultDialog} onOpenChange={(open) => {
+        setShowResultDialog(open);
+        // trigger confetti when opening and passed
+        if (open && attemptResult?.passed) {
+          try {
+            // global confetti script loaded in index.html (canvas-confetti)
+            (window as any).confetti?.({ particleCount: 120, spread: 160 });
+          } catch (e) {
+            // ignore
+          }
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{attemptResult?.passed ? '¡Felicidades!' : 'Resultado del examen'}</DialogTitle>
+            <DialogDescription>
+              {attemptResult?.passed ? 'Has aprobado el examen.' : 'No alcanzaste la puntuación mínima. Sigue practicando y vuelve a intentarlo.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-6 text-center">
+            {attemptResult?.passed ? (
+              <CheckCircle2 className="mx-auto h-20 w-20 text-green-600" />
+            ) : (
+              <XCircle className="mx-auto h-20 w-20 text-red-600" />
+            )}
+            <div className="text-6xl font-bold mt-4">{attemptResult?.score_numeric}</div>
+            <div className="text-lg text-muted-foreground mt-2">{attemptResult?.score_percent}%</div>
+          </div>
+          <DialogFooter>
+              <div className="w-full flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setShowResultDialog(false)}>Cerrar</Button>
+              <Button type="button" onClick={() => navigate(`/courses/${courseId}/learn`)}>Volver al curso</Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

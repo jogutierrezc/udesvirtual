@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { AutoDownloadCertificate } from "@/components/AutoDownloadCertificate";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
@@ -72,6 +73,8 @@ export default function StudentDashboard() {
     inProgressCourses: 0,
     totalHours: 0,
   });
+  // Estado para auto-descarga de certificado
+  const [autoDownloadCertId, setAutoDownloadCertId] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -472,12 +475,12 @@ export default function StudentDashboard() {
                           Imprimir
                         </Button>
                         <Button 
-                          onClick={() => window.open(`/certificado/${cert.id}`, '_blank')}
+                          onClick={() => setAutoDownloadCertId(cert.id)}
                           className="flex-1"
                           size="sm"
                         >
                           <FileDown className="h-4 w-4 mr-2" />
-                          Ver PDF
+                          Descargar PDF
                         </Button>
                       </div>
                     </CardContent>
@@ -509,6 +512,10 @@ export default function StudentDashboard() {
           </TabsContent>
         </Tabs>
       </div>
+      {/* Renderiza el componente de auto-descarga de certificado si corresponde */}
+      {autoDownloadCertId && (
+        <AutoDownloadCertificate certificateId={autoDownloadCertId} onFinish={() => setAutoDownloadCertId(null)} />
+      )}
     </div>
   );
 }

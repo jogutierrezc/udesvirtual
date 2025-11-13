@@ -40,14 +40,16 @@ export const AdminNavbar = () => {
         }
 
         const userId = session.user.id;
-        const [profileRes, roleRes] = await Promise.all([
+        const [profileRes, rolesRes] = await Promise.all([
           supabase.from("profiles").select("full_name,email").eq("id", userId).single(),
-          supabase.from("user_roles").select("role").eq("user_id", userId).single(),
+          // fetch all roles in case the user has multiple; we'll resolve precedence
+          supabase.from("user_roles").select("role").eq("user_id", userId),
         ]);
 
         const name = profileRes.data?.full_name || session.user.user_metadata?.full_name || session.user.email || "Usuario";
         const email = profileRes.data?.email || session.user.email || "";
-        const role = (roleRes.data?.role as AppRole) || "student";
+        const rolesArr = (rolesRes.data || []).map((r: any) => r.role);
+        const role: AppRole = rolesArr.includes("admin") ? "admin" : rolesArr.includes("professor") ? "professor" : "student";
         const avatarUrl = session.user.user_metadata?.avatar_url;
 
         if (mounted) setUser({ id: userId, name, email, role, avatarUrl });
@@ -155,6 +157,10 @@ export const AdminNavbar = () => {
                 <DropdownMenuItem onClick={() => navigate("/admin/mooc/students")}>
                   <Users className="h-4 w-4 mr-2" />
                   Estudiantes
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/admin/mooc/templates")}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Plantillas Certificado
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -306,6 +312,9 @@ export const AdminNavbar = () => {
                         </Button>
                         <Button variant="ghost" className="justify-start" onClick={() => { navigate('/admin/mooc/students'); setMobileMenuOpen(false); }}>
                           <Users className="h-4 w-4 mr-2" /> Estudiantes
+                        </Button>
+                        <Button variant="ghost" className="justify-start" onClick={() => { navigate('/admin/mooc/templates'); setMobileMenuOpen(false); }}>
+                          <FileText className="h-4 w-4 mr-2" /> Plantillas Certificado
                         </Button>
                       </div>
                     </div>

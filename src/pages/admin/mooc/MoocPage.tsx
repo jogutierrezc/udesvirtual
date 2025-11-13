@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { MoocCourseFormModal } from "./modals/MoocCourseFormModal";
 import { LinkPassportModal } from "./modals/LinkPassportModal";
+import CertificateTemplateAdmin from "./CertificateTemplateAdmin";
 
 type MoocCourse = {
   id: string;
@@ -443,6 +444,10 @@ export const MoocPage = () => {
           onSuccess={loadCourses}
         />
       )}
+      {/* Administración de plantillas de certificado */}
+      <div className="mt-12">
+        <CertificateTemplateAdmin />
+      </div>
     </div>
   );
 };

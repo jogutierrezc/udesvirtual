@@ -17,8 +17,11 @@ import {
   Lock,
   BookOpen,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  XCircle
 } from "lucide-react";
+import { sanitizeLessonHtml } from '@/lib/html';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
 type Lesson = {
   id: string;
@@ -51,6 +54,9 @@ export default function CourseLearning() {
   const { courseId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [showExamResultDialog, setShowExamResultDialog] = useState(false);
+  const [examResultLoading, setExamResultLoading] = useState(false);
+  const [examResult, setExamResult] = useState<null | { score_numeric: number; score_percent: number; passed: boolean }>(null);
   const videoRef = useRef<HTMLIFrameElement>(null);
 
   const [loading, setLoading] = useState(true);
@@ -504,9 +510,9 @@ export default function CourseLearning() {
                           {currentLesson.title}
                         </CardTitle>
                         {currentLesson.description && (
-                          <p className="text-muted-foreground">
-                            {currentLesson.description}
-                          </p>
+                          <div className="text-muted-foreground">
+                            <div dangerouslySetInnerHTML={{ __html: sanitizeLessonHtml(currentLesson.description) }} />
+                          </div>
                         )}
                       </div>
                       {currentLesson.completed && (
@@ -604,7 +610,7 @@ export default function CourseLearning() {
                         </CardHeader>
                         <CardContent>
                           <div className="prose prose-sm max-w-none">
-                            <div dangerouslySetInnerHTML={{ __html: currentLesson.content }} />
+                            <div dangerouslySetInnerHTML={{ __html: sanitizeLessonHtml(currentLesson.content) }} />
                           </div>
                         </CardContent>
                       </Card>
@@ -668,9 +674,45 @@ export default function CourseLearning() {
                               </div>
                             </div>
                             <Button asChild variant={currentLesson.exam.passed ? "outline" : "default"}>
-                              <a href={`/mooc/${courseId}/exam/${currentLesson.exam.id}`}>
-                                {currentLesson.exam.passed ? "Ver resultado" : "Realizar examen"}
-                              </a>
+                                {currentLesson.exam.passed ? (
+                                  <button type="button" onClick={async (e) => {
+                                    e.preventDefault();
+                                    // fetch latest attempt and open dialog
+                                    try {
+                                      setExamResultLoading(true);
+                                      const { data: { user } } = await supabase.auth.getUser();
+                                      if (!user) {
+                                        navigate('/auth');
+                                        return;
+                                      }
+                                      const { data: attempts } = await supabase
+                                        .from('mooc_exam_attempts')
+                                        .select('score_numeric, score_percent, passed')
+                                        .eq('exam_id', currentLesson.exam.id)
+                                        .eq('user_id', user.id)
+                                        .order('created_at', { ascending: false })
+                                        .limit(1);
+                                      const att = (attempts && attempts[0]) || null;
+                                      if (!att) {
+                                        toast({ title: 'Resultado no encontrado', description: 'No se encontró un intento para este examen.' });
+                                        return;
+                                      }
+                                      setExamResult({ score_numeric: att.score_numeric || 0, score_percent: att.score_percent || 0, passed: !!att.passed });
+                                      setShowExamResultDialog(true);
+                                      // confetti if passed
+                                      if (att.passed) {
+                                        try { (window as any).confetti?.({ particleCount: 120, spread: 160 }); } catch (e) {}
+                                      }
+                                    } catch (err) {
+                                      console.error('Error fetching exam attempt', err);
+                                      toast({ title: 'Error', description: 'No se pudo obtener el resultado del examen', variant: 'destructive' });
+                                    } finally {
+                                      setExamResultLoading(false);
+                                    }
+                                  }}>Ver resultado</button>
+                                ) : (
+                                  <a href={`/mooc/${courseId}/exam/${currentLesson.exam.id}`}>Realizar examen</a>
+                                )}
                             </Button>
                           </div>
                           {!currentLesson.exam.passed && (
@@ -929,6 +971,32 @@ export default function CourseLearning() {
           </div>
         </div>
       </div>
+      {/* Exam result dialog */}
+      <Dialog open={showExamResultDialog} onOpenChange={setShowExamResultDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{examResult?.passed ? '¡Felicidades!' : 'Resultado del examen'}</DialogTitle>
+            <DialogDescription>
+              {examResult?.passed ? 'Has aprobado el examen.' : 'No alcanzaste la puntuación mínima. Sigue practicando y vuelve a intentarlo.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-6 text-center">
+            {examResult?.passed ? (
+              <CheckCircle2 className="mx-auto h-20 w-20 text-green-600" />
+            ) : (
+              <XCircle className="mx-auto h-20 w-20 text-red-600" />
+            )}
+            <div className="text-5xl font-bold mt-4">{examResult?.score_numeric}</div>
+            <div className="text-lg text-muted-foreground mt-2">{examResult?.score_percent}%</div>
+          </div>
+          <DialogFooter>
+            <div className="w-full flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setShowExamResultDialog(false)}>Cerrar</Button>
+              <Button type="button" onClick={() => { setShowExamResultDialog(false); navigate(`/courses/${courseId}`); }}>Volver al curso</Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { Loader2, User, Eye, CheckSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import ProfessorStudentDetailDialog from './components/ProfessorStudentDetailDialog';
 
 interface Enrollment {
   id: string;
@@ -20,8 +21,17 @@ export default function MisEstudiantes() {
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
   const [courses, setCourses] = useState<any[]>([]);
+  const [selectedStudent, setSelectedStudent] = useState<{ courseId: string; studentId: string } | null>(null);
+  const [showStudentDialog, setShowStudentDialog] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  const openStudentDetail = (courseId: string, studentId: string) => {
+    console.log('openStudentDetail clicked', { courseId, studentId });
+    toast({ title: 'Cargando detalles', description: `Cargando ${studentId}...` });
+    setSelectedStudent({ courseId, studentId });
+    setShowStudentDialog(true);
+  };
 
   useEffect(() => {
     loadData();
@@ -99,71 +109,149 @@ export default function MisEstudiantes() {
 
   return (
     <div className="min-h-screen py-8 px-4">
-      <div className="container mx-auto max-w-4xl space-y-4">
+      <div className="container mx-auto max-w-7xl space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-semibold">Mis Estudiantes</h2>
-            <div className="text-sm text-muted-foreground">Estudiantes matriculados en tus cursos MOOC</div>
+            <h1 className="text-3xl font-bold tracking-tight">Mis Estudiantes</h1>
+            <p className="text-muted-foreground mt-1">Gestiona y revisa el progreso de tus estudiantes</p>
+          </div>
+          <div className="text-right">
+            <div className="text-2xl font-bold text-primary">{courses.length}</div>
+            <div className="text-xs text-muted-foreground">Cursos activos</div>
           </div>
         </div>
 
-      {courses.length === 0 ? (
-        <Card>
-          <CardContent className="py-8 text-center">
-            <h3 className="text-lg font-medium">No hay cursos MOOC</h3>
-            <p className="text-sm text-muted-foreground">Crea un curso MOOC para empezar a ver estudiantes matriculados.</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2">
-          {courses.map((course) => (
-            <Card key={course.id} className="p-0 overflow-hidden">
-              <div className="border-b px-4 py-3 flex items-center justify-between">
-                <div>
-                  <div className="font-medium text-sm line-clamp-1">{course.title}</div>
-                  <div className="text-xs text-muted-foreground">Inscritos: {course.enrollments?.length || 0}</div>
-                </div>
-                <div className="text-xs text-muted-foreground">{course.completed_count || 0} completados</div>
+        {courses.length === 0 ? (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                <User className="h-6 w-6 text-primary" />
               </div>
-              <CardContent className="p-2">
-                {course.enrollments.length === 0 ? (
-                  <div className="text-sm text-muted-foreground px-2 py-3">No hay estudiantes inscritos aún.</div>
-                ) : (
-                  <div className="space-y-2">
-                    {course.enrollments.map((en: Enrollment & { profile: any }) => (
-                      <div key={en.id} className="flex items-center justify-between rounded p-2 hover:bg-muted transition-colors">
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-8 w-8">
-                            <AvatarFallback>{(en.profile?.full_name || en.user_id || "U").split(" ").map((s: string)=> s[0]).slice(0,2).join("")}</AvatarFallback>
-                          </Avatar>
-                          <div className="min-w-0">
-                            <div className="text-sm font-medium truncate">{en.profile?.full_name || en.user_id}</div>
-                            <div className="text-xs text-muted-foreground truncate">{en.profile?.email}</div>
-                            {(en.profile?.city || en.profile?.department) && (
-                              <div className="text-[11px] text-muted-foreground truncate">
-                                {en.profile?.city || 'Ciudad desconocida'}{en.profile?.department ? ` • ${en.profile.department}` : ''}
+              <h3 className="text-lg font-semibold mb-2">No hay cursos MOOC</h3>
+              <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                Crea un curso MOOC para empezar a ver estudiantes matriculados.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-6">
+            {courses.map((course) => (
+              <Card key={course.id} className="overflow-hidden">
+                <CardHeader className="bg-muted/50 border-b">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <CardTitle className="text-xl">{course.title}</CardTitle>
+                      <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <User className="h-4 w-4" />
+                          {course.enrollments?.length || 0} estudiante{(course.enrollments?.length || 0) !== 1 ? 's' : ''}
+                        </span>
+                        <span>•</span>
+                        <span>{course.completed_count || 0} completado{(course.completed_count || 0) !== 1 ? 's' : ''}</span>
+                      </div>
+                    </div>
+                  </div>
+                </CardHeader>
+                
+                <CardContent className="p-0">
+                  {course.enrollments.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No hay estudiantes inscritos en este curso.
+                    </div>
+                  ) : (
+                    <div className="divide-y">
+                      {course.enrollments.map((en: Enrollment & { profile: any }) => (
+                        <div 
+                          key={en.id} 
+                          className="flex items-center justify-between p-4 hover:bg-muted/30 transition-colors"
+                        >
+                          <div className="flex items-center gap-4 flex-1 min-w-0">
+                            <Avatar className="h-10 w-10 shrink-0">
+                              <AvatarFallback className="text-sm">
+                                {(en.profile?.full_name || en.user_id || "U")
+                                  .split(" ")
+                                  .map((s: string) => s[0])
+                                  .slice(0, 2)
+                                  .join("")
+                                  .toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            
+                            <div className="flex-1 min-w-0 grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-4">
+                              <div className="min-w-0">
+                                <div className="text-sm font-medium truncate">
+                                  {en.profile?.full_name || en.user_id}
+                                </div>
+                                <div className="text-xs text-muted-foreground truncate">
+                                  {en.profile?.email || 'Sin correo'}
+                                </div>
                               </div>
-                            )}
+                              
+                              <div className="min-w-0 text-xs text-muted-foreground">
+                                {en.profile?.city && (
+                                  <div className="truncate">{en.profile.city}</div>
+                                )}
+                                {en.profile?.department && (
+                                  <div className="truncate">{en.profile.department}</div>
+                                )}
+                                {!en.profile?.city && !en.profile?.department && (
+                                  <div className="text-muted-foreground/50">Sin ubicación</div>
+                                )}
+                              </div>
+                              
+                              <div className="flex items-center gap-2">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <div className="flex-1 bg-secondary h-2 rounded-full overflow-hidden">
+                                      <div 
+                                        className="bg-primary h-full transition-all"
+                                        style={{ width: `${en.progress || 0}%` }}
+                                      />
+                                    </div>
+                                    <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
+                                      {en.progress || 0}%
+                                    </span>
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {en.completed ? '✓ Completado' : 'En curso'}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 ml-4 shrink-0">
+                            <Button 
+                              type="button" 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => openStudentDetail(course.id, en.user_id)}
+                            >
+                              <Eye className="h-4 w-4 mr-2" />
+                              Ver detalle
+                            </Button>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <div className="text-xs text-muted-foreground text-right mr-2">{en.progress || 0}% • {en.completed ? 'OK' : 'En curso'}</div>
-                          <Button size="icon" variant="ghost" onClick={() => navigate(`/professor/course/${course.id}/student/${en.user_id}`)} aria-label="Ver detalles estudiante">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button size="icon" variant="ghost" onClick={() => navigate(`/professor/course/${course.id}`)} aria-label="Evaluar">
-                            <CheckSquare className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {selectedStudent && (
+          <ProfessorStudentDetailDialog
+            courseId={selectedStudent.courseId}
+            studentId={selectedStudent.studentId}
+            open={showStudentDialog}
+            onOpenChange={(open) => { 
+              if (!open) setSelectedStudent(null); 
+              setShowStudentDialog(open); 
+            }}
+          />
+        )}
       </div>
     </div>
   );

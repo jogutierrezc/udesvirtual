@@ -51,8 +51,9 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
           console.error("Error checking role:", error);
           setIsAdmin(false);
         } else {
-          // El usuario es admin si tiene el rol 'admin' o 'professor'
-          const hasAdminRole = roles?.some(r => r.role === "admin" || r.role === "professor");
+          // SOLO los usuarios con rol 'admin' pueden acceder a rutas admin
+          // Profesores y estudiantes NO tienen acceso
+          const hasAdminRole = roles?.some(r => r.role === "admin");
           setIsAdmin(hasAdminRole || false);
         }
       }

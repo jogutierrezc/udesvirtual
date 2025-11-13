@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -7,7 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, X, ChevronDown, ChevronRight } from "lucide-react";
+import { Loader2, Plus, X, ChevronDown, ChevronRight, Edit } from "lucide-react";
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 import { ExamList } from "@/pages/professor/components/ExamList";
 import { MoocExamForm } from "@/pages/professor/components/MoocExamForm";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -27,6 +30,17 @@ type MoocCourse = {
   passport_points?: number;
   passport_complexity?: string;
 };
+
+// Small helper button component to open the full-page editor
+function OpenEditorButton({ editingCourse, onClose }: { editingCourse: any; onClose: () => void }) {
+  const navigate = useNavigate();
+  if (!editingCourse) return null;
+  return (
+    <Button size="sm" onClick={() => { onClose(); navigate(`/admin/mooc/course/${editingCourse.id}/edit`); }}>
+      Abrir en página
+    </Button>
+  );
+}
 
 type Lesson = {
   id?: string;
@@ -95,6 +109,10 @@ export const MoocCourseFormModal = ({ open, onOpenChange, editingCourse, onSave 
   const [newSection, setNewSection] = useState<Section>({ title: '', description: '', order_index: (sections.length + 1) });
   const [addingSection, setAddingSection] = useState(false);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
+  const [editingLessonIndex, setEditingLessonIndex] = useState<number | null>(null);
+  const [editingLessonData, setEditingLessonData] = useState<Lesson | null>(null);
+  const [showLessonDialog, setShowLessonDialog] = useState(false);
+  const [lessonPreviewMode, setLessonPreviewMode] = useState<'content' | 'description'>('content');
 
   useEffect(() => {
     if (editingCourse) {
@@ -591,9 +609,13 @@ export const MoocCourseFormModal = ({ open, onOpenChange, editingCourse, onSave 
             {editingCourse ? "Editar Curso MOOC" : "Crear Curso MOOC"}
           </DialogTitle>
           {editingCourse && (
-            <div className="flex gap-4 mt-2">
+            <div className="flex gap-4 mt-2 items-center">
               <span className="text-sm font-medium">No. de estudiantes inscritos: {/* TODO: fetch count */} </span>
               <span className="text-sm font-medium">No. de estudiantes que han terminado el curso: {/* TODO: fetch count */} </span>
+              <div className="ml-4">
+                {/* Button to open the full-page editor */}
+                <OpenEditorButton editingCourse={editingCourse} onClose={() => onOpenChange(false)} />
+              </div>
             </div>
           )}
         </DialogHeader>
@@ -878,6 +900,9 @@ export const MoocCourseFormModal = ({ open, onOpenChange, editingCourse, onSave 
                                     ))}
                                   </SelectContent>
                                 </Select>
+                                <Button variant="ghost" size="sm" onClick={() => { const idx = lessons.indexOf(lesson); setEditingLessonIndex(idx); setEditingLessonData({ ...lesson }); setShowLessonDialog(true); }} title="Editar lección">
+                                  <Edit className="h-4 w-4" />
+                                </Button>
                                 <Button variant="ghost" size="sm" onClick={() => handleRemoveLesson(lessons.indexOf(lesson))}>
                                   <X className="h-4 w-4" />
                                 </Button>
@@ -895,11 +920,11 @@ export const MoocCourseFormModal = ({ open, onOpenChange, editingCourse, onSave 
                             </div>
                             <div className="space-y-2">
                               <Label>Descripción</Label>
-                              <Textarea rows={2} value={lesson.description} onChange={e=>handleLessonChange(lessons.indexOf(lesson),'description', e.target.value)} />
+                              <Textarea rows={2} value={lesson.description} readOnly />
                             </div>
                             <div className="space-y-2">
                               <Label>Contenido</Label>
-                              <Textarea rows={3} value={lesson.content} onChange={e=>handleLessonChange(lessons.indexOf(lesson),'content', e.target.value)} />
+                              <Textarea rows={3} value={lesson.content} readOnly />
                             </div>
                             <div className="space-y-3 border-t pt-3">
                               <Label>Tipo de contenido multimedia</Label>
@@ -974,6 +999,80 @@ export const MoocCourseFormModal = ({ open, onOpenChange, editingCourse, onSave 
                 </div>
               );
             })}
+
+            {/* Lesson editor dialog for editing a single lesson */}
+            <Dialog open={showLessonDialog} onOpenChange={setShowLessonDialog}>
+              <DialogContent className="max-w-3xl w-[95vw] h-[85vh] p-0 overflow-hidden">
+                <div className="h-full overflow-y-auto p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold">Editar Lección</h3>
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" size="sm" onClick={() => { setLessonPreviewMode(lessonPreviewMode === 'content' ? 'description' : 'content'); }}>
+                        Vista: {lessonPreviewMode === 'content' ? 'Contenido' : 'Descripción'}
+                      </Button>
+                    </div>
+                  </div>
+                  {!editingLessonData ? (
+                    <div className="text-sm text-muted-foreground">Cargando...</div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="space-y-2">
+                          <Label>Título</Label>
+                          <Input value={editingLessonData.title} onChange={e=>setEditingLessonData(prev=> prev?{...prev, title: e.target.value}:prev)} />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Duración (horas)</Label>
+                          <Input type="number" min={1} value={editingLessonData.duration_hours} onChange={e=>setEditingLessonData(prev=> prev?{...prev, duration_hours: parseInt(e.target.value)||1}:prev)} />
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label>Descripción (rich text)</Label>
+                        <ReactQuill theme="snow" value={editingLessonData.description || ''} onChange={(val)=>setEditingLessonData(prev=> prev?{...prev, description: val}:prev)} modules={{ toolbar: [['bold','italic','underline'], [{ 'align': [] }], [{ 'list': 'ordered' }, { 'list': 'bullet' }], ['link','clean']] }} />
+                      </div>
+
+                      <div>
+                        <Label>Contenido (rich text)</Label>
+                        <ReactQuill theme="snow" value={editingLessonData.content || ''} onChange={(val)=>setEditingLessonData(prev=> prev?{...prev, content: val}:prev)} modules={{ toolbar: [['bold','italic','underline'], [{ 'align': [] }], [{ 'list': 'ordered' }, { 'list': 'bullet' }], ['link','clean']] }} />
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="space-y-2">
+                          <Label>Tipo de contenido</Label>
+                          <Select value={editingLessonData.content_type || 'video'} onValueChange={v=>setEditingLessonData(prev=> prev?{...prev, content_type: v as any}:prev)}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="video">Video</SelectItem>
+                              <SelectItem value="live_session">Encuentro sincrónico</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>URL del video / encuentro</Label>
+                          <Input value={editingLessonData.video_url || editingLessonData.live_url || ''} onChange={e=>setEditingLessonData(prev=> prev?{...prev, video_url: e.target.value, live_url: e.target.value}:prev)} />
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end gap-2 pt-2">
+                        <Button variant="outline" onClick={() => { setShowLessonDialog(false); setEditingLessonIndex(null); setEditingLessonData(null); }}>Cancelar</Button>
+                        <Button onClick={() => {
+                          if (editingLessonIndex === null || !editingLessonData) return;
+                          setLessons(prev => {
+                            const copy = [...prev];
+                            copy[editingLessonIndex!] = editingLessonData;
+                            return copy;
+                          });
+                          setShowLessonDialog(false);
+                          setEditingLessonIndex(null);
+                          setEditingLessonData(null);
+                        }}>Guardar</Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </DialogContent>
+            </Dialog>
 
             {/* Lecciones sin sección */}
             <div className="space-y-4">

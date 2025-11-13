@@ -84,7 +84,7 @@ export default function Certificates() {
               <CardContent className="space-y-3">
                 <div className="text-sm text-muted-foreground">Horas certificadas: <span className="font-medium text-foreground">{cert.hours}</span></div>
                 <div className="text-xs text-muted-foreground">Emitido: {new Date(cert.issued_at).toLocaleDateString()}</div>
-                <Button onClick={() => setSelectedCertId(cert.id)} className="w-full">Ver PDF</Button>
+                <Button onClick={() => setSelectedCertId(cert.id)} className="w-full">Descargar PDF</Button>
               </CardContent>
             </Card>
           ))}
