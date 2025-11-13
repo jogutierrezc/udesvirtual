@@ -6,12 +6,14 @@ import { Loader2 } from "lucide-react";
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requireAdmin?: boolean;
+  requireAdminOrProfessor?: boolean;
 }
 
-const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps) => {
+const ProtectedRoute = ({ children, requireAdmin = false, requireAdminOrProfessor = false }: ProtectedRouteProps) => {
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isProfessor, setIsProfessor] = useState(false);
   const [profileCompleted, setProfileCompleted] = useState(false);
 
   useEffect(() => {
@@ -40,8 +42,8 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
 
       setProfileCompleted(profile?.profile_completed || false);
 
-      // Si se requiere admin, verificar el rol
-      if (requireAdmin) {
+      // Si se requiere admin o profesor, verificar el rol
+      if (requireAdmin || requireAdminOrProfessor) {
         const { data: roles, error } = await supabase
           .from("user_roles")
           .select("role")
@@ -50,11 +52,12 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
         if (error) {
           console.error("Error checking role:", error);
           setIsAdmin(false);
+          setIsProfessor(false);
         } else {
-          // SOLO los usuarios con rol 'admin' pueden acceder a rutas admin
-          // Profesores y estudiantes NO tienen acceso
           const hasAdminRole = roles?.some(r => r.role === "admin");
+          const hasProfessorRole = roles?.some(r => r.role === "professor");
           setIsAdmin(hasAdminRole || false);
+          setIsProfessor(hasProfessorRole || false);
         }
       }
     } catch (error) {
@@ -90,6 +93,11 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
 
   // Si se requiere admin y no lo es, redirigir a Unauthorized
   if (requireAdmin && !isAdmin) {
+    return <Navigate to="/unauthorized" replace />;
+  }
+
+  // Si se requiere admin o profesor y no es ninguno, redirigir a Unauthorized
+  if (requireAdminOrProfessor && !isAdmin && !isProfessor) {
     return <Navigate to="/unauthorized" replace />;
   }
 

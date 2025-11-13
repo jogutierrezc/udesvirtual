@@ -235,7 +235,7 @@ const AppContent = () => {
             <Route 
               path="/admin/mooc/course/:courseId/edit"
               element={
-                <ProtectedRoute requireAdmin={true}>
+                <ProtectedRoute requireAdminOrProfessor={true}>
                   <AdminLayout>
                     <CourseEditorPage />
                   </AdminLayout>
@@ -245,7 +245,7 @@ const AppContent = () => {
             <Route 
               path="/admin/mooc/course/:courseId/lesson/:lessonId/edit"
               element={
-                <ProtectedRoute requireAdmin={true}>
+                <ProtectedRoute requireAdminOrProfessor={true}>
                   <AdminLayout>
                     <LessonEditorPage />
                   </AdminLayout>
