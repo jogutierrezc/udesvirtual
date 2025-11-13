@@ -9,9 +9,9 @@ export function AutoDownloadCertificate({ certificateId, onFinish }: { certifica
     }
   }, [certificateId]);
 
-  // Renderiza el modal oculto, la descarga es automática por el efecto en CertificateModal
+  // Renderiza el modal fuera de la vista (no usar display:none porque html2canvas necesita el DOM)
   return certificateId ? (
-    <div style={{ display: 'none' }}>
+    <div style={{ position: 'fixed', left: '-9999px', top: '-9999px', visibility: 'hidden' }}>
       <CertificateModal certificateId={certificateId} onClose={onFinish || (() => {})} />
     </div>
   ) : null;

@@ -41,6 +41,8 @@ export function CertificateModal({ certificateId, onClose }: { certificateId: st
       const templateResult = await supabase.from('certificate_templates' as any).select('template_html, signature_profile_id, signer_name, signer_title').or(`course_id.eq.${courseId},is_global.eq.true`).eq('active', true).order('is_global', { ascending: true }).limit(1).maybeSingle();
       const template = templateResult.data as any;
       
+      let signatureLoaded = false;
+      
       if (template) {
         setTemplateHtml(template.template_html || '');
         // Sobrescribir firma y nombre/cargo si la plantilla los especifica
@@ -49,6 +51,7 @@ export function CertificateModal({ certificateId, onClose }: { certificateId: st
           if (sigProfile?.filename) {
             const pub = supabase.storage.from('certificate-signatures').getPublicUrl(sigProfile.filename).data.publicUrl;
             setSignaturePublicUrl(pub || '');
+            signatureLoaded = true;
           }
         }
         if (template.signer_name) setSettings(s => ({ ...s, signature_name: template.signer_name }));
@@ -58,8 +61,8 @@ export function CertificateModal({ certificateId, onClose }: { certificateId: st
         setTemplateHtml('');
       }
 
-      // Determine signature image: use certificate-specific filename first, otherwise use default profile from settings
-      if (!templateHtml) {
+      // Cargar firma por defecto si no se cargó desde la plantilla
+      if (!signatureLoaded) {
         let sigFilename = (certData as any).signature_filename || null;
         if (!sigFilename && settingsData?.default_signature_profile_id) {
           try {
@@ -106,16 +109,16 @@ export function CertificateModal({ certificateId, onClose }: { certificateId: st
 
   // Descargar PDF automáticamente al cargar el certificado
   useEffect(() => {
-    if (!loading && cert && certificateRef.current) {
-      // Esperar un pequeño tiempo para que el DOM y las imágenes estén listas
+    if (!loading && cert && certificateRef.current && qrDataUrl) {
+      // Esperar un tiempo más largo para asegurar que todo el contenido esté renderizado
       setTimeout(() => {
         exportToPDF();
         // Cerrar el modal después de descargar (opcional, descomentar si se desea)
         // onClose();
-      }, 600);
+      }, 1200);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, cert]);
+  }, [loading, cert, qrDataUrl]);
 
   const qrUrl = `${settings.qr_base_url || DEFAULT_SETTINGS.qr_base_url}?code=${encodeURIComponent(cert?.verification_code || '')}`;
 
