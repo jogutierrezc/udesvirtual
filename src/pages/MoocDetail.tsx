@@ -201,17 +201,23 @@ export default function MoocDetail() {
 
       console.log("Curso cargado:", courseData);
 
-      // Obtener información del creador
-      const { data: profileData, error: profileError } = await supabase
-        .from("profiles")
-        .select("full_name, email")
-        .eq("id", courseData.created_by)
-        .single();
-
-      if (profileError) {
-        console.error("Error loading profile:", profileError);
+      // Obtener perfil del creador llamando al endpoint serverless (usa service role key)
+      let profileFromRelation = null;
+      try {
+        const resp = await fetch('/api/get-creators', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids: [courseData.created_by] }),
+        });
+        if (resp.ok) {
+          const json = await resp.json();
+          profileFromRelation = json.profiles ? json.profiles[courseData.created_by] : null;
+        } else {
+          console.warn('get-creators failed', await resp.text());
+        }
+      } catch (err) {
+        console.warn('Profile lookup failed:', err);
       }
-      console.log("Perfil del creador:", profileData);
 
       // Obtener lecciones
       const { data: lessonsData } = await supabase
@@ -223,12 +229,13 @@ export default function MoocDetail() {
       const totalDuration = lessonsData?.reduce((sum, lesson) => sum + (lesson.duration_hours || 0), 0) || 0;
       const lessonCount = lessonsData?.length || 0;
 
+      // Derivar nombre de creador: preferir profileFromRelation, luego created_by
+      const derivedName = profileFromRelation?.full_name || courseData.created_by || "Instructor";
+      const derivedEmail = profileFromRelation?.email || "";
+
       const courseDetail: CourseDetail = {
         ...courseData,
-        creator: profileData ? {
-          full_name: profileData.full_name || courseData.created_by || "Instructor",
-          email: profileData.email || "",
-        } : { full_name: courseData.created_by || "Instructor", email: "" },
+        creator: { full_name: derivedName, email: derivedEmail },
         lessons: lessonsData || [],
         total_duration: totalDuration,
         lesson_count: lessonCount,

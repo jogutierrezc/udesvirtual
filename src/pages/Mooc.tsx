@@ -74,16 +74,30 @@ export default function Mooc() {
 
       console.log("Cursos aprobados cargados:", coursesData);
 
-      // Obtener información adicional de cada curso
+      // Recolectar creator ids y hacer un solo fetch al endpoint serverless (usa service role)
+      const creatorIds = Array.from(new Set((coursesData || []).map((c: any) => c.created_by).filter(Boolean)));
+      let profileMap = new Map();
+      if (creatorIds.length > 0) {
+        try {
+          const resp = await fetch('/api/get-creators', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids: creatorIds }),
+          });
+          if (resp.ok) {
+            const json = await resp.json();
+            const profiles = json.profiles || {};
+            Object.keys(profiles).forEach((id) => profileMap.set(id, profiles[id]));
+          } else {
+            console.warn('get-creators API failed', await resp.text());
+          }
+        } catch (err) {
+          console.warn('Call to /api/get-creators failed:', err);
+        }
+      }
+
       const coursesWithDetails = await Promise.all(
         (coursesData || []).map(async (course) => {
-          // Obtener información del creador
-          const { data: profileData } = await supabase
-            .from("profiles")
-            .select("full_name")
-            .eq("id", course.created_by)
-            .single();
-
           // Obtener lecciones para calcular duración y cantidad
           const { data: lessonsData } = await supabase
             .from("mooc_lessons")
@@ -93,9 +107,12 @@ export default function Mooc() {
           const totalDuration = lessonsData?.reduce((sum, lesson) => sum + (lesson.duration_hours || 0), 0) || 0;
           const lessonCount = lessonsData?.length || 0;
 
+          const profile = profileMap.get(course.created_by);
+          const derivedName = profile?.full_name || course.created_by || 'Instructor';
+
           return {
             ...course,
-            creator: profileData ? { full_name: profileData.full_name || course.created_by } : { full_name: course.created_by || 'Instructor' },
+            creator: { full_name: derivedName },
             total_duration: totalDuration,
             lesson_count: lessonCount,
           };

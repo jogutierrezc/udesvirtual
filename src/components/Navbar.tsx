@@ -45,7 +45,7 @@ export const Navbar = ({ topOffset = 0 }: { topOffset?: number }) => {
         const userId = session.user.id;
 
         const [profileRes, rolesRes] = await Promise.all([
-          supabase.from("profiles").select("full_name,email").eq("id", userId).single(),
+          supabase.from("profiles").select("full_name,email").eq("id", userId).maybeSingle(),
           // A user can have multiple roles; fetch all and resolve precedence below
           supabase.from("user_roles").select("role").eq("user_id", userId),
         ]);

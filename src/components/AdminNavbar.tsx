@@ -41,7 +41,7 @@ export const AdminNavbar = () => {
 
         const userId = session.user.id;
         const [profileRes, rolesRes] = await Promise.all([
-          supabase.from("profiles").select("full_name,email").eq("id", userId).single(),
+          supabase.from("profiles").select("full_name,email").eq("id", userId).maybeSingle(),
           // fetch all roles in case the user has multiple; we'll resolve precedence
           supabase.from("user_roles").select("role").eq("user_id", userId),
         ]);
