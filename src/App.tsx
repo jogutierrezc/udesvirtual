@@ -17,6 +17,8 @@ import ProfessorInbox from "./pages/professor/Inbox";
 import Lia from "./pages/Lia";
 import Mooc from "./pages/Mooc";
 import MoocDetail from "./pages/MoocDetail";
+import MoocCategories from "./pages/mooc/MoocCategories";
+import MoocCategoryPage from "./pages/mooc/MoocCategoryPage";
 import Profile from "./pages/ProfileNew";
 import PublicProfile from "./pages/PublicProfile";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -51,6 +53,7 @@ import ParticipantsPage from "./pages/admin/passport/ParticipantsPage";
 import ReportsPage from "./pages/admin/passport/ReportsPage";
 import { CertificationsPage } from "./pages/admin/mooc/CertificationsPage";
 import { StudentsPage } from "./pages/admin/mooc/StudentsPage";
+import MoocCategoriesAdmin from "./pages/admin/mooc/MoocCategoriesAdmin";
 import { AdminLayout } from "./pages/admin/layout/AdminLayout";
 import { CertificateSettings } from "./pages/admin/CertificateSettings";
 import ProfessorsPage from "./pages/admin/professors/ProfessorsPage";
@@ -65,6 +68,8 @@ import FaqDetail from "./pages/FaqDetail";
 import ResendSettings from "./pages/admin/ResendSettings";
 import { FaqAdminPage } from "./pages/admin/faq/FaqAdminPage";
 import ForUdesProfessors from "./pages/landing/ForUdesProfessors";
+import ForUdesStudents from "./pages/landing/ForUdesStudents";
+import ForInternationalProfessors from "./pages/landing/ForInternationalProfessors";
 
 const queryClient = new QueryClient();
 
@@ -112,6 +117,8 @@ const AppContent = () => {
         <Route path="/professor-offerings" element={<ProfessorOfferings />} />
         <Route path="/coil-offerings" element={<CoilOfferings />} />
         <Route path="/mooc" element={<Mooc />} />
+        <Route path="/mooc/categories" element={<MoocCategories />} />
+        <Route path="/mooc/category/:category" element={<MoocCategoryPage />} />
         <Route path="/mooc/:id" element={<MoocDetail />} />
         <Route 
           path="/professor/course/:courseId/student/:studentId" 
@@ -284,6 +291,16 @@ const AppContent = () => {
               } 
             />
             <Route 
+              path="/admin/mooc/categories" 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <AdminLayout>
+                    <MoocCategoriesAdmin />
+                  </AdminLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route 
               path="/admin/carousel" 
               element={
                 <ProtectedRoute requireAdmin={true}>
@@ -421,6 +438,8 @@ const AppContent = () => {
           <Route path="/profile/:id" element={<PublicProfile />} />
         <Route path="/profesores" element={<Profesores />} />
             <Route path="/profesores-udes" element={<ForUdesProfessors />} />
+            <Route path="/estudiantes-udes" element={<ForUdesStudents />} />
+            <Route path="/profesores-internacionales" element={<ForInternationalProfessors />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/lia" element={<Lia />} />

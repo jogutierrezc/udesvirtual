@@ -35,6 +35,7 @@ export default function CourseEditorPage() {
 
   const [loading, setLoading] = useState(false);
   const [course, setCourse] = useState<any>(null);
+  const [categories, setCategories] = useState<Array<{id:string; title:string}>>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [sections, setSections] = useState<Section[]>([]);
   const [selectedLessonIndex, setSelectedLessonIndex] = useState<number | null>(null);
@@ -45,7 +46,17 @@ export default function CourseEditorPage() {
     loadCourse(courseId);
     loadLessons(courseId);
     loadSections(courseId);
+    loadCategories();
   }, [courseId]);
+
+  const loadCategories = async () => {
+    try {
+      const { data } = await supabase.from('mooc_categories').select('id, title').order('title');
+      setCategories((data as any) || []);
+    } catch (e) {
+      console.error('Error loading categories', e);
+    }
+  };
 
   const loadCourse = async (id: string) => {
     try {
@@ -98,7 +109,8 @@ export default function CourseEditorPage() {
         objective: course.objective,
         description: course.description,
         course_image_url: course.course_image_url,
-        intro_video_url: course.intro_video_url
+        intro_video_url: course.intro_video_url,
+        category_id: course.category_id || null
       }).eq('id', courseId);
       if (error) throw error;
       toast({ title: 'Curso guardado' });
@@ -231,6 +243,25 @@ export default function CourseEditorPage() {
               <div>
                 <Label>Objetivo</Label>
                 <Input value={course?.objective||''} onChange={e=>handleCourseChange('objective', e.target.value)} />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+              <div>
+                <Label>Categoría</Label>
+                <Select
+                  value={course?.category_id ?? 'none'}
+                  onValueChange={(val) => handleCourseChange('category_id', val === 'none' ? null : val)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar categoría" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">(Sin categoría)</SelectItem>
+                    {categories.map(c => (
+                      <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <div className="mt-3">

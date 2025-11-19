@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Plus, X, ChevronDown, ChevronRight, Edit } from "lucide-react";
+import MoocCategoryFormModal from "./MoocCategoryFormModal";
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import { ExamList } from "@/pages/professor/components/ExamList";
@@ -93,6 +94,7 @@ export const MoocCourseFormModal = ({ open, onOpenChange, editingCourse, onSave 
     title: "",
     profession: "",
     tags: [] as string[],
+    category_id: null as string | null,
     objective: "",
     description: "",
     course_image_url: "",
@@ -105,6 +107,7 @@ export const MoocCourseFormModal = ({ open, onOpenChange, editingCourse, onSave 
 
   const [tagInput, setTagInput] = useState("");
   const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [categories, setCategories] = useState<Array<{id: string; title: string}>>([]);
   const [sections, setSections] = useState<Section[]>([]);
   const [newSection, setNewSection] = useState<Section>({ title: '', description: '', order_index: (sections.length + 1) });
   const [addingSection, setAddingSection] = useState(false);
@@ -114,12 +117,25 @@ export const MoocCourseFormModal = ({ open, onOpenChange, editingCourse, onSave 
   const [showLessonDialog, setShowLessonDialog] = useState(false);
   const [lessonPreviewMode, setLessonPreviewMode] = useState<'content' | 'description'>('content');
 
+  // cargar categorías disponibles desde la BD para el selector
+  const loadCategories = async () => {
+    try {
+      const { data } = await supabase.from('mooc_categories').select('id, title').order('title');
+      setCategories((data as any) || []);
+    } catch (e) {
+      console.error('Error loading categories', e);
+    }
+  };
+
   useEffect(() => {
+    loadCategories();
+
     if (editingCourse) {
       setFormData({
         title: editingCourse.title,
         profession: editingCourse.profession,
         tags: editingCourse.tags || [],
+        category_id: (editingCourse as any).category_id || null,
         objective: editingCourse.objective,
         description: editingCourse.description,
         course_image_url: editingCourse.course_image_url || "",
@@ -135,6 +151,8 @@ export const MoocCourseFormModal = ({ open, onOpenChange, editingCourse, onSave 
       resetForm();
     }
   }, [editingCourse, open]);
+
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
 
   const loadLessons = async (courseId: string) => {
     try {
@@ -725,6 +743,29 @@ export const MoocCourseFormModal = ({ open, onOpenChange, editingCourse, onSave 
               </div>
             </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="category_id">Categoría</Label>
+                <div className="flex gap-2 items-center">
+                  <Select
+                    value={formData.category_id ?? 'none'}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, category_id: value === 'none' ? null : value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar categoría" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">(Sin categoría)</SelectItem>
+                      {categories.map(c => (
+                        <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button size="sm" variant="outline" onClick={() => setShowCategoryModal(true)}>Crear</Button>
+                </div>
+              </div>
+            </div>
+
             {/* Configuración de Passport UDES */}
             <div className="border-t pt-4 mt-6">
               <div className="space-y-4">
@@ -1208,6 +1249,11 @@ export const MoocCourseFormModal = ({ open, onOpenChange, editingCourse, onSave 
           </TabsContent>
         </Tabs>
       </DialogContent>
+        {/* Category create modal */}
+        <MoocCategoryFormModal open={showCategoryModal} onOpenChange={setShowCategoryModal} onCreated={(id) => {
+          loadCategories();
+          if (id) setFormData(prev => ({ ...prev, category_id: id }));
+        }} />
     </Dialog>
   );
 };

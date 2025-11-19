@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { BookOpen, Package, Users, Globe, Settings, ChevronDown, FileText, Image, Award, Medal, BarChart2, Trophy, Menu } from "lucide-react";
+import { BookOpen, Package, Users, Globe, Settings, ChevronDown, FileText, Image, ImagePlus, Award, Medal, BarChart2, Trophy, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import {
@@ -149,6 +149,10 @@ export const AdminNavbar = () => {
                 <DropdownMenuItem onClick={() => navigate("/admin/mooc")}>
                   <BookOpen className="h-4 w-4 mr-2" />
                   Cursos
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/admin/mooc/categories')}>
+                  <ImagePlus className="h-4 w-4 mr-2" />
+                  Categorías
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/admin/mooc/certifications")}>
                   <Award className="h-4 w-4 mr-2" />
@@ -315,6 +319,9 @@ export const AdminNavbar = () => {
                         </Button>
                         <Button variant="ghost" className="justify-start" onClick={() => { navigate('/admin/mooc/templates'); setMobileMenuOpen(false); }}>
                           <FileText className="h-4 w-4 mr-2" /> Plantillas Certificado
+                        </Button>
+                        <Button variant="ghost" className="justify-start" onClick={() => { navigate('/admin/mooc/categories'); setMobileMenuOpen(false); }}>
+                          <ImagePlus className="h-4 w-4 mr-2" /> Categorías
                         </Button>
                       </div>
                     </div>

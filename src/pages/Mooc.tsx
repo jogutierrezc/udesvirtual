@@ -152,7 +152,61 @@ export default function Mooc() {
               <h3 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-green-500 to-green-600 bg-clip-text text-transparent">
                 {selectedCategory === "all" ? "Selecciona una categoría" : selectedCategory}
               </h3>
+              <div className="mt-4">
+                <Button
+                  variant="ghost"
+                  onClick={() => window.location.assign('/mooc/categories')}
+                  className="text-sm text-indigo-600 underline"
+                >
+                  Explorar todas las categorías →
+                </Button>
+              </div>
             </div>
+
+            {/* Explorador de cursos - pequeño carousel horizontal */}
+            <section className="mb-12">
+              <div className="bg-white rounded-2xl p-6 shadow-sm">
+                <div className="flex flex-col lg:flex-row items-stretch gap-6">
+                  <div className="lg:w-1/3 min-w-[220px] flex flex-col justify-center">
+                    <div className="inline-flex items-center gap-2 bg-gradient-to-r from-green-500 to-green-600 text-white px-3 py-1 rounded-full text-sm mb-4">
+                      <BookOpen className="h-4 w-4" />
+                      EXPLORAR CURSOS
+                    </div>
+                    <h3 className="text-2xl font-bold">Explorar Cursos</h3>
+                    <p className="text-gray-600 mt-2">Descubre cursos destacados y por roles. Desliza para ver más.</p>
+                    <div className="mt-4">
+                      <Button variant="outline" onClick={() => setSelectedCategory('all')}>Ver todo</Button>
+                    </div>
+                  </div>
+
+                  <div className="flex-1">
+                    <div className="overflow-x-auto">
+                      <div className="flex gap-4 py-2">
+                        {courses.slice(0, 8).map((course) => (
+                          <div key={course.id} className="w-80 flex-shrink-0">
+                            <div className="bg-white rounded-lg shadow group overflow-hidden h-full">
+                              <div className="relative h-32 overflow-hidden bg-gradient-to-br from-indigo-100 to-purple-100">
+                                {course.course_image_url ? (
+                                  <img src={course.course_image_url} alt={course.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center">
+                                    <BookOpen className="h-10 w-10 text-indigo-300" />
+                                  </div>
+                                )}
+                              </div>
+                              <div className="p-4">
+                                <h4 className="text-sm font-semibold line-clamp-2">{course.title}</h4>
+                                <p className="text-xs text-gray-500 mt-2 line-clamp-2">{course.description}</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
 
             {/* Botones de categorías */}
             <section className="mb-12">
