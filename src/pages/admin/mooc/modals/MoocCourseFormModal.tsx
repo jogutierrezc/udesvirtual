@@ -51,7 +51,7 @@ type Lesson = {
   order_index: number;
   content: string;
   video_url: string;
-  // archivos de lectura (PDF) que el profesor puede adjuntar antes de guardar
+  // archivos de lectura que el profesor puede adjuntar antes de guardar
   newFiles?: File[];
   // lecturas existentes cargadas desde la BD
   existingReadings?: Array<{ id: string; title: string; file_name: string; storage_path: string }>;
@@ -356,9 +356,29 @@ export const MoocCourseFormModal = ({ open, onOpenChange, editingCourse, onSave 
     }
   };
 
+  const ALLOWED_FILE_EXTENSIONS = ['.pdf', '.ppt', '.pptx', '.doc', '.docx', '.png', '.jpg', '.jpeg'];
+  const ALLOWED_MIME_TYPES = [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'image/png',
+    'image/jpeg'
+  ];
+
+  const isAllowedFile = (f: File) => {
+    if (!f) return false;
+    const t = (f.type || '').toLowerCase();
+    if (ALLOWED_MIME_TYPES.includes(t)) return true;
+    const name = f.name || '';
+    const ext = name.slice(name.lastIndexOf('.')).toLowerCase();
+    return ALLOWED_FILE_EXTENSIONS.includes(ext);
+  };
+
   const handleLessonFilesChange = (index: number, files: FileList | null) => {
     if (!files) return;
-    const arr = Array.from(files).filter(f => f.type === 'application/pdf');
+    const arr = Array.from(files).filter(f => isAllowedFile(f));
     setLessons(prev => {
       const updated = [...prev];
       updated[index] = { ...updated[index], newFiles: arr };
@@ -504,7 +524,7 @@ export const MoocCourseFormModal = ({ open, onOpenChange, editingCourse, onSave 
         courseId = newCourse.id;
       }
 
-      // Guardar lecciones y lecturas (PDF)
+      // Guardar lecciones y lecturas (archivos)
       if (courseId && lessons.length > 0) {
         // Si estamos editando, eliminar lecciones previas sin lecturas asociadas
         // Las lecturas existentes ya están en la BD y las mantenemos
@@ -1014,7 +1034,7 @@ export const MoocCourseFormModal = ({ open, onOpenChange, editingCourse, onSave 
                               )}
                             </div>
                             <div className="space-y-2 border-t pt-3">
-                              <Label>Lecturas (PDF)</Label>
+                              <Label>Lecturas (archivos)</Label>
                               {lesson.existingReadings && lesson.existingReadings.length > 0 && (
                                 <div className="space-y-2">
                                   {lesson.existingReadings.map(reading => (
@@ -1027,7 +1047,7 @@ export const MoocCourseFormModal = ({ open, onOpenChange, editingCourse, onSave 
                                   ))}
                                 </div>
                               )}
-                              <Input type="file" multiple accept="application/pdf" onChange={e=>handleLessonFilesChange(lessons.indexOf(lesson), e.target.files)} />
+                              <Input type="file" multiple accept=".pdf,.ppt,.pptx,.doc,.docx,.png,.jpg,.jpeg,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,image/png,image/jpeg" onChange={e=>handleLessonFilesChange(lessons.indexOf(lesson), e.target.files)} />
                               {lesson.newFiles && lesson.newFiles.length > 0 && (
                                 <div className="text-xs text-muted-foreground">{lesson.newFiles.length} archivo(s) listos para subir</div>
                               )}
@@ -1216,7 +1236,7 @@ export const MoocCourseFormModal = ({ open, onOpenChange, editingCourse, onSave 
                       )}
                     </div>
                     <div className="space-y-2 border-t pt-3">
-                      <Label>Lecturas (PDF)</Label>
+                      <Label>Lecturas (archivos)</Label>
                       {lesson.existingReadings && lesson.existingReadings.length > 0 && (
                         <div className="space-y-2">
                           {lesson.existingReadings.map(reading => (
@@ -1229,7 +1249,7 @@ export const MoocCourseFormModal = ({ open, onOpenChange, editingCourse, onSave 
                           ))}
                         </div>
                       )}
-                      <Input type="file" multiple accept="application/pdf" onChange={e=>handleLessonFilesChange(lessons.indexOf(lesson), e.target.files)} />
+                      <Input type="file" multiple accept=".pdf,.ppt,.pptx,.doc,.docx,.png,.jpg,.jpeg,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,image/png,image/jpeg" onChange={e=>handleLessonFilesChange(lessons.indexOf(lesson), e.target.files)} />
                       {lesson.newFiles && lesson.newFiles.length > 0 && (
                         <div className="text-xs text-muted-foreground">{lesson.newFiles.length} archivo(s) listos para subir</div>
                       )}

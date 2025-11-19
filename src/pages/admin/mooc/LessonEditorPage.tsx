@@ -60,60 +60,76 @@ export default function LessonEditorPage(){
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file || !lessonId) return;
+    const files = event.target.files;
+    if (!files || !lessonId) return;
 
-    // Validar que sea PDF
-    if (file.type !== 'application/pdf') {
-      toast({ title: 'Error', description: 'Solo se permiten archivos PDF', variant: 'destructive' });
-      return;
-    }
+    const ALLOWED_EXTS = ['.pdf', '.ppt', '.pptx', '.doc', '.docx', '.png', '.jpg', '.jpeg'];
+    const ALLOWED_MIMES = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-powerpoint',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'image/png',
+      'image/jpeg'
+    ];
+    const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB per file
 
-    // Validar tamaño (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      toast({ title: 'Error', description: 'El archivo no debe superar 10MB', variant: 'destructive' });
+    const toUpload = Array.from(files).filter(f => {
+      const mimeOk = ALLOWED_MIMES.includes((f.type || '').toLowerCase());
+      const ext = f.name.slice(f.name.lastIndexOf('.')).toLowerCase();
+      const extOk = ALLOWED_EXTS.includes(ext);
+      return (mimeOk || extOk) && f.size <= MAX_FILE_SIZE;
+    });
+
+    if (toUpload.length === 0) {
+      toast({ title: 'Error', description: 'No se encontraron archivos válidos o superan el límite de tamaño (50MB)', variant: 'destructive' });
       return;
     }
 
     setUploadingReading(true);
     try {
-      // Obtener usuario actual
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No hay usuario autenticado');
 
-      // Generar nombre único
-      const timestamp = Date.now();
-      const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-      const fileName = `${lessonId}/${timestamp}_${safeName}`;
+      for (const file of toUpload) {
+        try {
+          const timestamp = Date.now();
+          const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+          const filePath = `${lessonId}/${timestamp}_${safeName}`;
 
-      // Subir a Storage (bucket mooc-readings)
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('mooc-readings')
-        .upload(fileName, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('mooc-readings')
+            .upload(filePath, file, { cacheControl: '3600', upsert: false });
 
-      if (uploadError) throw uploadError;
+          if (uploadError) {
+            console.warn('Upload error for file', file.name, uploadError);
+            continue;
+          }
 
-      // Guardar en la base de datos
-      const { error: dbError } = await supabase
-        .from('mooc_readings')
-        .insert({
-          lesson_id: lessonId,
-          title: file.name,
-          type: 'file',
-          file_name: safeName,
-          storage_path: fileName,
-          created_by: user.id
-        });
+          const title = file.name.replace(/\.[^.]+$/, '');
 
-      if (dbError) throw dbError;
+          const { error: dbError } = await supabase
+            .from('mooc_readings')
+            .insert({
+              lesson_id: lessonId,
+              title,
+              type: 'file',
+              file_name: safeName,
+              storage_path: filePath,
+              created_by: user.id
+            });
 
-      toast({ title: 'Lectura subida correctamente' });
+          if (dbError) {
+            console.warn('DB insert error for reading', dbError);
+          }
+        } catch (e) {
+          console.error('Error uploading one of the files', e);
+        }
+      }
+
+      toast({ title: 'Lecturas subidas correctamente' });
       loadReadings(lessonId);
-      
-      // Limpiar input
       event.target.value = '';
     } catch (e: any) {
       console.error('Upload error', e);
@@ -313,7 +329,7 @@ export default function LessonEditorPage(){
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileText className="h-5 w-5" />
-                Lecturas (PDF)
+                  Lecturas (archivos)
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -332,20 +348,21 @@ export default function LessonEditorPage(){
                     ) : (
                       <>
                         <Upload className="h-4 w-4" />
-                        Subir PDF
+                        Subir archivos
                       </>
                     )}
                   </Label>
                   <Input
                     id="reading-upload"
                     type="file"
-                    accept="application/pdf"
+                    multiple
+                    accept=".pdf,.ppt,.pptx,.doc,.docx,.png,.jpg,.jpeg,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,image/png,image/jpeg"
                     className="hidden"
                     onChange={handleFileUpload}
                     disabled={uploadingReading}
                   />
                   <span className="text-sm text-muted-foreground">
-                    Solo archivos PDF (máx. 10MB)
+                    Tipos permitidos: PDF, PPT, PPTX, DOC, DOCX, PNG, JPG (máx. 50MB por archivo)
                   </span>
                 </div>
 
