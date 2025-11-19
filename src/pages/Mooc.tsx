@@ -119,8 +119,13 @@ export default function Mooc() {
     }
   };
 
-  // Obtener categorías únicas de los tags
-  const categories = ["all", ...predefinedCategories];
+  // Obtener categorías predefinidas que realmente tienen cursos asociados
+  const availablePredefinedCategories = predefinedCategories.filter((cat) =>
+    courses.some((course) => course.tags?.includes(cat))
+  );
+
+  // Mostrar 'all' más las categorías disponibles
+  const categories = ["all", ...availablePredefinedCategories];
 
   const filteredCourses = courses.filter(course => {
     const matchesCategory = selectedCategory === "all" || course.tags?.includes(selectedCategory);
@@ -211,7 +216,7 @@ export default function Mooc() {
             {/* Botones de categorías */}
             <section className="mb-12">
               <div className="flex flex-wrap justify-center gap-3 mb-8">
-                {predefinedCategories.map((category) => (
+                {availablePredefinedCategories.map((category) => (
                   <Button
                     key={category}
                     variant={selectedCategory === category ? "default" : "outline"}
