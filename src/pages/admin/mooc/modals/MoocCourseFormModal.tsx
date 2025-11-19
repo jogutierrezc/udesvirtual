@@ -577,7 +577,7 @@ export const MoocCourseFormModal = ({ open, onOpenChange, editingCourse, onSave 
               .in("id", readingIds);
           }
 
-          // Subir archivos asociados (PDFs) al bucket 'mooc-readings' y crear registros en mooc_readings
+          // Subir archivos asociados (archivos) al bucket 'mooc-readings' y crear registros en mooc_readings
           if (lesson.newFiles && lesson.newFiles.length > 0) {
             for (const file of lesson.newFiles) {
               try {
@@ -592,12 +592,13 @@ export const MoocCourseFormModal = ({ open, onOpenChange, editingCourse, onSave 
                 }
 
                 // Crear registro en la tabla mooc_readings
+                const title = file.name.replace(/\.[^.]+$/, "");
                 const { error: readingInsertError } = await supabase
                   .from("mooc_readings")
                   .insert([
                     {
                       lesson_id: lessonId,
-                      title: file.name.replace(/\.pdf$/i, ""),
+                      title,
                       content: null,
                       storage_path: filePath,
                       file_name: file.name,
