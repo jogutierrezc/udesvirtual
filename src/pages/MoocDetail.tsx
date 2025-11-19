@@ -225,10 +225,10 @@ export default function MoocDetail() {
 
       const courseDetail: CourseDetail = {
         ...courseData,
-        creator: profileData ? { 
-          full_name: profileData.full_name || "Instructor", 
-          email: profileData.email || "" 
-        } : { full_name: "Instructor", email: "" },
+        creator: profileData ? {
+          full_name: profileData.full_name || courseData.created_by || "Instructor",
+          email: profileData.email || "",
+        } : { full_name: courseData.created_by || "Instructor", email: "" },
         lessons: lessonsData || [],
         total_duration: totalDuration,
         lesson_count: lessonCount,

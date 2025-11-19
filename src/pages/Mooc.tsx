@@ -95,7 +95,7 @@ export default function Mooc() {
 
           return {
             ...course,
-            creator: profileData ? { full_name: profileData.full_name } : undefined,
+            creator: profileData ? { full_name: profileData.full_name || course.created_by } : { full_name: course.created_by || 'Instructor' },
             total_duration: totalDuration,
             lesson_count: lessonCount,
           };
