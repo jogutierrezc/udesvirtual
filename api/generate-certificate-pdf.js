@@ -20,7 +20,7 @@ module.exports = async (req, res) => {
   if (!html) return res.status(400).send('Missing html in body');
 
   try {
-    // Launch puppeteer. On Vercel, use the bundled Chromium via puppeteer dependency.
+    // Launch puppeteer. For Vercel serverless, run without sandbox flags.
     const browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
     const page = await browser.newPage();
 
