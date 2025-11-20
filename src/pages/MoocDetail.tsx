@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import CourseCommitment from "@/components/CourseCommitment";
 import { 
   Clock, 
   BookOpen, 
@@ -52,6 +53,7 @@ export default function MoocDetail() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [showIntroVideo, setShowIntroVideo] = useState(false);
+  const [showCommitment, setShowCommitment] = useState(false);
   const [course, setCourse] = useState<CourseDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -123,6 +125,7 @@ export default function MoocDetail() {
 
     try {
       setEnrolling(true);
+      console.log("Verificando inscripción para curso:", id);
       
       // Verificar si ya está inscrito
       const { data: existing } = await supabase
@@ -130,9 +133,10 @@ export default function MoocDetail() {
         .select("id")
         .eq("course_id", id)
         .eq("user_id", currentUser.id)
-        .single();
+        .maybeSingle(); // Changed from single() to maybeSingle() to avoid error if not found
 
       if (existing) {
+        console.log("Usuario ya inscrito:", existing);
         toast({
           title: "Ya estás inscrito",
           description: "Continuarás desde donde lo dejaste",
@@ -141,6 +145,27 @@ export default function MoocDetail() {
         return;
       }
 
+      console.log("Usuario no inscrito, mostrando compromiso");
+      // Si no está inscrito, mostrar compromiso
+      setShowCommitment(true);
+      
+    } catch (error: any) {
+      console.error("Error checking enrollment:", error);
+      toast({
+        title: "Error",
+        description: "Ocurrió un error al verificar tu inscripción.",
+        variant: "destructive",
+      });
+    } finally {
+      setEnrolling(false);
+    }
+  };
+
+  const confirmEnrollment = async () => {
+    if (!id || !currentUser) return;
+
+    try {
+      setEnrolling(true);
       // Crear inscripción
       const { error } = await supabase
         .from("mooc_enrollments")
@@ -159,6 +184,7 @@ export default function MoocDetail() {
       });
       
       setIsEnrolled(true);
+      setShowCommitment(false);
       navigate("/dashboard");
     } catch (error: any) {
       console.error("Error enrolling:", error);
@@ -167,6 +193,7 @@ export default function MoocDetail() {
         description: "No se pudo inscribir al curso. Intenta de nuevo.",
         variant: "destructive",
       });
+      setShowCommitment(false);
     } finally {
       setEnrolling(false);
     }
@@ -277,6 +304,12 @@ export default function MoocDetail() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+      {showCommitment && (
+        <CourseCommitment 
+          onConfirm={confirmEnrollment} 
+          onCancel={() => setShowCommitment(false)} 
+        />
+      )}
       {/* Hero Section con imagen de fondo */}
       <div className="relative h-[400px] md:h-[500px] overflow-hidden">
         {/* Imagen de fondo */}
