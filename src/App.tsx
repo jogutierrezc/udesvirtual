@@ -19,6 +19,7 @@ import Mooc from "./pages/Mooc";
 import MoocDetail from "./pages/MoocDetail";
 import MoocCategories from "./pages/mooc/MoocCategories";
 import MoocCategoryPage from "./pages/mooc/MoocCategoryPage";
+import CourseCommitmentPage from "./pages/mooc/CourseCommitmentPage";
 import Profile from "./pages/ProfileNew";
 import PublicProfile from "./pages/PublicProfile";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -120,6 +121,14 @@ const AppContent = () => {
         <Route path="/mooc/categories" element={<MoocCategories />} />
         <Route path="/mooc/category/:category" element={<MoocCategoryPage />} />
         <Route path="/mooc/:id" element={<MoocDetail />} />
+        <Route 
+          path="/mooc/commitment/:id" 
+          element={
+            <ProtectedRoute>
+              <CourseCommitmentPage />
+            </ProtectedRoute>
+          } 
+        />
         <Route 
           path="/professor/course/:courseId/student/:studentId" 
           element={

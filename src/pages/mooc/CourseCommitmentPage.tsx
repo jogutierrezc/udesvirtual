@@ -1,27 +1,128 @@
-import React, { useState } from 'react';
-import { CheckCircle2, BookOpen, GraduationCap, AlertCircle, ChevronRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { CheckCircle2, BookOpen, GraduationCap, AlertCircle, ChevronRight, Loader2, ArrowLeft } from 'lucide-react';
+import { Button } from "@/components/ui/button";
 
-interface CourseCommitmentProps {
-  onConfirm: () => void;
-  onCancel: () => void;
-}
-
-export default function CourseCommitment({ onConfirm, onCancel }: CourseCommitmentProps) {
+export default function CourseCommitmentPage() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const [isChecked, setIsChecked] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [course, setCourse] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
-  const handleStart = () => {
-    if (isChecked) {
-      setIsSubmitted(true);
-      // Simulate a small delay or just call onConfirm
-      setTimeout(() => {
-        onConfirm();
-      }, 1000);
+  useEffect(() => {
+    checkUser();
+    if (id) {
+      loadCourse(id);
+    }
+  }, [id]);
+
+  const checkUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+    setCurrentUser(user);
+  };
+
+  const loadCourse = async (courseId: string) => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("mooc_courses")
+        .select("title, course_image_url")
+        .eq("id", courseId)
+        .single();
+
+      if (error) throw error;
+      setCourse(data);
+    } catch (error) {
+      console.error("Error loading course:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo cargar la información del curso",
+        variant: "destructive",
+      });
+      navigate('/mooc');
+    } finally {
+      setLoading(false);
     }
   };
 
+  const handleConfirm = async () => {
+    if (!isChecked || !id || !currentUser) return;
+
+    try {
+      setIsSubmitted(true);
+      
+      // Verify if already enrolled to avoid duplicates
+      const { data: existing } = await supabase
+        .from("mooc_enrollments")
+        .select("id")
+        .eq("course_id", id)
+        .eq("user_id", currentUser.id)
+        .maybeSingle();
+
+      if (existing) {
+        toast({
+          title: "Ya estás inscrito",
+          description: "Continuarás desde donde lo dejaste",
+        });
+        navigate("/dashboard");
+        return;
+      }
+
+      // Create enrollment
+      const { error } = await supabase
+        .from("mooc_enrollments")
+        .insert({
+          course_id: id,
+          user_id: currentUser.id,
+          progress: 0,
+          completed: false,
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "¡Inscrito exitosamente!",
+        description: "Bienvenido al curso",
+      });
+      
+      // Small delay for UX
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 1000);
+
+    } catch (error: any) {
+      console.error("Error enrolling:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo completar la inscripción. Intenta de nuevo.",
+        variant: "destructive",
+      });
+      setIsSubmitted(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Loader2 className="h-12 w-12 animate-spin text-[#003366]" />
+      </div>
+    );
+  }
+
+  if (!course) return null;
+
   return (
-    <div className="fixed inset-0 z-[100] bg-gray-50/95 backdrop-blur-sm flex flex-col items-center justify-center p-4 font-sans text-slate-800 overflow-y-auto">
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4 font-sans text-slate-800">
       
       {/* Main Card Container */}
       <div className="bg-white w-full max-w-3xl rounded-2xl shadow-xl overflow-hidden border border-slate-100 my-8 animate-in fade-in zoom-in-95 duration-300">
@@ -31,13 +132,13 @@ export default function CourseCommitment({ onConfirm, onCancel }: CourseCommitme
 
         {/* Logo and Branding Section */}
         <div className="p-8 border-b border-slate-100 relative">
-            <button 
-                onClick={onCancel}
-                className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-2 hover:bg-slate-100 rounded-full transition-colors"
-                aria-label="Cerrar"
+            <Button 
+                variant="ghost"
+                onClick={() => navigate(`/mooc/${id}`)}
+                className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 hover:bg-slate-100"
             >
-                ✕
-            </button>
+                Cancelar
+            </Button>
           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
             {/* LOGO */}
             <div className="flex-shrink-0">
@@ -62,9 +163,17 @@ export default function CourseCommitment({ onConfirm, onCancel }: CourseCommitme
         <div className="p-8 md:p-10 space-y-8">
           
           <div className="space-y-4 text-center md:text-left">
+            <div className="flex items-center gap-2 text-[#003366] mb-2">
+                <ArrowLeft className="w-4 h-4 cursor-pointer hover:underline" onClick={() => navigate(`/mooc/${id}`)} />
+                <span className="text-sm font-semibold uppercase tracking-wide">Volver al detalle del curso</span>
+            </div>
             <h3 className="text-3xl font-bold text-slate-900">Mi Compromiso Académico</h3>
             <p className="text-lg text-slate-600">
-              Estás a punto de iniciar tu aprendizaje. Antes de continuar, es importante formalizar tu participación.
+              Estás a punto de inscribirte en el curso: <br/>
+              <span className="font-bold text-[#003366] text-xl">{course.title}</span>
+            </p>
+            <p className="text-slate-600">
+              Antes de continuar, es importante formalizar tu participación.
             </p>
           </div>
 
@@ -144,13 +253,13 @@ export default function CourseCommitment({ onConfirm, onCancel }: CourseCommitme
           {/* Action Button */}
           <div className="flex justify-end pt-2 gap-4">
             <button
-                onClick={onCancel}
+                onClick={() => navigate(`/mooc/${id}`)}
                 className="px-6 py-4 rounded-lg font-medium text-slate-500 hover:bg-slate-100 transition-colors"
             >
                 Cancelar
             </button>
             <button
-              onClick={handleStart}
+              onClick={handleConfirm}
               disabled={!isChecked || isSubmitted}
               className={`
                 flex items-center gap-2 px-8 py-4 rounded-lg font-bold text-lg transition-all duration-300 shadow-lg
