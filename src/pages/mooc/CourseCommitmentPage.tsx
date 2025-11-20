@@ -125,39 +125,10 @@ export default function CourseCommitmentPage() {
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4 font-sans text-slate-800">
       
       {/* Main Card Container */}
-      <div className="bg-white w-full max-w-3xl rounded-2xl shadow-xl overflow-hidden border border-slate-100 my-8 animate-in fade-in zoom-in-95 duration-300">
+      <div className="bg-white w-full rounded-2xl shadow-xl overflow-hidden border border-slate-100 my-8 animate-in fade-in zoom-in-95 duration-300">
         
         {/* Header Band - University Colors */}
         <div className="bg-[#003366] p-2"></div>
-
-        {/* Logo and Branding Section */}
-        <div className="p-8 border-b border-slate-100 relative">
-            <Button 
-                variant="ghost"
-                onClick={() => navigate(`/mooc/${id}`)}
-                className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 hover:bg-slate-100"
-            >
-                Cancelar
-            </Button>
-          <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-            {/* LOGO */}
-            <div className="flex-shrink-0">
-              <img 
-                src="https://udes.edu.co/images/logo/logo-con-acreditada-color.png" 
-                alt="Logo Universidad de Santander" 
-                className="h-20 object-contain opacity-90 hover:opacity-100 transition-opacity"
-              />
-            </div>
-            
-            <div className="text-center md:text-right">
-              <h2 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Dirección de Relaciones Nacionales e Internacionales</h2>
-              <h1 className="text-2xl font-extrabold text-[#003366] mt-1">Portal E-Exchange</h1>
-              <span className="inline-block mt-2 px-3 py-1 bg-blue-50 text-blue-800 text-xs font-semibold rounded-full border border-blue-100">
-                Programa de Cursos MOOC
-              </span>
-            </div>
-          </div>
-        </div>
 
         {/* Main Content Area */}
         <div className="p-8 md:p-10 space-y-8">
@@ -182,7 +153,7 @@ export default function CourseCommitmentPage() {
             <div className="flex items-start gap-4">
               <GraduationCap className="w-8 h-8 text-[#003366] flex-shrink-0 mt-1" />
               <div>
-                <h4 className="font-bold text-[#003366] text-lg mb-2">Beca de Formación 100% Subsidiada</h4>
+                <h4 className="font-bold text-[#003366] text-lg mb-2">Curso 100% gratuito</h4>
                 <p className="text-slate-700 leading-relaxed">
                   La <strong>Universidad de Santander (UDES)</strong>, a través de su portal E-Exchange, te brinda la posibilidad de formarte 
                   <strong> sin costo alguno</strong>. Este es un beneficio exclusivo que la institución otorga dentro de su programa de cursos MOOC 
