@@ -281,29 +281,31 @@ export default function ProfileNew() {
                       <Input id="avatar" type="file" accept="image/*" onChange={onAvatarChange} disabled={fileUploading} className="cursor-pointer" />
                       <p className="text-xs text-muted-foreground">Súbe tu propia imagen</p>
                     </div>
-                    {/* Relación con la UDES */}
-                    <div className="mt-4 border rounded p-3 bg-white">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Label className="mb-1">Relación con la UDES</Label>
-                          {udesRelation ? (
-                            <div className="text-sm text-muted-foreground">
-                              <div><strong>Programa:</strong> {udesRelation.program}</div>
-                              <div><strong>Campus:</strong> {udesRelation.campus}</div>
-                              <div><strong>Vinculación:</strong> {udesRelation.vinculation_type}</div>
-                              <div className="text-xs text-muted-foreground mt-1">Estos datos no se pueden modificar.</div>
-                            </div>
-                          ) : (
-                            <div className="text-sm text-muted-foreground">No registrada.</div>
-                          )}
-                        </div>
-                        <div>
-                          {!udesRelation && (
-                            <Button size="sm" onClick={() => setUdesOpen(true)}>Agregar</Button>
-                          )}
+                    {/* Relación con la UDES solo para profesores/admin */}
+                    {(role === "professor" || role === "admin") && (
+                      <div className="mt-4 border rounded p-3 bg-white">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label className="mb-1">Relación con la UDES</Label>
+                            {udesRelation ? (
+                              <div className="text-sm text-muted-foreground">
+                                <div><strong>Programa:</strong> {udesRelation.program}</div>
+                                <div><strong>Campus:</strong> {udesRelation.campus}</div>
+                                <div><strong>Vinculación:</strong> {udesRelation.vinculation_type}</div>
+                                <div className="text-xs text-muted-foreground mt-1">Estos datos no se pueden modificar.</div>
+                              </div>
+                            ) : (
+                              <div className="text-sm text-muted-foreground">No registrada.</div>
+                            )}
+                          </div>
+                          <div>
+                            {!udesRelation && (
+                              <Button size="sm" onClick={() => setUdesOpen(true)}>Agregar</Button>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               </div>
