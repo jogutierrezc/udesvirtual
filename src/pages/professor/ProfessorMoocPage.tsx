@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, PlusCircle, Edit, Trash2, BookOpen, Clock, User, Award } from "lucide-react";
-import { MoocCourseFormModal } from "@/pages/admin/mooc/modals/MoocCourseFormModal";
+
 
 interface MoocCourse {
   id: string;
@@ -403,12 +403,7 @@ export const ProfessorMoocPage = () => {
       )}
 
       {/* Modal */}
-      <MoocCourseFormModal
-        open={isModalOpen}
-        onOpenChange={setIsModalOpen}
-        editingCourse={editingCourse as any}
-        onSave={handleSave}
-      />
+
     </div>
   );
 };
