@@ -591,12 +591,17 @@ export default function CourseLearning() {
                             <div className="flex items-center gap-1.5 bg-black/20 px-3 py-1 rounded-lg">
                               <Calendar size={14} />
                               <span>
-                                {new Date(currentLesson.live_date).toLocaleDateString('es-ES', {
-                                  weekday: 'long',
-                                  year: 'numeric',
-                                  month: 'long',
-                                  day: 'numeric'
-                                })}
+                                {(() => {
+                                  // Parse YYYY-MM-DD as local date, not UTC
+                                  const [year, month, day] = currentLesson.live_date!.split('-').map(Number);
+                                  const localDate = new Date(year, month - 1, day);
+                                  return localDate.toLocaleDateString('es-ES', {
+                                    weekday: 'long',
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric'
+                                  });
+                                })()}
                               </span>
                             </div>
                           )}
