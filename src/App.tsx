@@ -41,7 +41,8 @@ import { OfferingsPage } from "./pages/admin/offerings/OfferingsPage";
 import { RegistrationsPage } from "./pages/admin/registrations/RegistrationsPage";
 import { MoocPage } from "./pages/admin/mooc/MoocPage";
 import CertificateTemplateAdmin from "./pages/admin/mooc/CertificateTemplateAdmin";
-import CourseEditorPage from "./pages/admin/mooc/CourseEditorPage";
+import AdminCourseEditorPage from "./pages/admin/mooc/CourseEditorPage";
+import CourseEditorPage from "./pages/mooc/CourseEditorPage";
 import LessonEditorPage from "./pages/admin/mooc/LessonEditorPage";
 import { CarouselPage } from "./pages/admin/carousel/CarouselPage";
 // Legacy combined PassportPage route removed; keep component for internal wrappers
@@ -121,6 +122,14 @@ const AppContent = () => {
         <Route path="/mooc/categories" element={<MoocCategories />} />
         <Route path="/mooc/category/:category" element={<MoocCategoryPage />} />
         <Route path="/mooc/:id" element={<MoocDetail />} />
+        <Route 
+          path="/mooc/courses/:courseId/edit" 
+          element={
+            <ProtectedRoute>
+              <CourseEditorPage />
+            </ProtectedRoute>
+          } 
+        />
         <Route 
           path="/mooc/commitment/:id" 
           element={
@@ -254,7 +263,7 @@ const AppContent = () => {
               element={
                 <ProtectedRoute requireAdminOrProfessor={true}>
                   <AdminLayout>
-                    <CourseEditorPage />
+                    <AdminCourseEditorPage />
                   </AdminLayout>
                 </ProtectedRoute>
               }
