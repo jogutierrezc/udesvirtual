@@ -13,6 +13,7 @@ import DOMPurify from 'dompurify';
 import { sanitizeLessonHtml } from '@/lib/html';
 import { useToast } from "@/hooks/use-toast";
 import { FileText, Upload, Trash2, Loader2, Video, Calendar } from "lucide-react";
+import LessonActivitySection from './LessonActivitySection';
 
 export default function LessonEditorPage(){
   const { courseId, lessonId } = useParams();
@@ -24,6 +25,9 @@ export default function LessonEditorPage(){
   const [preview, setPreview] = useState(false);
   const [readings, setReadings] = useState<any[]>([]);
   const [uploadingReading, setUploadingReading] = useState(false);
+  const [activity, setActivity] = useState<any>(null);
+  const [hasActivity, setHasActivity] = useState(false);
+  const [submissionTypes, setSubmissionTypes] = useState<string[]>([]);
 
   useEffect(()=>{
     if(lessonId) {
@@ -419,6 +423,17 @@ export default function LessonEditorPage(){
               </div>
             </CardContent>
           </Card>
+
+          {/* --- NUEVO MÓDULO: Actividad / Tarea --- */}
+          <LessonActivitySection
+            lessonId={lesson.id}
+            activity={activity}
+            setActivity={setActivity}
+            hasActivity={hasActivity}
+            setHasActivity={setHasActivity}
+            submissionTypes={submissionTypes}
+            setSubmissionTypes={setSubmissionTypes}
+          />
         </>
       ) : (
         <div>
