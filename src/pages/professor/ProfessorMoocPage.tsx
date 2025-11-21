@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { MoocExamManager } from "./components/MoocExamManager";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -41,8 +42,7 @@ export const ProfessorMoocPage = () => {
   const [courses, setCourses] = useState<MoocCourse[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingCourse, setEditingCourse] = useState<MoocCourse | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     checkAuthAndLoadCourses();
@@ -172,13 +172,32 @@ export const ProfessorMoocPage = () => {
   };
 
   const handleEdit = (course: MoocCourse) => {
-    setEditingCourse(course);
-    setIsModalOpen(true);
+    navigate(`/mooc/courses/${course.id}/edit`);
   };
 
-  const handleCreateNew = () => {
-    setEditingCourse(null);
-    setIsModalOpen(true);
+  const handleCreateNew = async () => {
+    // Crear curso vacío y redirigir a edición
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('No autenticado');
+      const { data, error } = await supabase
+        .from('mooc_courses')
+        .insert({
+          title: 'Nuevo curso',
+          profession: '',
+          tags: [],
+          objective: '',
+          description: '',
+          status: 'pending',
+          created_by: session.user.id,
+        })
+        .select('id')
+        .single();
+      if (error) throw error;
+      navigate(`/mooc/courses/${data.id}/edit`);
+    } catch (e: any) {
+      toast({ title: 'Error', description: e.message || 'No se pudo crear el curso', variant: 'destructive' });
+    }
   };
 
   const handleModalClose = () => {
@@ -402,7 +421,7 @@ export const ProfessorMoocPage = () => {
         </div>
       )}
 
-      {/* Modal */}
+
 
     </div>
   );

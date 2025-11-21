@@ -19,7 +19,6 @@ import {
   Eye,
   Award
 } from "lucide-react";
-// import { MoocCourseFormModal } from "./modals/MoocCourseFormModal";
 import { LinkPassportModal } from "./modals/LinkPassportModal";
 import CertificateTemplateAdmin from "./CertificateTemplateAdmin";
 
