@@ -1,4 +1,6 @@
 import { useEffect, useState, useRef } from "react";
+import ActivitySubmissionForm, { ActivityEvidenceType } from '@/components/ActivitySubmissionForm';
+import { getLessonActivity, submitActivityEvidence } from '@/components/activitySubmissionApi';
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -78,6 +80,39 @@ export default function CourseLearning() {
   const [completing, setCompleting] = useState(false);
   const [videoWatched, setVideoWatched] = useState(false);
 
+  // Actividad y entrega
+  const [activity, setActivity] = useState<any | null>(null);
+  const [activitySubmission, setActivitySubmission] = useState<any | null>(null);
+  const [activityLoading, setActivityLoading] = useState(false);
+  const [activitySubmitting, setActivitySubmitting] = useState(false);
+
+
+  // Cargar actividad y entrega cuando cambia la lección
+  useEffect(() => {
+    const fetchActivity = async () => {
+      if (!currentLesson) {
+        setActivity(null);
+        setActivitySubmission(null);
+        return;
+      }
+      setActivityLoading(true);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { activity, submission } = await getLessonActivity(currentLesson.id, user.id);
+        setActivity(activity);
+        setActivitySubmission(submission);
+      } catch (e) {
+        setActivity(null);
+        setActivitySubmission(null);
+      } finally {
+        setActivityLoading(false);
+      }
+    };
+    fetchActivity();
+  }, [currentLesson]);
+
+  // Cargar curso cuando cambia el id
   useEffect(() => {
     if (courseId) {
       loadCourse();
@@ -470,11 +505,15 @@ export default function CourseLearning() {
     );
   }
 
+  // Solo puede completar si no hay actividad pendiente
   const canCompleteLesson = currentLesson && (
     currentLesson.completed || 
     !currentLesson.video_url || 
     videoWatched
-  ) && (!currentLesson.exam || currentLesson.exam.passed);
+  ) && (!currentLesson.exam || currentLesson.exam.passed)
+    && (
+      !activity || !!activitySubmission
+    );
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-slate-800">
@@ -693,13 +732,55 @@ export default function CourseLearning() {
                   </div>
                 )}
 
+                {/* Evidencia de actividad */}
+                {activityLoading ? (
+                  <div className="mt-8 flex items-center gap-2 text-blue-600"><Loader2 className="animate-spin" /> Cargando actividad...</div>
+                ) : activity && !activitySubmission ? (
+                  <div className="mt-8">
+                    <div className="mb-4">
+                      <h4 className="font-bold text-slate-900 text-lg mb-1">Actividad</h4>
+                      <div className="text-slate-700 mb-2">{activity.title}</div>
+                      {activity.description && <div className="text-slate-500 mb-2">{activity.description}</div>}
+                      <div className="text-xs text-slate-500 mb-2">Debes entregar evidencia para poder completar la lección.</div>
+                    </div>
+                    <ActivitySubmissionForm
+                      activityId={activity.id}
+                      allowedTypes={activity.allowed_types as ActivityEvidenceType[]}
+                      loading={activitySubmitting}
+                      onSubmit={async (data) => {
+                        setActivitySubmitting(true);
+                        try {
+                          const { data: { user } } = await supabase.auth.getUser();
+                          if (!user) throw new Error('No autenticado');
+                          await submitActivityEvidence({
+                            activityId: activity.id,
+                            userId: user.id,
+                            ...data,
+                          });
+                          toast({ title: 'Evidencia enviada', description: 'Tu entrega fue registrada correctamente.' });
+                          // Refrescar estado
+                          const { activity: act, submission } = await getLessonActivity(currentLesson.id, user.id);
+                          setActivity(act);
+                          setActivitySubmission(submission);
+                        } catch (e: any) {
+                          toast({ title: 'Error', description: e.message || 'No se pudo enviar la evidencia', variant: 'destructive' });
+                        } finally {
+                          setActivitySubmitting(false);
+                        }
+                      }}
+                    />
+                  </div>
+                ) : null}
+
                 {/* Completion Button */}
                 {!currentLesson.completed && (
                   <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between">
                     <div>
                       <p className="font-medium text-slate-900">¿Terminaste esta lección?</p>
                       <p className="text-sm text-slate-500">
-                        {currentLesson.video_url && !videoWatched
+                        {activity && !activitySubmission
+                          ? "Debes entregar la evidencia de la actividad para completar la lección."
+                          : currentLesson.video_url && !videoWatched
                           ? "Mira el video completo para continuar"
                           : currentLesson.exam && !currentLesson.exam.passed
                           ? "Debes aprobar el examen para completar"
