@@ -19,7 +19,7 @@ import {
   Eye,
   Award
 } from "lucide-react";
-import { MoocCourseFormModal } from "./modals/MoocCourseFormModal";
+// import { MoocCourseFormModal } from "./modals/MoocCourseFormModal";
 import { LinkPassportModal } from "./modals/LinkPassportModal";
 import CertificateTemplateAdmin from "./CertificateTemplateAdmin";
 
@@ -53,8 +53,8 @@ export const MoocPage = () => {
   const [filteredCourses, setFilteredCourses] = useState<MoocCourse[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [showCourseModal, setShowCourseModal] = useState(false);
-  const [editingCourse, setEditingCourse] = useState<MoocCourse | null>(null);
+  // const [showCourseModal, setShowCourseModal] = useState(false);
+  // const [editingCourse, setEditingCourse] = useState<MoocCourse | null>(null);
   const [linkingCourse, setLinkingCourse] = useState<MoocCourse | null>(null);
 
   useEffect(() => {
@@ -218,8 +218,8 @@ export const MoocPage = () => {
   };
 
   const handleEditCourse = (course: MoocCourse) => {
-    setEditingCourse(course);
-    setShowCourseModal(true);
+    // Redirigir directamente al editor de curso
+    window.location.href = `/admin/mooc/course/${course.id}/edit`;
   };
 
   const handleCloseModal = () => {
@@ -424,13 +424,7 @@ export const MoocPage = () => {
         </div>
       </div>
 
-      {/* Modal de formulario */}
-      <MoocCourseFormModal
-        open={showCourseModal}
-        onOpenChange={handleCloseModal}
-        editingCourse={editingCourse}
-        onSave={handleSaveCourse}
-      />
+      {/* Modal de formulario eliminado. Ahora se redirige directamente al editor de curso. */}
 
       {/* Modal de vinculación con Pasaporte */}
       {linkingCourse && (
