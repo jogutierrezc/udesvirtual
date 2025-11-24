@@ -77,14 +77,14 @@ const queryClient = new QueryClient();
 
 const AppContent = () => {
   const location = useLocation();
-  
+
   // Rutas donde se debe ocultar el Navbar
   const hideNavbarRoutes = ['/unauthorized', '/profile-setup', '/welcome', '/welcome-profesor'];
-  
+
   // Verificar si es una ruta 404
-  const is404 = !['/', '/auth', '/unauthorized', '/dashboard', '/catalog', '/professor-offerings', 
-    '/coil-offerings', '/mooc', '/profile', '/profile-setup', '/welcome', '/welcome-profesor', '/profesores', '/professor/buzon', '/admin/catalog', '/admin/offerings', 
-  '/admin/registrations', '/admin/mooc', '/admin/mooc/certifications', '/admin/mooc/students', '/admin/mooc/templates', '/admin/carousel', '/admin', '/professor', '/professor/mis-estudiantes', '/lia', '/passport', '/celebration-test'].includes(location.pathname) && 
+  const is404 = !['/', '/auth', '/unauthorized', '/dashboard', '/catalog', '/professor-offerings',
+    '/coil-offerings', '/mooc', '/profile', '/profile-setup', '/welcome', '/welcome-profesor', '/profesores', '/professor/buzon', '/admin/catalog', '/admin/offerings',
+    '/admin/registrations', '/admin/mooc', '/admin/mooc/certifications', '/admin/mooc/students', '/admin/mooc/templates', '/admin/carousel', '/admin', '/professor', '/professor/mis-estudiantes', '/lia', '/passport', '/celebration-test'].includes(location.pathname) &&
     !location.pathname.startsWith('/admin/') &&
     !location.pathname.startsWith('/mooc/') &&
     !location.pathname.startsWith('/courses/') &&
@@ -105,15 +105,15 @@ const AppContent = () => {
         <Route path="/auth" element={<Auth />} />
         <Route path="/profile-setup" element={<ProfileSetup />} />
         <Route path="/welcome" element={<Welcome />} />
-  <Route path="/welcome-profesor" element={<WelcomeProfesor />} />
+        <Route path="/welcome-profesor" element={<WelcomeProfesor />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
-        <Route 
-          path="/dashboard" 
+        <Route
+          path="/dashboard"
           element={
             <ProtectedRoute>
               <Dashboard />
             </ProtectedRoute>
-          } 
+          }
         />
         <Route path="/catalog" element={<Catalog />} />
         <Route path="/professor-offerings" element={<ProfessorOfferings />} />
@@ -122,351 +122,359 @@ const AppContent = () => {
         <Route path="/mooc/categories" element={<MoocCategories />} />
         <Route path="/mooc/category/:category" element={<MoocCategoryPage />} />
         <Route path="/mooc/:id" element={<MoocDetail />} />
-        <Route 
-          path="/mooc/courses/:courseId/edit" 
+        <Route
+          path="/mooc/courses/:courseId/edit"
           element={
             <ProtectedRoute>
               <CourseEditorPage />
             </ProtectedRoute>
-          } 
+          }
         />
-        <Route 
-          path="/mooc/commitment/:id" 
+        <Route
+          path="/mooc/course/:courseId/lesson/:lessonId/edit"
+          element={
+            <ProtectedRoute requireAdminOrProfessor={true}>
+              <LessonEditorPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/mooc/commitment/:id"
           element={
             <ProtectedRoute>
               <CourseCommitmentPage />
             </ProtectedRoute>
-          } 
+          }
         />
-        <Route 
-          path="/professor/course/:courseId/student/:studentId" 
+        <Route
+          path="/professor/course/:courseId/student/:studentId"
           element={
             <ProtectedRoute>
               <StudentDetail />
             </ProtectedRoute>
-          } 
+          }
         />
-        <Route 
-          path="/courses/:courseId/learn" 
+        <Route
+          path="/courses/:courseId/learn"
           element={
             <ProtectedRoute>
               <CourseLearning />
             </ProtectedRoute>
-          } 
+          }
         />
-        <Route 
+        <Route
           path="/courses/:courseId/lessons/:lessonId/reading/:readingId"
           element={<ProtectedRoute><ReadingView /></ProtectedRoute>}
         />
-        <Route 
-          path="/mooc/:courseId/exam/:examId" 
+        <Route
+          path="/mooc/:courseId/exam/:examId"
           element={
             <ProtectedRoute>
               <StudentExamPage />
             </ProtectedRoute>
-          } 
+          }
         />
-        <Route 
-          path="/profile" 
+        <Route
+          path="/profile"
           element={
             <ProtectedRoute>
               <Profile />
             </ProtectedRoute>
-          } 
+          }
         />
-        <Route 
-          path="/passport" 
+        <Route
+          path="/passport"
           element={
             <ProtectedRoute>
               <Passport />
             </ProtectedRoute>
           }
         />
-        <Route 
-          path="/celebration-test" 
+        <Route
+          path="/celebration-test"
           element={
             <ProtectedRoute>
               <CelebrationTest />
             </ProtectedRoute>
           }
         />
-        <Route 
-          path="/certificaciones" 
+        <Route
+          path="/certificaciones"
           element={
             <ProtectedRoute>
               <Certificates />
             </ProtectedRoute>
           }
         />
-        <Route 
-          path="/certificado/:id" 
+        <Route
+          path="/certificado/:id"
           element={
             <ProtectedRoute>
               <CertificateView />
             </ProtectedRoute>
           }
         />
-            
-            {/* Admin Routes - Protected */}
-            <Route 
-              path="/admin/catalog" 
-              element={
-                <ProtectedRoute requireAdmin={true}>
-                  <AdminLayout>
-                    <CatalogPage />
-                  </AdminLayout>
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin/offerings" 
-              element={
-                <ProtectedRoute requireAdmin={true}>
-                  <AdminLayout>
-                    <OfferingsPage />
-                  </AdminLayout>
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin/buzon" 
-              element={
-                <ProtectedRoute requireAdmin={true}>
-                  <AdminLayout>
-                    <BuzonPage />
-                  </AdminLayout>
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin/registrations" 
-              element={
-                <ProtectedRoute requireAdmin={true}>
-                  <AdminLayout>
-                    <RegistrationsPage />
-                  </AdminLayout>
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin/mooc" 
-              element={
-                <ProtectedRoute requireAdmin={true}>
-                  <AdminLayout>
-                    <MoocPage />
-                  </AdminLayout>
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin/mooc/course/:courseId/edit"
-              element={
-                <ProtectedRoute requireAdminOrProfessor={true}>
-                  <AdminLayout>
-                    <AdminCourseEditorPage />
-                  </AdminLayout>
-                </ProtectedRoute>
-              }
-            />
-            <Route 
-              path="/admin/mooc/course/:courseId/lesson/:lessonId/edit"
-              element={
-                <ProtectedRoute requireAdminOrProfessor={true}>
-                  <AdminLayout>
-                    <LessonEditorPage />
-                  </AdminLayout>
-                </ProtectedRoute>
-              }
-            />
-            <Route 
-              path="/admin/mooc/certifications" 
-              element={
-                <ProtectedRoute requireAdmin={true}>
-                  <AdminLayout>
-                    <CertificationsPage />
-                  </AdminLayout>
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin/mooc/templates" 
-              element={
-                <ProtectedRoute requireAdmin={true}>
-                  <AdminLayout>
-                    <CertificateTemplateAdmin />
-                  </AdminLayout>
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin/mooc/students" 
-              element={
-                <ProtectedRoute requireAdmin={true}>
-                  <AdminLayout>
-                    <StudentsPage />
-                  </AdminLayout>
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin/mooc/categories" 
-              element={
-                <ProtectedRoute requireAdmin={true}>
-                  <AdminLayout>
-                    <MoocCategoriesAdmin />
-                  </AdminLayout>
-                </ProtectedRoute>
-              }
-            />
-            <Route 
-              path="/admin/carousel" 
-              element={
-                <ProtectedRoute requireAdmin={true}>
-                  <AdminLayout>
-                    <CarouselPage />
-                  </AdminLayout>
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin/faq" 
-              element={
-                <ProtectedRoute requireAdmin={true}>
-                  <AdminLayout>
-                    <FaqAdminPage />
-                  </AdminLayout>
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin/passport/config" 
-              element={
-                <ProtectedRoute requireAdmin={true}>
-                  <AdminLayout>
-                    <SettingsPage />
-                  </AdminLayout>
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin/passport/senderos" 
-              element={
-                <ProtectedRoute requireAdmin={true}>
-                  <AdminLayout>
-                    <PathwaysPage />
-                  </AdminLayout>
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin/passport/catalogo" 
-              element={
-                <ProtectedRoute requireAdmin={true}>
-                  <AdminLayout>
-                    <ActivitiesPage />
-                  </AdminLayout>
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin/passport/insignias" 
-              element={
-                <ProtectedRoute requireAdmin={true}>
-                  <AdminLayout>
-                    <BadgesPage />
-                  </AdminLayout>
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin/passport/solicitudes" 
-              element={
-                <ProtectedRoute requireAdmin={true}>
-                  <AdminLayout>
-                    <RequestsPage />
-                  </AdminLayout>
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin/passport/participantes" 
-              element={
-                <ProtectedRoute requireAdmin={true}>
-                  <AdminLayout>
-                    <ParticipantsPage />
-                  </AdminLayout>
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin/passport/reportes" 
-              element={
-                <ProtectedRoute requireAdmin={true}>
-                  <AdminLayout>
-                    <ReportsPage />
-                  </AdminLayout>
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin/professors" 
-              element={
-                <ProtectedRoute requireAdmin={true}>
-                  <AdminLayout>
-                    <ProfessorsPage />
-                  </AdminLayout>
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin/certificates" 
-              element={
-                <ProtectedRoute requireAdmin={true}>
-                  <AdminLayout>
-                    <CertificateSettings />
-                  </AdminLayout>
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin/resend-settings" 
-              element={
-                <ProtectedRoute requireAdmin={true}>
-                  <AdminLayout>
-                    <ResendSettings />
-                  </AdminLayout>
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin" 
-              element={
-                <ProtectedRoute requireAdmin={true}>
-                  <AdminLayout>
-                    <CatalogPage />
-                  </AdminLayout>
-                </ProtectedRoute>
-              } 
-            />
-            
-            <Route path="/professor" element={<Professor />} />
-              <Route path="/professor/buzon" element={<ProtectedRoute><ProfessorInbox /></ProtectedRoute>} />
-          <Route path="/professor/mis-estudiantes" element={<ProtectedRoute><MisEstudiantes /></ProtectedRoute>} />
-          {/* Public profile view by id (public) */}
-          <Route path="/profile/:id" element={<PublicProfile />} />
+
+        {/* Admin Routes - Protected */}
+        <Route
+          path="/admin/catalog"
+          element={
+            <ProtectedRoute requireAdmin={true}>
+              <AdminLayout>
+                <CatalogPage />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/offerings"
+          element={
+            <ProtectedRoute requireAdmin={true}>
+              <AdminLayout>
+                <OfferingsPage />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/buzon"
+          element={
+            <ProtectedRoute requireAdmin={true}>
+              <AdminLayout>
+                <BuzonPage />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/registrations"
+          element={
+            <ProtectedRoute requireAdmin={true}>
+              <AdminLayout>
+                <RegistrationsPage />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/mooc"
+          element={
+            <ProtectedRoute requireAdmin={true}>
+              <AdminLayout>
+                <MoocPage />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/mooc/course/:courseId/edit"
+          element={
+            <ProtectedRoute requireAdminOrProfessor={true}>
+              <AdminLayout>
+                <AdminCourseEditorPage />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/mooc/course/:courseId/lesson/:lessonId/edit"
+          element={
+            <ProtectedRoute requireAdminOrProfessor={true}>
+              <AdminLayout>
+                <LessonEditorPage />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/mooc/certifications"
+          element={
+            <ProtectedRoute requireAdmin={true}>
+              <AdminLayout>
+                <CertificationsPage />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/mooc/templates"
+          element={
+            <ProtectedRoute requireAdmin={true}>
+              <AdminLayout>
+                <CertificateTemplateAdmin />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/mooc/students"
+          element={
+            <ProtectedRoute requireAdmin={true}>
+              <AdminLayout>
+                <StudentsPage />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/mooc/categories"
+          element={
+            <ProtectedRoute requireAdmin={true}>
+              <AdminLayout>
+                <MoocCategoriesAdmin />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/carousel"
+          element={
+            <ProtectedRoute requireAdmin={true}>
+              <AdminLayout>
+                <CarouselPage />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/faq"
+          element={
+            <ProtectedRoute requireAdmin={true}>
+              <AdminLayout>
+                <FaqAdminPage />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/passport/config"
+          element={
+            <ProtectedRoute requireAdmin={true}>
+              <AdminLayout>
+                <SettingsPage />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/passport/senderos"
+          element={
+            <ProtectedRoute requireAdmin={true}>
+              <AdminLayout>
+                <PathwaysPage />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/passport/catalogo"
+          element={
+            <ProtectedRoute requireAdmin={true}>
+              <AdminLayout>
+                <ActivitiesPage />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/passport/insignias"
+          element={
+            <ProtectedRoute requireAdmin={true}>
+              <AdminLayout>
+                <BadgesPage />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/passport/solicitudes"
+          element={
+            <ProtectedRoute requireAdmin={true}>
+              <AdminLayout>
+                <RequestsPage />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/passport/participantes"
+          element={
+            <ProtectedRoute requireAdmin={true}>
+              <AdminLayout>
+                <ParticipantsPage />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/passport/reportes"
+          element={
+            <ProtectedRoute requireAdmin={true}>
+              <AdminLayout>
+                <ReportsPage />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/professors"
+          element={
+            <ProtectedRoute requireAdmin={true}>
+              <AdminLayout>
+                <ProfessorsPage />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/certificates"
+          element={
+            <ProtectedRoute requireAdmin={true}>
+              <AdminLayout>
+                <CertificateSettings />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/resend-settings"
+          element={
+            <ProtectedRoute requireAdmin={true}>
+              <AdminLayout>
+                <ResendSettings />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute requireAdmin={true}>
+              <AdminLayout>
+                <CatalogPage />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route path="/professor" element={<Professor />} />
+        <Route path="/professor/buzon" element={<ProtectedRoute><ProfessorInbox /></ProtectedRoute>} />
+        <Route path="/professor/mis-estudiantes" element={<ProtectedRoute><MisEstudiantes /></ProtectedRoute>} />
+        {/* Public profile view by id (public) */}
+        <Route path="/profile/:id" element={<PublicProfile />} />
         <Route path="/profesores" element={<Profesores />} />
-            <Route path="/profesores-udes" element={<ForUdesProfessors />} />
-            <Route path="/estudiantes-udes" element={<ForUdesStudents />} />
-            <Route path="/profesores-internacionales" element={<ForInternationalProfessors />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/lia" element={<Lia />} />
-            <Route path="/faq" element={<Faq />} />
-            <Route path="/faq/category/:category" element={<FaqCategory />} />
-            <Route path="/faq/:category/:id" element={<FaqDetail />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+        <Route path="/profesores-udes" element={<ForUdesProfessors />} />
+        <Route path="/estudiantes-udes" element={<ForUdesStudents />} />
+        <Route path="/profesores-internacionales" element={<ForInternationalProfessors />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/lia" element={<Lia />} />
+        <Route path="/faq" element={<Faq />} />
+        <Route path="/faq/category/:category" element={<FaqCategory />} />
+        <Route path="/faq/:category/:id" element={<FaqDetail />} />
+        {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
     </>
   );
 };
