@@ -323,8 +323,11 @@ export default function CourseLearning() {
         // Inicialmente todas las secciones abiertas
         const initialOpen: Record<string, boolean> = {};
         mappedSections.forEach(s => { initialOpen[s.id] = true; });
-        if (lessonsWithProgress.some(l => !l.section_id)) {
+        if (lessonsWithProgress.some(l => !l.section_id && l.content_type !== 'exam')) {
           initialOpen['__unsectioned'] = true;
+        }
+        if (lessonsWithProgress.some(l => !l.section_id && l.content_type === 'exam')) {
+          initialOpen['__unsectioned_exams'] = true;
         }
         setOpenSections(initialOpen);
 
@@ -516,6 +519,8 @@ export default function CourseLearning() {
   const selectLessonAndExpand = (lesson: Lesson) => {
     if (lesson.section_id) {
       setOpenSections(prev => ({ ...prev, [lesson.section_id!]: true }));
+    } else if (lesson.content_type === 'exam') {
+      setOpenSections(prev => ({ ...prev, ['__unsectioned_exams']: true }));
     } else {
       setOpenSections(prev => ({ ...prev, ['__unsectioned']: true }));
     }
@@ -991,52 +996,109 @@ export default function CourseLearning() {
               )}
 
               {/* Lecciones sin sección (si hay secciones pero algunas lecciones no tienen) */}
-              {sections.length > 0 && lessons.filter(l => !(l as any).section_id).length > 0 && (
-                <div className="bg-white">
-                  <button
-                    onClick={() => toggleSection('__unsectioned')}
-                    className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors"
-                  >
-                    <div className="text-left">
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-0.5">Otros</p>
-                      <p className="font-bold text-slate-800 text-sm">Lecciones Adicionales</p>
-                    </div>
-                    {openSections['__unsectioned'] ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
-                  </button>
-
-                  {openSections['__unsectioned'] && (
-                    <div className="bg-slate-50/50 pb-2">
-                      {lessons.filter(l => !(l as any).section_id).map((lesson) => (
-                        <div
-                          key={lesson.id}
-                          onClick={() => selectLessonAndExpand(lesson)}
-                          className={`
-                            relative pl-4 pr-4 py-3 flex gap-3 items-start transition-all cursor-pointer
-                            ${currentLesson?.id === lesson.id ? 'bg-blue-50 border-l-4 border-[#003366]' : 'hover:bg-slate-100 border-l-4 border-transparent'}
-                          `}
-                        >
-                          <div className="mt-0.5 flex-shrink-0">
-                            {lesson.completed ? (
-                              <CheckCircle2 size={18} className="text-green-500" />
-                            ) : currentLesson?.id === lesson.id ? (
-                              <PlayCircle size={18} className="text-[#003366] fill-blue-100" />
-                            ) : (
-                              <div className="w-[18px] h-[18px] rounded-full border-2 border-slate-300"></div>
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className={`text-sm font-medium leading-snug ${currentLesson?.id === lesson.id ? 'text-[#003366]' : 'text-slate-600'}`}>
-                              {lesson.title}
-                            </p>
-                            <div className="flex items-center gap-2 mt-1 text-xs text-slate-400">
-                              <span>{lesson.duration_hours}h</span>
-                            </div>
-                          </div>
+              {sections.length > 0 && (
+                <>
+                  {/* 1. Lecciones Adicionales (No exámenes) */}
+                  {lessons.filter(l => !(l as any).section_id && l.content_type !== 'exam').length > 0 && (
+                    <div className="bg-white">
+                      <button
+                        onClick={() => toggleSection('__unsectioned')}
+                        className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors"
+                      >
+                        <div className="text-left">
+                          <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-0.5">Otros</p>
+                          <p className="font-bold text-slate-800 text-sm">Lecciones Adicionales</p>
                         </div>
-                      ))}
+                        {openSections['__unsectioned'] ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
+                      </button>
+
+                      {openSections['__unsectioned'] && (
+                        <div className="bg-slate-50/50 pb-2">
+                          {lessons.filter(l => !(l as any).section_id && l.content_type !== 'exam').map((lesson) => (
+                            <div
+                              key={lesson.id}
+                              onClick={() => selectLessonAndExpand(lesson)}
+                              className={`
+                                relative pl-4 pr-4 py-3 flex gap-3 items-start transition-all cursor-pointer
+                                ${currentLesson?.id === lesson.id ? 'bg-blue-50 border-l-4 border-[#003366]' : 'hover:bg-slate-100 border-l-4 border-transparent'}
+                              `}
+                            >
+                              <div className="mt-0.5 flex-shrink-0">
+                                {lesson.completed ? (
+                                  <CheckCircle2 size={18} className="text-green-500" />
+                                ) : currentLesson?.id === lesson.id ? (
+                                  <PlayCircle size={18} className="text-[#003366] fill-blue-100" />
+                                ) : (
+                                  <div className="w-[18px] h-[18px] rounded-full border-2 border-slate-300"></div>
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className={`text-sm font-medium leading-snug ${currentLesson?.id === lesson.id ? 'text-[#003366]' : 'text-slate-600'}`}>
+                                  {lesson.title}
+                                </p>
+                                <div className="flex items-center gap-2 mt-1 text-xs text-slate-400">
+                                  <span>{lesson.duration_hours}h</span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
-                </div>
+
+                  {/* 2. Exámenes / Actividades sin sección */}
+                  {lessons.filter(l => !(l as any).section_id && l.content_type === 'exam').length > 0 && (
+                    <div className="bg-white">
+                      <button
+                        onClick={() => toggleSection('__unsectioned_exams')}
+                        className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors"
+                      >
+                        <div className="text-left">
+                          <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-0.5">Evaluación</p>
+                          <p className="font-bold text-slate-800 text-sm">Exámenes</p>
+                        </div>
+                        {openSections['__unsectioned_exams'] ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
+                      </button>
+
+                      {openSections['__unsectioned_exams'] && (
+                        <div className="bg-slate-50/50 pb-2">
+                          {lessons.filter(l => !(l as any).section_id && l.content_type === 'exam').map((lesson) => (
+                            <div
+                              key={lesson.id}
+                              onClick={() => selectLessonAndExpand(lesson)}
+                              className={`
+                                relative pl-4 pr-4 py-3 flex gap-3 items-start transition-all cursor-pointer
+                                ${currentLesson?.id === lesson.id ? 'bg-blue-50 border-l-4 border-[#003366]' : 'hover:bg-slate-100 border-l-4 border-transparent'}
+                              `}
+                            >
+                              <div className="mt-0.5 flex-shrink-0">
+                                {lesson.completed ? (
+                                  <CheckCircle2 size={18} className="text-green-500" />
+                                ) : currentLesson?.id === lesson.id ? (
+                                  <PlayCircle size={18} className="text-[#003366] fill-blue-100" />
+                                ) : (
+                                  <div className="w-[18px] h-[18px] rounded-full border-2 border-slate-300"></div>
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className={`text-sm font-medium leading-snug ${currentLesson?.id === lesson.id ? 'text-[#003366]' : 'text-slate-600'}`}>
+                                  {lesson.title}
+                                </p>
+                                <div className="flex items-center gap-2 mt-1 text-xs text-slate-400">
+                                  <span className="flex items-center gap-1">
+                                    <FileText size={10} />
+                                    Examen
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
