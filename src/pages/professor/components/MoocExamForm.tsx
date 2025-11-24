@@ -15,10 +15,11 @@ interface MoocExamFormProps {
   courseId: string;
   exam?: any;
   lessons?: Array<{ id: string; title: string; order_index: number }>;
+  sections?: Array<{ id: string; title: string; order_index: number }>;
   onClose: (refresh?: boolean) => void;
 }
 
-export const MoocExamForm = ({ courseId, exam, lessons, onClose }: MoocExamFormProps) => {
+export const MoocExamForm = ({ courseId, exam, lessons, sections, onClose }: MoocExamFormProps) => {
   const [form, setForm] = useState({
     title: exam?.title || "",
     description: exam?.description || "",
@@ -29,6 +30,7 @@ export const MoocExamForm = ({ courseId, exam, lessons, onClose }: MoocExamFormP
     time_limit_minutes: exam?.time_limit_minutes || 0,
     attempts_allowed: exam?.attempts_allowed || 1,
     lesson_id: exam?.lesson_id || null,
+    section_id: exam?.section_id || null,
   });
   const [saving, setSaving] = useState(false);
   const [showQuestions, setShowQuestions] = useState(!!exam);
@@ -58,13 +60,13 @@ export const MoocExamForm = ({ courseId, exam, lessons, onClose }: MoocExamFormP
       if (exam) {
         res = await supabase.from("mooc_exams").update({ ...form }).eq("id", exam.id).select();
       } else {
-        res = await supabase.from("mooc_exams").insert({ 
-          ...form, 
+        res = await supabase.from("mooc_exams").insert({
+          ...form,
           course_id: courseId,
-          created_by: user.id 
+          created_by: user.id
         }).select();
       }
-      
+
       if (res.error) {
         console.error("Error saving exam:", res.error);
         alert("Error al guardar el examen: " + res.error.message);
@@ -108,30 +110,57 @@ export const MoocExamForm = ({ courseId, exam, lessons, onClose }: MoocExamFormP
               </div>
               <div className="md:col-span-2">
                 <Label>Vincular a lección específica (opcional)</Label>
-                <Select 
-                  value={form.lesson_id || "none"} 
-                  onValueChange={(value) => setForm(f => ({ ...f, lesson_id: value === "none" ? null : value }))}
+                <Select
+                  value={form.lesson_id || "none"}
+                  onValueChange={(value) => setForm(f => ({ ...f, lesson_id: value === "none" ? null : value, section_id: null }))}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccionar lección" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">Sin vincular (examen general del curso)</SelectItem>
-                    {lessons && lessons.length > 0 ? (
-                      lessons.map((lesson) => (
+                    <SelectItem value="none">Sin vincular (examen libre)</SelectItem>
+                    {lessons && lessons.length > 0 && lessons.filter(l => l.id && l.id !== '').length > 0 ? (
+                      lessons.filter(l => l.id && l.id !== '').map((lesson) => (
                         <SelectItem key={lesson.id} value={lesson.id}>
                           Lección {lesson.order_index}: {lesson.title}
                         </SelectItem>
                       ))
                     ) : (
-                      <SelectItem value="no-lessons" disabled>No hay lecciones disponibles</SelectItem>
+                      <SelectItem value="no-lessons" disabled>No hay lecciones creadas. Crea lecciones primero.</SelectItem>
                     )}
                   </SelectContent>
                 </Select>
-                {form.lesson_id && (
+                {form.lesson_id ? (
                   <p className="text-xs text-muted-foreground mt-1">
                     ⚠️ La lección no se completará hasta que el estudiante apruebe este examen
                   </p>
+                ) : (
+                  <div className="mt-4">
+                    <Label>Vincular a sección (opcional)</Label>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      Si no vinculas a una lección, puedes ubicar el examen dentro de una sección específica.
+                    </p>
+                    <Select
+                      value={form.section_id || "none"}
+                      onValueChange={(value) => setForm(f => ({ ...f, section_id: value === "none" ? null : value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar sección" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Sin sección (aparecerá al final)</SelectItem>
+                        {sections && sections.length > 0 ? (
+                          sections.map((section) => (
+                            <SelectItem key={section.id} value={section.id}>
+                              Sección {section.order_index}: {section.title}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="no-sections" disabled>No hay secciones creadas.</SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 )}
               </div>
               <div>

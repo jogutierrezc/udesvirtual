@@ -9,11 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { 
-  Check, 
-  CheckCircle2, 
-  Circle, 
-  ArrowLeft, 
+import {
+  Check,
+  CheckCircle2,
+  Circle,
+  ArrowLeft,
   Loader2,
   PlayCircle,
   Lock,
@@ -134,7 +134,7 @@ export default function CourseLearning() {
     try {
       setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
-      
+
       if (!user) {
         navigate("/auth");
         return;
@@ -214,13 +214,12 @@ export default function CourseLearning() {
           readingsByLesson.set(r.lesson_id, arr);
         });
 
-        // Cargar exámenes vinculados a lecciones
+        // Cargar exámenes vinculados a lecciones Y globales
         const { data: examsData } = await supabase
           .from('mooc_exams')
-          .select('id, title, lesson_id, passing_score')
+          .select('id, title, lesson_id, section_id, passing_score, description, order_index')
           .eq('course_id', courseId)
-          .eq('status', 'published')
-          .not('lesson_id', 'is', null);
+          .eq('status', 'published');
 
         // Cargar intentos del estudiante para esos exámenes
         const examIds = (examsData || []).map((e: any) => e.id);
@@ -237,9 +236,9 @@ export default function CourseLearning() {
           (attemptsData || []).forEach((att: any) => {
             const existing = examAttemptsMap.get(att.exam_id);
             if (!existing) {
-              examAttemptsMap.set(att.exam_id, { 
-                passed: att.passed || false, 
-                attempts: 1 
+              examAttemptsMap.set(att.exam_id, {
+                passed: att.passed || false,
+                attempts: 1
               });
             } else {
               examAttemptsMap.set(att.exam_id, {
@@ -284,7 +283,34 @@ export default function CourseLearning() {
           exam: examsByLesson.get(lesson.id) || null,
         } as any));
 
-  setLessons(lessonsWithProgress);
+        // Agregar exámenes globales como "lecciones" virtuales
+        const globalExams = (examsData || []).filter(e => !e.lesson_id);
+        globalExams.forEach(exam => {
+          const attemptInfo = examAttemptsMap.get(exam.id) || { passed: false, attempts: 0 };
+          lessonsWithProgress.push({
+            id: `exam_${exam.id}`,
+            title: exam.title,
+            description: exam.description || 'Evaluación del curso',
+            duration_hours: 0,
+            order_index: exam.order_index || 9999,
+            content: '',
+            video_url: null,
+            completed: attemptInfo.passed,
+            content_type: 'exam',
+            section_id: exam.section_id || null,
+            exam: {
+              id: exam.id,
+              title: exam.title,
+              passed: attemptInfo.passed,
+              attempts: attemptInfo.attempts
+            }
+          } as any);
+        });
+
+        // Ordenar todas las lecciones por order_index
+        lessonsWithProgress.sort((a, b) => a.order_index - b.order_index);
+
+        setLessons(lessonsWithProgress);
 
         // Cargar secciones reales para encabezados
         const { data: sectionsData } = await supabase
@@ -507,8 +533,8 @@ export default function CourseLearning() {
 
   // Solo puede completar si no hay actividad pendiente
   const canCompleteLesson = currentLesson && (
-    currentLesson.completed || 
-    !currentLesson.video_url || 
+    currentLesson.completed ||
+    !currentLesson.video_url ||
     videoWatched
   ) && (!currentLesson.exam || currentLesson.exam.passed)
     && (
@@ -517,12 +543,12 @@ export default function CourseLearning() {
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-slate-800">
-      
+
       {/* --- TOP HEADER (Contexto del Curso) --- */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <button 
+            <button
               onClick={() => navigate("/dashboard")}
               className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors"
             >
@@ -547,10 +573,10 @@ export default function CourseLearning() {
       </header>
 
       <main className="max-w-7xl mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-        
+
         {/* --- COLUMNA IZQUIERDA: CONTENIDO PRINCIPAL (2/3 del ancho) --- */}
         <section className="lg:col-span-2 space-y-6">
-          
+
           {currentLesson ? (
             <>
               {/* 1. Título y Descripción del Tema Actual */}
@@ -560,7 +586,7 @@ export default function CourseLearning() {
                     Tema Actual
                   </span>
                   <h2 className="text-3xl font-bold text-slate-900 mb-4">{currentLesson.title}</h2>
-                  
+
                   {currentLesson.description && (
                     <div className="prose prose-slate text-slate-600 max-w-none leading-relaxed">
                       <div dangerouslySetInnerHTML={{ __html: sanitizeLessonHtml(currentLesson.description) }} />
@@ -613,7 +639,7 @@ export default function CourseLearning() {
                     {/* Decorative circles */}
                     <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
                     <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-32 h-32 bg-black/10 rounded-full blur-xl"></div>
-                    
+
                     <div className="relative p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
@@ -652,12 +678,12 @@ export default function CourseLearning() {
                           )}
                         </div>
                       </div>
-                      
+
                       {currentLesson.live_url && (
                         <div className="flex-shrink-0 w-full md:w-auto">
-                          <a 
-                            href={currentLesson.live_url} 
-                            target="_blank" 
+                          <a
+                            href={currentLesson.live_url}
+                            target="_blank"
                             rel="noopener noreferrer"
                             className="w-full md:w-auto flex items-center justify-center gap-2 bg-white text-[#464775] hover:bg-gray-100 px-5 py-3 rounded-lg font-bold transition-all shadow-md active:scale-95"
                           >
@@ -689,7 +715,7 @@ export default function CourseLearning() {
                           )}
                         </p>
                       </div>
-                      <Button 
+                      <Button
                         variant={currentLesson.exam.passed ? "outline" : "default"}
                         className={!currentLesson.exam.passed ? "bg-[#003366] hover:bg-[#002a55]" : ""}
                         onClick={async (e) => {
@@ -781,10 +807,10 @@ export default function CourseLearning() {
                         {activity && !activitySubmission
                           ? "Debes entregar la evidencia de la actividad para completar la lección."
                           : currentLesson.video_url && !videoWatched
-                          ? "Mira el video completo para continuar"
-                          : currentLesson.exam && !currentLesson.exam.passed
-                          ? "Debes aprobar el examen para completar"
-                          : "Marca como completada para avanzar"}
+                            ? "Mira el video completo para continuar"
+                            : currentLesson.exam && !currentLesson.exam.passed
+                              ? "Debes aprobar el examen para completar"
+                              : "Marca como completada para avanzar"}
                       </p>
                     </div>
                     <Button
@@ -813,13 +839,13 @@ export default function CourseLearning() {
               {currentLesson.readings && currentLesson.readings.length > 0 && (
                 <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
                   <h3 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
-                    <FileText size={20} className="text-[#003366]" /> 
+                    <FileText size={20} className="text-[#003366]" />
                     Material de Apoyo
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {currentLesson.readings.map((r) => (
-                      <div 
-                        key={r.id} 
+                      <div
+                        key={r.id}
                         onClick={() => navigate(`/courses/${courseId}/lessons/${currentLesson.id}/reading/${r.id}`)}
                         className="p-4 border border-slate-100 rounded-xl flex items-center gap-3 hover:bg-slate-50 transition-colors cursor-pointer group"
                       >
@@ -864,13 +890,13 @@ export default function CourseLearning() {
               {/* Secciones */}
               {sections.length > 0 ? (
                 sections.map((section) => {
-                  const sectionLessons = lessons.filter(l => (l as any).section_id === section.id).sort((a,b)=>a.order_index-b.order_index);
+                  const sectionLessons = lessons.filter(l => (l as any).section_id === section.id).sort((a, b) => a.order_index - b.order_index);
                   const isOpen = openSections[section.id];
-                  
+
                   return (
                     <div key={section.id} className="bg-white">
                       {/* Module Header */}
-                      <button 
+                      <button
                         onClick={() => toggleSection(section.id)}
                         className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors"
                       >
@@ -886,8 +912,8 @@ export default function CourseLearning() {
                         <div className="bg-slate-50/50 pb-2">
                           {sectionLessons.length > 0 ? (
                             sectionLessons.map((lesson) => (
-                              <div 
-                                key={lesson.id} 
+                              <div
+                                key={lesson.id}
                                 onClick={() => selectLessonAndExpand(lesson)}
                                 className={`
                                   relative pl-4 pr-4 py-3 flex gap-3 items-start transition-all cursor-pointer
@@ -934,8 +960,8 @@ export default function CourseLearning() {
                 // Fallback si no hay secciones (lista plana)
                 <div className="bg-slate-50/50 pb-2">
                   {lessons.map((lesson) => (
-                    <div 
-                      key={lesson.id} 
+                    <div
+                      key={lesson.id}
                       onClick={() => selectLesson(lesson)}
                       className={`
                         relative pl-4 pr-4 py-3 flex gap-3 items-start transition-all cursor-pointer
@@ -963,11 +989,11 @@ export default function CourseLearning() {
                   ))}
                 </div>
               )}
-              
+
               {/* Lecciones sin sección (si hay secciones pero algunas lecciones no tienen) */}
               {sections.length > 0 && lessons.filter(l => !(l as any).section_id).length > 0 && (
                 <div className="bg-white">
-                  <button 
+                  <button
                     onClick={() => toggleSection('__unsectioned')}
                     className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors"
                   >
@@ -977,12 +1003,12 @@ export default function CourseLearning() {
                     </div>
                     {openSections['__unsectioned'] ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
                   </button>
-                  
+
                   {openSections['__unsectioned'] && (
                     <div className="bg-slate-50/50 pb-2">
                       {lessons.filter(l => !(l as any).section_id).map((lesson) => (
-                        <div 
-                          key={lesson.id} 
+                        <div
+                          key={lesson.id}
                           onClick={() => selectLessonAndExpand(lesson)}
                           className={`
                             relative pl-4 pr-4 py-3 flex gap-3 items-start transition-all cursor-pointer
@@ -1017,7 +1043,7 @@ export default function CourseLearning() {
         </aside>
 
       </main>
-      
+
       {/* Exam result dialog */}
       <Dialog open={showExamResultDialog} onOpenChange={setShowExamResultDialog}>
         <DialogContent>

@@ -73,7 +73,11 @@ export default function CourseEditorPage() {
   const loadLessons = async (id: string) => {
     try {
       const { data, error } = await supabase.from('mooc_lessons').select('*').eq('course_id', id).order('order_index');
-      if (error) throw error;
+      if (error) {
+        console.error('Error loading lessons:', error);
+        throw error;
+      }
+      console.log('Loaded lessons:', data);
       setLessons((data||[]).map((l:any)=>({
         ...l,
         content_type: l.content_type || 'video',
@@ -351,12 +355,20 @@ export default function CourseEditorPage() {
         <Dialog open={showExamForm} onOpenChange={setShowExamForm}>
           <DialogContent className="max-w-[95vw] w-[95vw] h-[95vh] p-0 overflow-hidden">
             <div className="h-full overflow-y-auto p-6">
-              <MoocExamForm
-                courseId={courseId}
-                exam={null}
-                lessons={lessons.map(l=>({ id: l.id || '', title: l.title, order_index: l.order_index }))}
-                onClose={() => setShowExamForm(false)}
-              />
+              {(() => {
+                console.log('Rendering MoocExamForm with lessons:', lessons);
+                return (
+                  <MoocExamForm
+                    courseId={courseId}
+                    exam={null}
+                    lessons={lessons.map(l=>({ id: l.id || '', title: l.title, order_index: l.order_index }))}
+                    onClose={(refresh) => {
+                      setShowExamForm(false);
+                      if (refresh && courseId) loadLessons(courseId);
+                    }}
+                  />
+                );
+              })()}
             </div>
           </DialogContent>
         </Dialog>

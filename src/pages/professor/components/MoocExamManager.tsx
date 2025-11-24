@@ -25,6 +25,8 @@ interface MoocExamManagerProps {
 export const MoocExamManager = ({ courseId }: MoocExamManagerProps) => {
   const [loading, setLoading] = useState(true);
   const [exams, setExams] = useState<MoocExam[]>([]);
+  const [lessons, setLessons] = useState<any[]>([]);
+  const [sections, setSections] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingExam, setEditingExam] = useState<MoocExam | null>(null);
 
@@ -40,6 +42,23 @@ export const MoocExamManager = ({ courseId }: MoocExamManagerProps) => {
       .eq("course_id", courseId)
       .order("order_index", { ascending: true });
     if (!error && data) setExams(data);
+
+    // Fetch lessons for the form
+    const { data: lessonsData } = await supabase
+      .from("mooc_lessons")
+      .select("id, title, order_index")
+      .eq("course_id", courseId)
+      .order("order_index", { ascending: true });
+    if (lessonsData) setLessons(lessonsData);
+
+    // Fetch sections for the form
+    const { data: sectionsData } = await supabase
+      .from("mooc_course_sections")
+      .select("id, title, order_index")
+      .eq("course_id", courseId)
+      .order("order_index", { ascending: true });
+    if (sectionsData) setSections(sectionsData);
+
     setLoading(false);
   };
 
@@ -99,6 +118,8 @@ export const MoocExamManager = ({ courseId }: MoocExamManagerProps) => {
         <MoocExamForm
           courseId={courseId}
           exam={editingExam}
+          lessons={lessons}
+          sections={sections}
           onClose={handleFormClose}
         />
       )}

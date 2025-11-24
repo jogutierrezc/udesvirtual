@@ -354,7 +354,10 @@ export default function CourseEditorPage() {
                 courseId={courseId}
                 exam={null}
                 lessons={lessons.map(l=>({ id: l.id || '', title: l.title, order_index: l.order_index }))}
-                onClose={() => setShowExamForm(false)}
+                onClose={(refresh) => {
+                  setShowExamForm(false);
+                  if (refresh && courseId) loadLessons(courseId);
+                }}
               />
             </div>
           </DialogContent>
