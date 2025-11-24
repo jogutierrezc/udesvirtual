@@ -283,6 +283,14 @@ export default function CourseLearning() {
           exam: examsByLesson.get(lesson.id) || null,
         } as any));
 
+        // Cargar actividades
+        const { data: activitiesData } = await supabase
+          .from('mooc_activities')
+          .select('id, lesson_id, title')
+          .in('lesson_id', lessonsData.map(l => l.id));
+
+        const activitiesMap = new Map((activitiesData || []).map((a: any) => [a.lesson_id, a]));
+
         // Agregar exámenes globales como "lecciones" virtuales
         const globalExams = (examsData || []).filter(e => !e.lesson_id);
         globalExams.forEach(exam => {
@@ -307,6 +315,14 @@ export default function CourseLearning() {
           } as any);
         });
 
+        // Marcar lecciones que tienen actividad como tipo 'exam' para el sidebar si no tienen sección
+        // O mejor, ajustamos la lógica del sidebar para incluir lessons con actividad en la sección de exámenes
+        lessonsWithProgress.forEach(l => {
+          if (activitiesMap.has(l.id)) {
+            (l as any).has_activity = true;
+          }
+        });
+
         // Ordenar todas las lecciones por order_index
         lessonsWithProgress.sort((a, b) => a.order_index - b.order_index);
 
@@ -323,10 +339,10 @@ export default function CourseLearning() {
         // Inicialmente todas las secciones abiertas
         const initialOpen: Record<string, boolean> = {};
         mappedSections.forEach(s => { initialOpen[s.id] = true; });
-        if (lessonsWithProgress.some(l => !l.section_id && l.content_type !== 'exam')) {
+        if (lessonsWithProgress.some(l => !l.section_id && l.content_type !== 'exam' && !(l as any).has_activity)) {
           initialOpen['__unsectioned'] = true;
         }
-        if (lessonsWithProgress.some(l => !l.section_id && l.content_type === 'exam')) {
+        if (lessonsWithProgress.some(l => !l.section_id && (l.content_type === 'exam' || (l as any).has_activity))) {
           initialOpen['__unsectioned_exams'] = true;
         }
         setOpenSections(initialOpen);
@@ -519,7 +535,7 @@ export default function CourseLearning() {
   const selectLessonAndExpand = (lesson: Lesson) => {
     if (lesson.section_id) {
       setOpenSections(prev => ({ ...prev, [lesson.section_id!]: true }));
-    } else if (lesson.content_type === 'exam') {
+    } else if (lesson.content_type === 'exam' || (lesson as any).has_activity) {
       setOpenSections(prev => ({ ...prev, ['__unsectioned_exams']: true }));
     } else {
       setOpenSections(prev => ({ ...prev, ['__unsectioned']: true }));
@@ -998,8 +1014,8 @@ export default function CourseLearning() {
               {/* Lecciones sin sección (si hay secciones pero algunas lecciones no tienen) */}
               {sections.length > 0 && (
                 <>
-                  {/* 1. Lecciones Adicionales (No exámenes) */}
-                  {lessons.filter(l => !(l as any).section_id && l.content_type !== 'exam').length > 0 && (
+                  {/* 1. Lecciones Adicionales (No exámenes ni actividades) */}
+                  {lessons.filter(l => !(l as any).section_id && l.content_type !== 'exam' && !(l as any).has_activity).length > 0 && (
                     <div className="bg-white">
                       <button
                         onClick={() => toggleSection('__unsectioned')}
@@ -1014,7 +1030,7 @@ export default function CourseLearning() {
 
                       {openSections['__unsectioned'] && (
                         <div className="bg-slate-50/50 pb-2">
-                          {lessons.filter(l => !(l as any).section_id && l.content_type !== 'exam').map((lesson) => (
+                          {lessons.filter(l => !(l as any).section_id && l.content_type !== 'exam' && !(l as any).has_activity).map((lesson) => (
                             <div
                               key={lesson.id}
                               onClick={() => selectLessonAndExpand(lesson)}
@@ -1048,7 +1064,7 @@ export default function CourseLearning() {
                   )}
 
                   {/* 2. Exámenes / Actividades sin sección */}
-                  {lessons.filter(l => !(l as any).section_id && l.content_type === 'exam').length > 0 && (
+                  {lessons.filter(l => !(l as any).section_id && (l.content_type === 'exam' || (l as any).has_activity)).length > 0 && (
                     <div className="bg-white">
                       <button
                         onClick={() => toggleSection('__unsectioned_exams')}
@@ -1056,14 +1072,14 @@ export default function CourseLearning() {
                       >
                         <div className="text-left">
                           <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-0.5">Evaluación</p>
-                          <p className="font-bold text-slate-800 text-sm">Exámenes</p>
+                          <p className="font-bold text-slate-800 text-sm">Exámenes y Actividades</p>
                         </div>
                         {openSections['__unsectioned_exams'] ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
                       </button>
 
                       {openSections['__unsectioned_exams'] && (
                         <div className="bg-slate-50/50 pb-2">
-                          {lessons.filter(l => !(l as any).section_id && l.content_type === 'exam').map((lesson) => (
+                          {lessons.filter(l => !(l as any).section_id && (l.content_type === 'exam' || (l as any).has_activity)).map((lesson) => (
                             <div
                               key={lesson.id}
                               onClick={() => selectLessonAndExpand(lesson)}
@@ -1088,7 +1104,7 @@ export default function CourseLearning() {
                                 <div className="flex items-center gap-2 mt-1 text-xs text-slate-400">
                                   <span className="flex items-center gap-1">
                                     <FileText size={10} />
-                                    Examen
+                                    {lesson.content_type === 'exam' ? 'Examen' : 'Actividad'}
                                   </span>
                                 </div>
                               </div>
