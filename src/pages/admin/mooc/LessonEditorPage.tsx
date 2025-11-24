@@ -71,7 +71,93 @@ export default function LessonEditorPage() {
     }
   };
 
-  // ... (loadReadings and handleFileUpload remain unchanged)
+  const loadReadings = async (lessonId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('mooc_readings')
+        .select('*')
+        .eq('lesson_id', lessonId)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      setReadings(data || []);
+    } catch (e: any) {
+      console.error('loadReadings', e);
+      toast({ title: 'Error', description: 'No se pudieron cargar las lecturas', variant: 'destructive' });
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0 || !lessonId) return;
+
+    setUploadingReading(true);
+    try {
+      for (const file of Array.from(files)) {
+        // Validar tamaño (máx 50MB)
+        if (file.size > 50 * 1024 * 1024) {
+          toast({ title: 'Error', description: `${file.name} excede el tamaño máximo de 50MB`, variant: 'destructive' });
+          continue;
+        }
+
+        // Subir archivo a storage
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${lessonId}/${Date.now()}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('mooc-readings')
+          .upload(fileName, file);
+
+        if (uploadError) throw uploadError;
+
+        // Crear registro en la tabla
+        const { error: dbError } = await supabase
+          .from('mooc_readings')
+          .insert({
+            lesson_id: lessonId,
+            title: file.name,
+            storage_path: fileName
+          });
+
+        if (dbError) throw dbError;
+      }
+
+      toast({ title: 'Archivos subidos correctamente' });
+      await loadReadings(lessonId);
+    } catch (e: any) {
+      console.error('handleFileUpload', e);
+      toast({ title: 'Error', description: e.message || 'No se pudieron subir los archivos', variant: 'destructive' });
+    } finally {
+      setUploadingReading(false);
+      // Reset input
+      e.target.value = '';
+    }
+  };
+
+  const handleDeleteReading = async (readingId: string, storagePath: string) => {
+    if (!confirm('¿Estás seguro de eliminar esta lectura?')) return;
+
+    try {
+      // Eliminar de storage
+      if (storagePath) {
+        await supabase.storage.from('mooc-readings').remove([storagePath]);
+      }
+
+      // Eliminar de la base de datos
+      const { error } = await supabase
+        .from('mooc_readings')
+        .delete()
+        .eq('id', readingId);
+
+      if (error) throw error;
+
+      toast({ title: 'Lectura eliminada' });
+      if (lessonId) await loadReadings(lessonId);
+    } catch (e: any) {
+      console.error('handleDeleteReading', e);
+      toast({ title: 'Error', description: e.message || 'No se pudo eliminar la lectura', variant: 'destructive' });
+    }
+  };
 
   const handleSave = async () => {
     if (!lesson) return;
