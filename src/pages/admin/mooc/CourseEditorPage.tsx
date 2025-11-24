@@ -13,6 +13,7 @@ import { MoocExamManager } from '@/pages/professor/components/MoocExamManager';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import { useToast } from "@/hooks/use-toast";
+import { ChevronUp, ChevronDown, Trash2 } from "lucide-react";
 
 type Lesson = {
   id?: string;
@@ -212,6 +213,53 @@ export default function CourseEditorPage() {
     }
   };
 
+  const deleteLesson = async (lessonId: string) => {
+    if (!confirm('¿Estás seguro de eliminar esta lección? Esta acción no se puede deshacer.')) return;
+
+    try {
+      const { error } = await supabase.from('mooc_lessons').delete().eq('id', lessonId);
+      if (error) throw error;
+
+      toast({ title: 'Lección eliminada' });
+      if (courseId) await loadLessons(courseId);
+    } catch (e: any) {
+      console.error('deleteLesson', e);
+      toast({ title: 'Error', description: e.message || 'No se pudo eliminar la lección', variant: 'destructive' });
+    }
+  };
+
+  const moveLessonOrder = async (lessonId: string, direction: 'up' | 'down') => {
+    const lessonIndex = lessons.findIndex(l => l.id === lessonId);
+    if (lessonIndex === -1) return;
+
+    const currentLesson = lessons[lessonIndex];
+    const targetIndex = direction === 'up' ? lessonIndex - 1 : lessonIndex + 1;
+
+    // Check bounds
+    const sameSectionLessons = lessons.filter(l => l.section_id === currentLesson.section_id);
+    const currentIndexInSection = sameSectionLessons.findIndex(l => l.id === lessonId);
+
+    if (direction === 'up' && currentIndexInSection === 0) return;
+    if (direction === 'down' && currentIndexInSection === sameSectionLessons.length - 1) return;
+
+    const targetLesson = sameSectionLessons[direction === 'up' ? currentIndexInSection - 1 : currentIndexInSection + 1];
+    if (!targetLesson) return;
+
+    try {
+      // Swap order_index
+      const tempOrder = currentLesson.order_index;
+
+      await supabase.from('mooc_lessons').update({ order_index: targetLesson.order_index }).eq('id', currentLesson.id);
+      await supabase.from('mooc_lessons').update({ order_index: tempOrder }).eq('id', targetLesson.id);
+
+      toast({ title: 'Orden actualizado' });
+      if (courseId) await loadLessons(courseId);
+    } catch (e: any) {
+      console.error('moveLessonOrder', e);
+      toast({ title: 'Error', description: e.message || 'No se pudo actualizar el orden', variant: 'destructive' });
+    }
+  };
+
   return (
     <div className="p-6 space-y-6">
       {/* Course image large */}
@@ -301,16 +349,46 @@ export default function CourseEditorPage() {
                 </div>
               </summary>
               <div className="p-4 space-y-3">
-                {lessons.filter(l => l.section_id === s.id).map(l => (
+                {lessons.filter(l => l.section_id === s.id).sort((a, b) => (a.order_index || 0) - (b.order_index || 0)).map((l, idx, arr) => (
                   <Card key={l.id || l.order_index}>
-                    <CardContent className="flex items-center justify-between">
-                      <div>
-                        <div className="font-medium">{l.title || '(Sin título)'}</div>
-                        <div className="text-sm text-muted-foreground">{l.duration_hours || 0} horas</div>
+                    <CardContent className="flex items-center justify-between py-3">
+                      <div className="flex items-center gap-3">
+                        <div className="flex flex-col gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => l.id && moveLessonOrder(l.id, 'up')}
+                            disabled={idx === 0}
+                            className="h-6 w-6 p-0"
+                          >
+                            <ChevronUp className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => l.id && moveLessonOrder(l.id, 'down')}
+                            disabled={idx === arr.length - 1}
+                            className="h-6 w-6 p-0"
+                          >
+                            <ChevronDown className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <div>
+                          <div className="font-medium">{l.title || '(Sin título)'}</div>
+                          <div className="text-sm text-muted-foreground">{l.duration_hours || 0} horas</div>
+                        </div>
                       </div>
                       <div className="flex gap-2">
                         <Button size="sm" onClick={async () => { await openLessonEditor(l); }}>Editar</Button>
                         <Button size="sm" variant="outline" onClick={() => setShowExamForm(true)}>Crear examen</Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => l.id && deleteLesson(l.id)}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>
@@ -327,16 +405,46 @@ export default function CourseEditorPage() {
             <div className="text-sm text-muted-foreground">{lessons.filter(l => !l.section_id).length} lecciones • {lessons.filter(l => !l.section_id).reduce((sum, l) => sum + (l.duration_hours || 0), 0)}h</div>
           </summary>
           <div className="p-4 space-y-3">
-            {lessons.filter(l => !l.section_id).map(l => (
+            {lessons.filter(l => !l.section_id).sort((a, b) => (a.order_index || 0) - (b.order_index || 0)).map((l, idx, arr) => (
               <Card key={l.id || l.order_index}>
-                <CardContent className="flex items-center justify-between">
-                  <div>
-                    <div className="font-medium">{l.title || '(Sin título)'}</div>
-                    <div className="text-sm text-muted-foreground">{l.duration_hours || 0} horas</div>
+                <CardContent className="flex items-center justify-between py-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex flex-col gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => l.id && moveLessonOrder(l.id, 'up')}
+                        disabled={idx === 0}
+                        className="h-6 w-6 p-0"
+                      >
+                        <ChevronUp className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => l.id && moveLessonOrder(l.id, 'down')}
+                        disabled={idx === arr.length - 1}
+                        className="h-6 w-6 p-0"
+                      >
+                        <ChevronDown className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div>
+                      <div className="font-medium">{l.title || '(Sin título)'}</div>
+                      <div className="text-sm text-muted-foreground">{l.duration_hours || 0} horas</div>
+                    </div>
                   </div>
                   <div className="flex gap-2">
                     <Button size="sm" onClick={async () => { await openLessonEditor(l); }}>Editar</Button>
                     <Button size="sm" variant="outline" onClick={() => setShowExamForm(true)}>Crear examen</Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => l.id && deleteLesson(l.id)}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
