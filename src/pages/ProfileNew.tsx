@@ -173,6 +173,13 @@ export default function ProfileNew() {
     if (!userId || !profile) return;
     try {
       setSaving(true);
+
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) {
+        toast({ title: "Sesión expirada", description: "Inicia sesión nuevamente.", variant: "destructive" });
+        return;
+      }
+
       const update = {
         ...profile,
         id: userId,
@@ -185,7 +192,11 @@ export default function ProfileNew() {
       toast({ title: "Perfil actualizado", description: "Tus cambios se han guardado." });
     } catch (e: any) {
       console.error(e);
-      toast({ title: "Error", description: e.message || "No se pudo guardar.", variant: "destructive" });
+      if (e.message?.includes("JWT expired") || e.message?.includes("jwt expired")) {
+        toast({ title: "Sesión expirada", description: "Inicia sesión nuevamente.", variant: "destructive" });
+      } else {
+        toast({ title: "Error", description: e.message || "No se pudo guardar.", variant: "destructive" });
+      }
     } finally {
       setSaving(false);
     }

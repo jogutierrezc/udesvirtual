@@ -2,7 +2,8 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, User, Eye, CheckSquare } from "lucide-react";
+import { Loader2, User, Eye, CheckSquare, Download } from "lucide-react";
+import * as XLSX from 'xlsx';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -74,7 +75,7 @@ export default function MisEstudiantes() {
         if (userIds.length > 0) {
           const { data: profiles } = await supabase
             .from('profiles')
-            .select('id, full_name, email, city, department')
+            .select('id, full_name, email, city, department, document_type, document_number, phone')
             .in('id', userIds);
           profilesMap = (profiles || []).reduce((acc: any, p: any) => ({ ...acc, [p.id]: p }), {});
         }
@@ -99,6 +100,47 @@ export default function MisEstudiantes() {
     }
   };
 
+  const exportToExcel = () => {
+    try {
+      // Flatten the data: Course Name -> Student Details
+      const dataToExport: any[] = [];
+
+      courses.forEach(course => {
+        course.enrollments.forEach((en: any) => {
+          const p = en.profile || {};
+          dataToExport.push({
+            'Curso': course.title,
+            'Nombre Estudiante': p.full_name || 'N/A',
+            'Tipo Documento': p.document_type || 'N/A',
+            'Número Documento': p.document_number || 'N/A',
+            'Correo': p.email || 'N/A',
+            'Teléfono': p.phone || 'N/A',
+            'Ciudad': p.city || 'N/A',
+            'Departamento': p.department || 'N/A',
+            'Estado': en.completed ? 'Completado' : 'En Curso',
+            'Progreso (%)': en.progress || 0,
+            'Fecha Inscripción': en.enrolled_at ? new Date(en.enrolled_at).toLocaleDateString() : 'N/A'
+          });
+        });
+      });
+
+      if (dataToExport.length === 0) {
+        toast({ title: 'Aviso', description: 'No hay datos para exportar', variant: 'default' });
+        return;
+      }
+
+      const ws = XLSX.utils.json_to_sheet(dataToExport);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Estudiantes");
+      XLSX.writeFile(wb, "Lista_Estudiantes_Udesvirtual.xlsx");
+
+      toast({ title: 'Éxito', description: 'Archivo Excel generado correctamente' });
+    } catch (error) {
+      console.error('Error exportando a Excel:', error);
+      toast({ title: 'Error', description: 'No se pudo generar el archivo Excel', variant: 'destructive' });
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -115,9 +157,15 @@ export default function MisEstudiantes() {
             <h1 className="text-3xl font-bold tracking-tight">Mis Estudiantes</h1>
             <p className="text-muted-foreground mt-1">Gestiona y revisa el progreso de tus estudiantes</p>
           </div>
-          <div className="text-right">
-            <div className="text-2xl font-bold text-primary">{courses.length}</div>
-            <div className="text-xs text-muted-foreground">Cursos activos</div>
+          <div className="flex items-center gap-4">
+            <Button onClick={exportToExcel} variant="outline" className="gap-2">
+              <Download className="h-4 w-4" />
+              Exportar Excel
+            </Button>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-primary">{courses.length}</div>
+              <div className="text-xs text-muted-foreground">Cursos activos</div>
+            </div>
           </div>
         </div>
 
@@ -152,7 +200,7 @@ export default function MisEstudiantes() {
                     </div>
                   </div>
                 </CardHeader>
-                
+
                 <CardContent className="p-0">
                   {course.enrollments.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
@@ -161,8 +209,8 @@ export default function MisEstudiantes() {
                   ) : (
                     <div className="divide-y">
                       {course.enrollments.map((en: Enrollment & { profile: any }) => (
-                        <div 
-                          key={en.id} 
+                        <div
+                          key={en.id}
                           className="flex items-center justify-between p-4 hover:bg-muted/30 transition-colors"
                         >
                           <div className="flex items-center gap-4 flex-1 min-w-0">
@@ -176,7 +224,7 @@ export default function MisEstudiantes() {
                                   .toUpperCase()}
                               </AvatarFallback>
                             </Avatar>
-                            
+
                             <div className="flex-1 min-w-0 grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-4">
                               <div className="min-w-0">
                                 <div className="text-sm font-medium truncate">
@@ -186,7 +234,7 @@ export default function MisEstudiantes() {
                                   {en.profile?.email || 'Sin correo'}
                                 </div>
                               </div>
-                              
+
                               <div className="min-w-0 text-xs text-muted-foreground">
                                 {en.profile?.city && (
                                   <div className="truncate">{en.profile.city}</div>
@@ -198,12 +246,12 @@ export default function MisEstudiantes() {
                                   <div className="text-muted-foreground/50">Sin ubicación</div>
                                 )}
                               </div>
-                              
+
                               <div className="flex items-center gap-2">
                                 <div className="flex-1">
                                   <div className="flex items-center gap-2 mb-1">
                                     <div className="flex-1 bg-secondary h-2 rounded-full overflow-hidden">
-                                      <div 
+                                      <div
                                         className="bg-primary h-full transition-all"
                                         style={{ width: `${en.progress || 0}%` }}
                                       />
@@ -221,9 +269,9 @@ export default function MisEstudiantes() {
                           </div>
 
                           <div className="flex items-center gap-2 ml-4 shrink-0">
-                            <Button 
-                              type="button" 
-                              size="sm" 
+                            <Button
+                              type="button"
+                              size="sm"
                               variant="outline"
                               onClick={() => openStudentDetail(course.id, en.user_id)}
                             >
@@ -246,9 +294,9 @@ export default function MisEstudiantes() {
             courseId={selectedStudent.courseId}
             studentId={selectedStudent.studentId}
             open={showStudentDialog}
-            onOpenChange={(open) => { 
-              if (!open) setSelectedStudent(null); 
-              setShowStudentDialog(open); 
+            onOpenChange={(open) => {
+              if (!open) setSelectedStudent(null);
+              setShowStudentDialog(open);
             }}
           />
         )}

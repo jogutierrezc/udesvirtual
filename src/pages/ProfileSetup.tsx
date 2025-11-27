@@ -78,7 +78,7 @@ export default function ProfileSetup() {
   const checkProfile = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      
+
       if (!session) {
         navigate("/auth");
         return;
@@ -104,24 +104,24 @@ export default function ProfileSetup() {
         navigate("/welcome");
       } else {
         // Pre-llenar con datos disponibles
-          setFormData(prev => ({
-            ...prev,
-            fullName: profile?.full_name || session.user.user_metadata?.full_name || "",
-            // manejar distintos nombres posibles de columna añadida
-            biography: (profile as any)?.bio || (profile as any)?.biography || (profile as any)?.profile_description || "",
-            orcid_link: (profile as any)?.orcid_link || "",
-            cvlac_link: (profile as any)?.cvlac_link || "",
-            isUdesStudent: (profile as any)?.is_udes || (profile as any)?.is_udes_student || false,
-          }));
+        setFormData(prev => ({
+          ...prev,
+          fullName: profile?.full_name || session.user.user_metadata?.full_name || "",
+          // manejar distintos nombres posibles de columna añadida
+          biography: (profile as any)?.bio || (profile as any)?.biography || (profile as any)?.profile_description || "",
+          orcid_link: (profile as any)?.orcid_link || "",
+          cvlac_link: (profile as any)?.cvlac_link || "",
+          isUdesStudent: (profile as any)?.is_udes || (profile as any)?.is_udes_student || false,
+        }));
 
-          // Verificar roles del usuario para saber si es profesor o admin (ambos ven el formulario de profesor)
-          try {
-            const { data: roles } = await supabase.from('user_roles').select('role').eq('user_id', session.user.id);
-            const hasProfessorOrAdmin = (roles || []).some((r: any) => r.role === 'professor' || r.role === 'admin');
-            setIsProfessor(hasProfessorOrAdmin);
-          } catch (err) {
-            console.error('Error checking roles', err);
-          }
+        // Verificar roles del usuario para saber si es profesor o admin (ambos ven el formulario de profesor)
+        try {
+          const { data: roles } = await supabase.from('user_roles').select('role').eq('user_id', session.user.id);
+          const hasProfessorOrAdmin = (roles || []).some((r: any) => r.role === 'professor' || r.role === 'admin');
+          setIsProfessor(hasProfessorOrAdmin);
+        } catch (err) {
+          console.error('Error checking roles', err);
+        }
       }
     } catch (error) {
       console.error("Error checking profile:", error);
@@ -266,6 +266,18 @@ export default function ProfileSetup() {
     setSaving(true);
 
     try {
+      // Verificar sesión antes de guardar
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) {
+        toast({
+          title: "Sesión expirada",
+          description: "Tu sesión ha expirado. Por favor inicia sesión nuevamente.",
+          variant: "destructive"
+        });
+        navigate("/auth");
+        return;
+      }
+
       const { error } = await supabase
         .from("profiles")
         .update({
@@ -305,11 +317,21 @@ export default function ProfileSetup() {
       navigate("/welcome");
     } catch (error: any) {
       console.error("Error saving profile:", error);
-      toast({
-        title: "Error",
-        description: error.message || "No se pudo guardar el perfil",
-        variant: "destructive"
-      });
+
+      if (error.message?.includes("JWT expired") || error.message?.includes("jwt expired")) {
+        toast({
+          title: "Sesión expirada",
+          description: "Tu sesión ha expirado. Por favor inicia sesión nuevamente.",
+          variant: "destructive"
+        });
+        navigate("/auth");
+      } else {
+        toast({
+          title: "Error",
+          description: error.message || "No se pudo guardar el perfil",
+          variant: "destructive"
+        });
+      }
     } finally {
       setSaving(false);
     }
@@ -386,7 +408,7 @@ export default function ProfileSetup() {
               </div>
 
               {/* Vínculo con UDES: si el correo es institucional mostrar opción especial */}
-              { (formData as any).isUdesStudent ? (
+              {(formData as any).isUdesStudent ? (
                 <div className="space-y-3">
                   <Label>¿Cuál es tu vínculo con la UDES?</Label>
                   <Select
@@ -553,7 +575,7 @@ export default function ProfileSetup() {
                       <SelectValue placeholder="Seleccionar departamento" />
                     </SelectTrigger>
                     <SelectContent>
-                      {( (formData as any).isUdesStudent && ((formData as any).udesVinculo === 'udes_estudiante' || (formData as any).udesVinculo === 'udes_profesor') ) ? [
+                      {((formData as any).isUdesStudent && ((formData as any).udesVinculo === 'udes_estudiante' || (formData as any).udesVinculo === 'udes_profesor')) ? [
                         "Santander",
                         "Norte de Santander",
                         "Cesar",
@@ -573,20 +595,20 @@ export default function ProfileSetup() {
               {(isProfessor || (formData as any).udesVinculo === 'udes_profesor') && (
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold">Perfil de Profesor</h3>
-                      <div className="space-y-2">
-                        <Label htmlFor="biography">Biografía / Descripción *</Label>
-                        <textarea id="biography" value={(formData as any).biography} onChange={(e) => handleChange('biography', e.target.value)} className="w-full p-2 border rounded" rows={4} />
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="orcid_link">Link ORCID *</Label>
-                          <Input id="orcid_link" value={(formData as any).orcid_link} onChange={(e) => handleChange('orcid_link', e.target.value)} placeholder="https://orcid.org/0000-0000-0000-0000" />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="cvlac_link">Link CVLAC *</Label>
-                          <Input id="cvlac_link" value={(formData as any).cvlac_link} onChange={(e) => handleChange('cvlac_link', e.target.value)} placeholder="https://scienti.minciencias.gov.co/cvlac/" />
-                        </div>
-                      </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="biography">Biografía / Descripción *</Label>
+                    <textarea id="biography" value={(formData as any).biography} onChange={(e) => handleChange('biography', e.target.value)} className="w-full p-2 border rounded" rows={4} />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="orcid_link">Link ORCID *</Label>
+                      <Input id="orcid_link" value={(formData as any).orcid_link} onChange={(e) => handleChange('orcid_link', e.target.value)} placeholder="https://orcid.org/0000-0000-0000-0000" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="cvlac_link">Link CVLAC *</Label>
+                      <Input id="cvlac_link" value={(formData as any).cvlac_link} onChange={(e) => handleChange('cvlac_link', e.target.value)} placeholder="https://scienti.minciencias.gov.co/cvlac/" />
+                    </div>
+                  </div>
                 </div>
               )}
 
