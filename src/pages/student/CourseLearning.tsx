@@ -378,9 +378,35 @@ export default function CourseLearning() {
         }
         setOpenSections(initialOpen);
 
-        // Seleccionar la primera lección no completada o la primera
-        const firstIncomplete = lessonsWithProgress.find(l => !l.completed);
-        setCurrentLesson(firstIncomplete || lessonsWithProgress[0] || null);
+        // Seleccionar la primera lección no completada o la primera que esté disponible
+        const firstIncomplete = lessonsWithProgress.find(l => {
+          if (l.completed) return false;
+          // Check availability
+          if (l.section_id) {
+            const section = mappedSections.find(s => s.id === l.section_id);
+            if (section) {
+              const now = new Date();
+              if (section.available_from && new Date(section.available_from) > now) return false;
+              if (section.available_until && new Date(section.available_until) < now) return false;
+            }
+          }
+          return true;
+        });
+
+        // Fallback to first available lesson if all are completed or none found
+        const firstAvailable = lessonsWithProgress.find(l => {
+          if (l.section_id) {
+            const section = mappedSections.find(s => s.id === l.section_id);
+            if (section) {
+              const now = new Date();
+              if (section.available_from && new Date(section.available_from) > now) return false;
+              if (section.available_until && new Date(section.available_until) < now) return false;
+            }
+          }
+          return true;
+        });
+
+        setCurrentLesson(firstIncomplete || firstAvailable || lessonsWithProgress[0] || null);
       }
     } catch (error: any) {
       console.error("Error loading course:", error);
@@ -661,293 +687,327 @@ export default function CourseLearning() {
         <section className="lg:col-span-2 space-y-6">
 
           {currentLesson ? (
-            <>
-              {/* 1. Título y Descripción del Tema Actual */}
-              <div className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-slate-100">
-                <div className="mb-6">
-                  <span className="inline-block px-3 py-1 bg-blue-50 text-[#003366] text-xs font-bold uppercase tracking-wider rounded-full mb-3">
-                    Tema Actual
-                  </span>
-                  <h2 className="text-3xl font-bold text-slate-900 mb-4">{currentLesson.title}</h2>
+            (() => {
+              // Check if the current lesson belongs to a locked section
+              let isLocked = false;
+              let lockMessage = "";
+              if (currentLesson.section_id) {
+                const section = sections.find(s => s.id === currentLesson.section_id);
+                if (section) {
+                  const now = new Date();
+                  if (section.available_from && new Date(section.available_from) > now) {
+                    isLocked = true;
+                    lockMessage = `Este módulo estará disponible desde el ${new Date(section.available_from).toLocaleString()}`;
+                  } else if (section.available_until && new Date(section.available_until) < now) {
+                    isLocked = true;
+                    lockMessage = `Este módulo cerró el ${new Date(section.available_until).toLocaleString()}`;
+                  }
+                }
+              }
 
-                  {currentLesson.description && (
-                    <div className="prose prose-slate text-slate-600 max-w-none leading-relaxed">
-                      <div dangerouslySetInnerHTML={{ __html: sanitizeLessonHtml(currentLesson.description) }} />
-                    </div>
-                  )}
-                </div>
-
-                {/* Video Player if available */}
-                {currentLesson.video_url && (
-                  <div className="mt-6 mb-6">
-                    {(() => {
-                      const embed = getEmbedUrl(currentLesson.video_url);
-                      if (!embed) {
-                        return (
-                          <div className="p-4 rounded-lg bg-muted">
-                            <p className="text-sm mb-2">Este video no tiene una vista embebida disponible.</p>
-                            <Button asChild>
-                              <a href={currentLesson.video_url} target="_blank" rel="noreferrer">Abrir video en YouTube</a>
-                            </Button>
-                          </div>
-                        );
-                      }
-                      return (
-                        <div className="aspect-video bg-black rounded-xl overflow-hidden shadow-lg">
-                          <iframe
-                            ref={videoRef}
-                            src={embed}
-                            className="w-full h-full"
-                            frameBorder={0}
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                            allowFullScreen
-                            title={currentLesson.title || 'Video'}
-                          />
-                        </div>
-                      );
-                    })()}
+              if (isLocked) {
+                return (
+                  <div className="bg-white rounded-2xl p-12 text-center shadow-sm border border-slate-100">
+                    <Lock className="h-16 w-16 text-slate-300 mx-auto mb-4" />
+                    <h3 className="text-xl font-bold text-slate-900">Contenido Bloqueado</h3>
+                    <p className="text-slate-500 mt-2">{lockMessage}</p>
+                    <Button variant="outline" className="mt-6" onClick={() => navigate("/dashboard")}>
+                      Volver al Panel
+                    </Button>
                   </div>
-                )}
+                );
+              }
 
-                {/* Lesson Content (HTML) */}
-                {currentLesson.content && (
-                  <div className="mt-6 prose prose-slate text-slate-600 max-w-none leading-relaxed">
-                    <div dangerouslySetInnerHTML={{ __html: sanitizeLessonHtml(currentLesson.content) }} />
-                  </div>
-                )}
+              return (
+                <>
+                  {/* 1. Título y Descripción del Tema Actual */}
+                  <div className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-slate-100">
+                    <div className="mb-6">
+                      <span className="inline-block px-3 py-1 bg-blue-50 text-[#003366] text-xs font-bold uppercase tracking-wider rounded-full mb-3">
+                        Tema Actual
+                      </span>
+                      <h2 className="text-3xl font-bold text-slate-900 mb-4">{currentLesson.title}</h2>
 
-                {/* 2. TARJETA DE ENCUENTRO SINCRÓNICO (Rediseñada) */}
-                {currentLesson.content_type === 'live_session' && (
-                  <div className="mt-8 relative overflow-hidden rounded-xl bg-gradient-to-br from-[#464775] to-[#6264A7] text-white shadow-lg">
-                    {/* Decorative circles */}
-                    <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
-                    <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-32 h-32 bg-black/10 rounded-full blur-xl"></div>
-
-                    <div className="relative p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="px-2 py-0.5 bg-white/20 rounded text-xs font-semibold border border-white/10 backdrop-blur-sm">
-                            EN VIVO
-                          </span>
-                          <span className="text-xs text-white/80 flex items-center gap-1">
-                            <Video size={12} /> {currentLesson.live_platform || 'Plataforma Virtual'}
-                          </span>
-                        </div>
-                        <h3 className="text-xl font-bold mb-1">Encuentro Sincrónico</h3>
-                        <div className="flex flex-wrap gap-4 text-sm text-white/90 mt-3">
-                          {currentLesson.live_date && (
-                            <div className="flex items-center gap-1.5 bg-black/20 px-3 py-1 rounded-lg">
-                              <Calendar size={14} />
-                              <span>
-                                {(() => {
-                                  // Parse YYYY-MM-DD as local date, not UTC
-                                  const [year, month, day] = currentLesson.live_date!.split('-').map(Number);
-                                  const localDate = new Date(year, month - 1, day);
-                                  return localDate.toLocaleDateString('es-ES', {
-                                    weekday: 'long',
-                                    year: 'numeric',
-                                    month: 'long',
-                                    day: 'numeric'
-                                  });
-                                })()}
-                              </span>
-                            </div>
-                          )}
-                          {currentLesson.live_time && (
-                            <div className="flex items-center gap-1.5 bg-black/20 px-3 py-1 rounded-lg">
-                              <Clock size={14} />
-                              <span>{currentLesson.live_time}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {currentLesson.live_url && (
-                        <div className="flex-shrink-0 w-full md:w-auto">
-                          <a
-                            href={currentLesson.live_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="w-full md:w-auto flex items-center justify-center gap-2 bg-white text-[#464775] hover:bg-gray-100 px-5 py-3 rounded-lg font-bold transition-all shadow-md active:scale-95"
-                          >
-                            Unirse a la sesión <ExternalLink size={16} />
-                          </a>
-                          <p className="text-center text-[10px] text-white/60 mt-2">Se abrirá en una nueva pestaña</p>
+                      {currentLesson.description && (
+                        <div className="prose prose-slate text-slate-600 max-w-none leading-relaxed">
+                          <div dangerouslySetInnerHTML={{ __html: sanitizeLessonHtml(currentLesson.description) }} />
                         </div>
                       )}
                     </div>
-                  </div>
-                )}
 
-                {/* Exam Card */}
-                {currentLesson.exam && (
-                  <div className={`mt-8 p-6 rounded-xl border ${currentLesson.exam.passed ? "border-green-200 bg-green-50" : "border-orange-200 bg-orange-50"}`}>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="font-bold text-slate-900 flex items-center gap-2">
-                          <CheckCircle2 size={20} className={currentLesson.exam.passed ? "text-green-600" : "text-orange-600"} />
-                          Examen: {currentLesson.exam.title}
-                        </h3>
-                        <p className="text-sm text-slate-600 mt-1">
-                          {currentLesson.exam.passed ? (
-                            <span className="text-green-700 font-medium">✓ Aprobado</span>
-                          ) : currentLesson.exam.attempts > 0 ? (
-                            <span className="text-orange-700">Intentos realizados: {currentLesson.exam.attempts}</span>
-                          ) : (
-                            <span>No iniciado</span>
-                          )}
-                        </p>
-                      </div>
-                      <Button
-                        variant={currentLesson.exam.passed ? "outline" : "default"}
-                        className={!currentLesson.exam.passed ? "bg-[#003366] hover:bg-[#002a55]" : ""}
-                        onClick={async (e) => {
-                          if (currentLesson.exam?.passed) {
-                            // View result logic
-                            try {
-                              setExamResultLoading(true);
-                              const { data: { user } } = await supabase.auth.getUser();
-                              if (!user) return;
-                              const { data: attempts } = await supabase
-                                .from('mooc_exam_attempts')
-                                .select('score_numeric, score_percent, passed')
-                                .eq('exam_id', currentLesson.exam.id)
-                                .eq('user_id', user.id)
-                                .order('created_at', { ascending: false })
-                                .limit(1);
-                              const att = (attempts && attempts[0]) || null;
-                              if (att) {
-                                setExamResult({ score_numeric: att.score_numeric || 0, score_percent: att.score_percent || 0, passed: !!att.passed });
-                                setShowExamResultDialog(true);
-                              }
-                            } catch (err) {
-                              console.error(err);
-                            } finally {
-                              setExamResultLoading(false);
-                            }
-                          } else {
-                            navigate(`/mooc/${courseId}/exam/${currentLesson.exam?.id}`);
+                    {/* Video Player if available */}
+                    {currentLesson.video_url && (
+                      <div className="mt-6 mb-6">
+                        {(() => {
+                          const embed = getEmbedUrl(currentLesson.video_url);
+                          if (!embed) {
+                            return (
+                              <div className="p-4 rounded-lg bg-muted">
+                                <p className="text-sm mb-2">Este video no tiene una vista embebida disponible.</p>
+                                <Button asChild>
+                                  <a href={currentLesson.video_url} target="_blank" rel="noreferrer">Abrir video en YouTube</a>
+                                </Button>
+                              </div>
+                            );
                           }
-                        }}
-                      >
-                        {currentLesson.exam.passed ? "Ver resultado" : "Realizar examen"}
-                      </Button>
-                    </div>
-                    {!currentLesson.exam.passed && (
-                      <div className="mt-3 text-xs text-orange-800 bg-orange-100/50 p-2 rounded">
-                        ⚠️ Importante: Debes aprobar este examen para completar la lección
+                          return (
+                            <div className="aspect-video bg-black rounded-xl overflow-hidden shadow-lg">
+                              <iframe
+                                ref={videoRef}
+                                src={embed}
+                                className="w-full h-full"
+                                frameBorder={0}
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                allowFullScreen
+                                title={currentLesson.title || 'Video'}
+                              />
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
+
+                    {/* Lesson Content (HTML) */}
+                    {currentLesson.content && (
+                      <div className="mt-6 prose prose-slate text-slate-600 max-w-none leading-relaxed">
+                        <div dangerouslySetInnerHTML={{ __html: sanitizeLessonHtml(currentLesson.content) }} />
+                      </div>
+                    )}
+
+                    {/* 2. TARJETA DE ENCUENTRO SINCRÓNICO (Rediseñada) */}
+                    {currentLesson.content_type === 'live_session' && (
+                      <div className="mt-8 relative overflow-hidden rounded-xl bg-gradient-to-br from-[#464775] to-[#6264A7] text-white shadow-lg">
+                        {/* Decorative circles */}
+                        <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
+                        <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-32 h-32 bg-black/10 rounded-full blur-xl"></div>
+
+                        <div className="relative p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="px-2 py-0.5 bg-white/20 rounded text-xs font-semibold border border-white/10 backdrop-blur-sm">
+                                EN VIVO
+                              </span>
+                              <span className="text-xs text-white/80 flex items-center gap-1">
+                                <Video size={12} /> {currentLesson.live_platform || 'Plataforma Virtual'}
+                              </span>
+                            </div>
+                            <h3 className="text-xl font-bold mb-1">Encuentro Sincrónico</h3>
+                            <div className="flex flex-wrap gap-4 text-sm text-white/90 mt-3">
+                              {currentLesson.live_date && (
+                                <div className="flex items-center gap-1.5 bg-black/20 px-3 py-1 rounded-lg">
+                                  <Calendar size={14} />
+                                  <span>
+                                    {(() => {
+                                      // Parse YYYY-MM-DD as local date, not UTC
+                                      const [year, month, day] = currentLesson.live_date!.split('-').map(Number);
+                                      const localDate = new Date(year, month - 1, day);
+                                      return localDate.toLocaleDateString('es-ES', {
+                                        weekday: 'long',
+                                        year: 'numeric',
+                                        month: 'long',
+                                        day: 'numeric'
+                                      });
+                                    })()}
+                                  </span>
+                                </div>
+                              )}
+                              {currentLesson.live_time && (
+                                <div className="flex items-center gap-1.5 bg-black/20 px-3 py-1 rounded-lg">
+                                  <Clock size={14} />
+                                  <span>{currentLesson.live_time}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {currentLesson.live_url && (
+                            <div className="flex-shrink-0 w-full md:w-auto">
+                              <a
+                                href={currentLesson.live_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="w-full md:w-auto flex items-center justify-center gap-2 bg-white text-[#464775] hover:bg-gray-100 px-5 py-3 rounded-lg font-bold transition-all shadow-md active:scale-95"
+                              >
+                                Unirse a la sesión <ExternalLink size={16} />
+                              </a>
+                              <p className="text-center text-[10px] text-white/60 mt-2">Se abrirá en una nueva pestaña</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Exam Card */}
+                    {currentLesson.exam && (
+                      <div className={`mt-8 p-6 rounded-xl border ${currentLesson.exam.passed ? "border-green-200 bg-green-50" : "border-orange-200 bg-orange-50"}`}>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                              <CheckCircle2 size={20} className={currentLesson.exam.passed ? "text-green-600" : "text-orange-600"} />
+                              Examen: {currentLesson.exam.title}
+                            </h3>
+                            <p className="text-sm text-slate-600 mt-1">
+                              {currentLesson.exam.passed ? (
+                                <span className="text-green-700 font-medium">✓ Aprobado</span>
+                              ) : currentLesson.exam.attempts > 0 ? (
+                                <span className="text-orange-700">Intentos realizados: {currentLesson.exam.attempts}</span>
+                              ) : (
+                                <span>No iniciado</span>
+                              )}
+                            </p>
+                          </div>
+                          <Button
+                            variant={currentLesson.exam.passed ? "outline" : "default"}
+                            className={!currentLesson.exam.passed ? "bg-[#003366] hover:bg-[#002a55]" : ""}
+                            onClick={async (e) => {
+                              if (currentLesson.exam?.passed) {
+                                // View result logic
+                                try {
+                                  setExamResultLoading(true);
+                                  const { data: { user } } = await supabase.auth.getUser();
+                                  if (!user) return;
+                                  const { data: attempts } = await supabase
+                                    .from('mooc_exam_attempts')
+                                    .select('score_numeric, score_percent, passed')
+                                    .eq('exam_id', currentLesson.exam.id)
+                                    .eq('user_id', user.id)
+                                    .order('created_at', { ascending: false })
+                                    .limit(1);
+                                  const att = (attempts && attempts[0]) || null;
+                                  if (att) {
+                                    setExamResult({ score_numeric: att.score_numeric || 0, score_percent: att.score_percent || 0, passed: !!att.passed });
+                                    setShowExamResultDialog(true);
+                                  }
+                                } catch (err) {
+                                  console.error(err);
+                                } finally {
+                                  setExamResultLoading(false);
+                                }
+                              } else {
+                                navigate(`/mooc/${courseId}/exam/${currentLesson.exam?.id}`);
+                              }
+                            }}
+                          >
+                            {currentLesson.exam.passed ? "Ver resultado" : "Realizar examen"}
+                          </Button>
+                        </div>
+                        {!currentLesson.exam.passed && (
+                          <div className="mt-3 text-xs text-orange-800 bg-orange-100/50 p-2 rounded">
+                            ⚠️ Importante: Debes aprobar este examen para completar la lección
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Evidencia de actividad */}
+                    {activityLoading ? (
+                      <div className="mt-8 flex items-center gap-2 text-blue-600"><Loader2 className="animate-spin" /> Cargando actividad...</div>
+                    ) : activity && !activitySubmission ? (
+                      <div className="mt-8">
+                        <div className="mb-4">
+                          <h4 className="font-bold text-slate-900 text-lg mb-1">Actividad</h4>
+                          <div className="text-slate-700 mb-2">{activity.title}</div>
+                          {activity.description && <div className="text-slate-500 mb-2">{activity.description}</div>}
+                          <div className="text-xs text-slate-500 mb-2">Debes entregar evidencia para poder completar la lección.</div>
+                        </div>
+                        <ActivitySubmissionForm
+                          activityId={activity.id}
+                          allowedTypes={activity.allowed_types as ActivityEvidenceType[]}
+                          loading={activitySubmitting}
+                          onSubmit={async (data) => {
+                            setActivitySubmitting(true);
+                            try {
+                              const { data: { user } } = await supabase.auth.getUser();
+                              if (!user) throw new Error('No autenticado');
+                              await submitActivityEvidence({
+                                activityId: activity.id,
+                                userId: user.id,
+                                ...data,
+                              });
+                              toast({ title: 'Evidencia enviada', description: 'Tu entrega fue registrada correctamente.' });
+                              // Refrescar estado
+                              const { activity: act, submission } = await getLessonActivity(currentLesson.id, user.id);
+                              setActivity(act);
+                              setActivitySubmission(submission);
+                            } catch (e: any) {
+                              toast({ title: 'Error', description: e.message || 'No se pudo enviar la evidencia', variant: 'destructive' });
+                            } finally {
+                              setActivitySubmitting(false);
+                            }
+                          }}
+                        />
+                      </div>
+                    ) : null}
+
+                    {/* Completion Button */}
+                    {!currentLesson.completed && (
+                      <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between">
+                        <div>
+                          <p className="font-medium text-slate-900">¿Terminaste esta lección?</p>
+                          <p className="text-sm text-slate-500">
+                            {activity && !activitySubmission
+                              ? "Debes entregar la evidencia de la actividad para completar la lección."
+                              : currentLesson.video_url && !videoWatched
+                                ? "Mira el video completo para continuar"
+                                : currentLesson.exam && !currentLesson.exam.passed
+                                  ? "Debes aprobar el examen para completar"
+                                  : "Marca como completada para avanzar"}
+                          </p>
+                        </div>
+                        <Button
+                          onClick={markLessonComplete}
+                          disabled={!canCompleteLesson || completing}
+                          size="lg"
+                          className="bg-[#003366] hover:bg-[#002a55] text-white"
+                        >
+                          {completing ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Guardando...
+                            </>
+                          ) : (
+                            <>
+                              <Check className="h-4 w-4 mr-2" />
+                              Marcar completa
+                            </>
+                          )}
+                        </Button>
                       </div>
                     )}
                   </div>
-                )}
 
-                {/* Evidencia de actividad */}
-                {activityLoading ? (
-                  <div className="mt-8 flex items-center gap-2 text-blue-600"><Loader2 className="animate-spin" /> Cargando actividad...</div>
-                ) : activity && !activitySubmission ? (
-                  <div className="mt-8">
-                    <div className="mb-4">
-                      <h4 className="font-bold text-slate-900 text-lg mb-1">Actividad</h4>
-                      <div className="text-slate-700 mb-2">{activity.title}</div>
-                      {activity.description && <div className="text-slate-500 mb-2">{activity.description}</div>}
-                      <div className="text-xs text-slate-500 mb-2">Debes entregar evidencia para poder completar la lección.</div>
-                    </div>
-                    <ActivitySubmissionForm
-                      activityId={activity.id}
-                      allowedTypes={activity.allowed_types as ActivityEvidenceType[]}
-                      loading={activitySubmitting}
-                      onSubmit={async (data) => {
-                        setActivitySubmitting(true);
-                        try {
-                          const { data: { user } } = await supabase.auth.getUser();
-                          if (!user) throw new Error('No autenticado');
-                          await submitActivityEvidence({
-                            activityId: activity.id,
-                            userId: user.id,
-                            ...data,
-                          });
-                          toast({ title: 'Evidencia enviada', description: 'Tu entrega fue registrada correctamente.' });
-                          // Refrescar estado
-                          const { activity: act, submission } = await getLessonActivity(currentLesson.id, user.id);
-                          setActivity(act);
-                          setActivitySubmission(submission);
-                        } catch (e: any) {
-                          toast({ title: 'Error', description: e.message || 'No se pudo enviar la evidencia', variant: 'destructive' });
-                        } finally {
-                          setActivitySubmitting(false);
-                        }
-                      }}
-                    />
-                  </div>
-                ) : null}
-
-                {/* Completion Button */}
-                {!currentLesson.completed && (
-                  <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-slate-900">¿Terminaste esta lección?</p>
-                      <p className="text-sm text-slate-500">
-                        {activity && !activitySubmission
-                          ? "Debes entregar la evidencia de la actividad para completar la lección."
-                          : currentLesson.video_url && !videoWatched
-                            ? "Mira el video completo para continuar"
-                            : currentLesson.exam && !currentLesson.exam.passed
-                              ? "Debes aprobar el examen para completar"
-                              : "Marca como completada para avanzar"}
-                      </p>
-                    </div>
-                    <Button
-                      onClick={markLessonComplete}
-                      disabled={!canCompleteLesson || completing}
-                      size="lg"
-                      className="bg-[#003366] hover:bg-[#002a55] text-white"
-                    >
-                      {completing ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Guardando...
-                        </>
-                      ) : (
-                        <>
-                          <Check className="h-4 w-4 mr-2" />
-                          Marcar completa
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                )}
-              </div>
-
-              {/* Recursos Adicionales (Bonus) */}
-              {currentLesson.readings && currentLesson.readings.length > 0 && (
-                <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-                  <h3 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
-                    <FileText size={20} className="text-[#003366]" />
-                    Material de Apoyo
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {currentLesson.readings.map((r) => (
-                      <div
-                        key={r.id}
-                        onClick={() => navigate(`/courses/${courseId}/lessons/${currentLesson.id}/reading/${r.id}`)}
-                        className="p-4 border border-slate-100 rounded-xl flex items-center gap-3 hover:bg-slate-50 transition-colors cursor-pointer group"
-                      >
-                        <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center group-hover:bg-blue-100 transition-colors">
-                          <FileText size={20} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-slate-800 text-sm truncate">{r.title}</p>
-                          <p className="text-xs text-slate-500">
-                            {r.completed ? <span className="text-green-600">Completado</span> : "Lectura pendiente"}
-                          </p>
-                        </div>
-                        <ChevronRight size={16} className="text-slate-300 group-hover:text-slate-500" />
+                  {/* Recursos Adicionales (Bonus) */}
+                  {currentLesson.readings && currentLesson.readings.length > 0 && (
+                    <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+                      <h3 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
+                        <FileText size={20} className="text-[#003366]" />
+                        Material de Apoyo
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {currentLesson.readings.map((r) => (
+                          <div
+                            key={r.id}
+                            onClick={() => navigate(`/courses/${courseId}/lessons/${currentLesson.id}/reading/${r.id}`)}
+                            className="p-4 border border-slate-100 rounded-xl flex items-center gap-3 hover:bg-slate-50 transition-colors cursor-pointer group"
+                          >
+                            <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center group-hover:bg-blue-100 transition-colors">
+                              <FileText size={20} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-slate-800 text-sm truncate">{r.title}</p>
+                              <p className="text-xs text-slate-500">
+                                {r.completed ? <span className="text-green-600">Completado</span> : "Lectura pendiente"}
+                              </p>
+                            </div>
+                            <ChevronRight size={16} className="text-slate-300 group-hover:text-slate-500" />
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </>
+                    </div>
+                  )}
+                </>
+              );
+            })()
           ) : (
             <div className="bg-white rounded-2xl p-12 text-center shadow-sm border border-slate-100">
               <BookOpen className="h-16 w-16 text-slate-300 mx-auto mb-4" />
@@ -990,9 +1050,21 @@ export default function CourseLearning() {
                             <p className="font-bold text-slate-800 text-sm">{section.title}</p>
                             {!available && <Lock size={14} className="text-slate-400" />}
                           </div>
-                          {!available && section.available_from && (
-                            <p className="text-[10px] text-red-500 mt-1">
-                              Disponible: {new Date(section.available_from).toLocaleString()}
+
+                          {/* Availability Messages */}
+                          {!available && section.available_from && new Date(section.available_from) > new Date() && (
+                            <p className="text-[10px] text-red-500 mt-1 flex items-center gap-1">
+                              <Clock size={10} /> Disponible desde: {new Date(section.available_from).toLocaleString()}
+                            </p>
+                          )}
+                          {!available && section.available_until && new Date(section.available_until) < new Date() && (
+                            <p className="text-[10px] text-red-500 mt-1 flex items-center gap-1">
+                              <Lock size={10} /> Cerrado el: {new Date(section.available_until).toLocaleString()}
+                            </p>
+                          )}
+                          {available && section.available_until && (
+                            <p className="text-[10px] text-orange-600 mt-1 flex items-center gap-1">
+                              <Clock size={10} /> Disponible hasta: {new Date(section.available_until).toLocaleString()}
                             </p>
                           )}
                         </div>
