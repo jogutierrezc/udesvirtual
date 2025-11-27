@@ -27,7 +27,14 @@ type Lesson = {
   section_id?: string | null;
 };
 
-type Section = { id?: string; title: string; description?: string; order_index: number };
+type Section = {
+  id?: string;
+  title: string;
+  description?: string;
+  order_index: number;
+  available_from?: string | null;
+  available_until?: string | null;
+};
 
 export default function CourseEditorPage() {
   const { courseId } = useParams();
@@ -90,7 +97,14 @@ export default function CourseEditorPage() {
     try {
       const { data, error } = await supabase.from('mooc_course_sections').select('*').eq('course_id', id).order('order_index');
       if (error) throw error;
-      setSections((data || []).map((s: any) => ({ id: s.id, title: s.title, description: s.description, order_index: s.order_index })));
+      setSections((data || []).map((s: any) => ({
+        id: s.id,
+        title: s.title,
+        description: s.description,
+        order_index: s.order_index,
+        available_from: s.available_from,
+        available_until: s.available_until
+      })));
     } catch (e: any) {
       console.error('loadSections', e);
     }
@@ -111,7 +125,9 @@ export default function CourseEditorPage() {
         description: course.description,
         course_image_url: course.course_image_url,
         intro_video_url: course.intro_video_url,
-        category_id: course.category_id || null
+        category_id: course.category_id || null,
+        completion_criteria: course.completion_criteria || 'all_lessons',
+        virtual_session_date: course.virtual_session_date || null
       }).eq('id', courseId);
       if (error) throw error;
       toast({ title: 'Curso guardado' });
@@ -181,6 +197,18 @@ export default function CourseEditorPage() {
     } catch (e: any) {
       console.error('addSection', e);
       toast({ title: 'Error', description: e.message || 'No se pudo crear la sección', variant: 'destructive' });
+    }
+  };
+
+  const updateSection = async (sectionId: string, field: string, value: any) => {
+    try {
+      const { error } = await supabase.from('mooc_course_sections').update({ [field]: value }).eq('id', sectionId);
+      if (error) throw error;
+      setSections(prev => prev.map(s => s.id === sectionId ? { ...s, [field]: value } : s));
+      toast({ title: 'Sección actualizada' });
+    } catch (e: any) {
+      console.error('updateSection', e);
+      toast({ title: 'Error', description: 'No se pudo actualizar la sección', variant: 'destructive' });
     }
   };
 
@@ -316,6 +344,34 @@ export default function CourseEditorPage() {
               <Label>Descripción</Label>
               <Textarea rows={4} value={course?.description || ''} onChange={e => handleCourseChange('description', e.target.value)} />
             </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 p-4 bg-slate-50 rounded-lg border">
+              <div className="md:col-span-2 font-medium mb-2">Configuración de Finalización</div>
+              <div>
+                <Label>Criterio de Finalización</Label>
+                <Select
+                  value={course?.completion_criteria || 'all_lessons'}
+                  onValueChange={(val) => handleCourseChange('completion_criteria', val)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar criterio" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all_lessons">Completar todas las lecciones</SelectItem>
+                    <SelectItem value="manual">Manual (Profesor aprueba)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Fecha de Sesión Virtual (Opcional)</Label>
+                <Input
+                  type="datetime-local"
+                  value={course?.virtual_session_date ? new Date(course.virtual_session_date).toISOString().slice(0, 16) : ''}
+                  onChange={e => handleCourseChange('virtual_session_date', e.target.value ? new Date(e.target.value).toISOString() : null)}
+                />
+                <p className="text-xs text-muted-foreground mt-1">El curso no se marcará como completado hasta esta fecha.</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -349,6 +405,26 @@ export default function CourseEditorPage() {
                 </div>
               </summary>
               <div className="p-4 space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 p-3 bg-slate-50 rounded border text-sm">
+                  <div>
+                    <Label className="text-xs">Disponible desde</Label>
+                    <Input
+                      type="datetime-local"
+                      className="h-8 text-xs"
+                      value={s.available_from ? new Date(s.available_from).toISOString().slice(0, 16) : ''}
+                      onChange={e => s.id && updateSection(s.id, 'available_from', e.target.value ? new Date(e.target.value).toISOString() : null)}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Disponible hasta</Label>
+                    <Input
+                      type="datetime-local"
+                      className="h-8 text-xs"
+                      value={s.available_until ? new Date(s.available_until).toISOString().slice(0, 16) : ''}
+                      onChange={e => s.id && updateSection(s.id, 'available_until', e.target.value ? new Date(e.target.value).toISOString() : null)}
+                    />
+                  </div>
+                </div>
                 {lessons.filter(l => l.section_id === s.id).sort((a, b) => (a.order_index || 0) - (b.order_index || 0)).map((l, idx, arr) => (
                   <Card key={l.id || l.order_index}>
                     <CardContent className="flex items-center justify-between py-3">

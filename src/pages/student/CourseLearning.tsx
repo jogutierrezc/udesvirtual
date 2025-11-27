@@ -59,6 +59,8 @@ type Course = {
   description: string;
   profession: string;
   course_image_url: string | null;
+  completion_criteria?: string;
+  virtual_session_date?: string | null;
 };
 
 export default function CourseLearning() {
@@ -73,7 +75,7 @@ export default function CourseLearning() {
   const [loading, setLoading] = useState(true);
   const [course, setCourse] = useState<Course | null>(null);
   const [lessons, setLessons] = useState<Lesson[]>([]);
-  const [sections, setSections] = useState<Array<{ id: string; title: string; order_index: number }>>([]);
+  const [sections, setSections] = useState<Array<{ id: string; title: string; order_index: number; available_from?: string | null; available_until?: string | null }>>([]);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
   const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null);
   const [progress, setProgress] = useState(0);
@@ -130,6 +132,29 @@ export default function CourseLearning() {
     return () => clearTimeout(timer);
   }, [currentLesson, videoWatched]);
 
+  useEffect(() => {
+    const checkCompletion = async () => {
+      if (progress === 100 && course?.virtual_session_date && courseId) {
+        const sessionDate = new Date(course.virtual_session_date);
+        if (new Date() >= sessionDate) {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) return;
+
+          // Check if enrollment is already completed
+          const { data: enrollment } = await supabase.from('mooc_enrollments').select('completed').eq('course_id', courseId).eq('user_id', user.id).single();
+          if (enrollment && !enrollment.completed) {
+            // Mark as completed
+            const { error } = await supabase.from('mooc_enrollments').update({ completed: true }).eq('course_id', courseId).eq('user_id', user.id);
+            if (!error) {
+              toast({ title: "¡Curso Finalizado!", description: "La fecha de la sesión virtual ha pasado. Tu curso ha sido marcado como completado." });
+            }
+          }
+        }
+      }
+    };
+    checkCompletion();
+  }, [progress, course, courseId]);
+
   const loadCourse = async () => {
     try {
       setLoading(true);
@@ -163,7 +188,7 @@ export default function CourseLearning() {
       // Cargar curso
       const { data: courseData } = await supabase
         .from("mooc_courses")
-        .select("id, title, description, profession, course_image_url")
+        .select("id, title, description, profession, course_image_url, completion_criteria, virtual_session_date")
         .eq("id", courseId)
         .single();
 
@@ -331,10 +356,16 @@ export default function CourseLearning() {
         // Cargar secciones reales para encabezados
         const { data: sectionsData } = await supabase
           .from('mooc_course_sections')
-          .select('id, title, order_index')
+          .select('id, title, order_index, available_from, available_until')
           .eq('course_id', courseId)
           .order('order_index', { ascending: true });
-        const mappedSections = (sectionsData || []).map((s: any) => ({ id: s.id, title: s.title, order_index: s.order_index || 0 }));
+        const mappedSections = (sectionsData || []).map((s: any) => ({
+          id: s.id,
+          title: s.title,
+          order_index: s.order_index || 0,
+          available_from: s.available_from,
+          available_until: s.available_until
+        }));
         setSections(mappedSections);
         // Inicialmente todas las secciones abiertas
         const initialOpen: Record<string, boolean> = {};
@@ -483,6 +514,30 @@ export default function CourseLearning() {
             variant: "destructive"
           });
         } else {
+          // Check virtual session date
+          if (course?.virtual_session_date) {
+            const sessionDate = new Date(course.virtual_session_date);
+            if (new Date() < sessionDate) {
+              toast({
+                title: "Curso completado parcialmente",
+                description: `Has completado todas las lecciones, pero el curso finalizará oficialmente el ${sessionDate.toLocaleString()}`,
+              });
+              // We update progress to 100 but NOT completed: true
+              try {
+                const { error: enrollErr } = await supabase
+                  .from('mooc_enrollments')
+                  .update({ progress: 100, updated_at: new Date().toISOString() }) // completed is NOT set to true
+                  .eq('course_id', courseId)
+                  .eq('user_id', user.id);
+
+                if (enrollErr) throw enrollErr;
+              } catch (e) {
+                console.error('Error updating enrollment progress', e);
+              }
+              return; // Exit here
+            }
+          }
+
           // Marcar la inscripción como completada en la tabla mooc_enrollments
           try {
             const { error: enrollErr } = await supabase
@@ -521,6 +576,13 @@ export default function CourseLearning() {
     } finally {
       setCompleting(false);
     }
+  };
+
+  const isSectionAvailable = (section: { available_from?: string | null; available_until?: string | null }) => {
+    const now = new Date();
+    if (section.available_from && new Date(section.available_from) > now) return false;
+    if (section.available_until && new Date(section.available_until) < now) return false;
+    return true;
   };
 
   const selectLesson = (lesson: Lesson) => {
@@ -913,23 +975,32 @@ export default function CourseLearning() {
                 sections.map((section) => {
                   const sectionLessons = lessons.filter(l => (l as any).section_id === section.id).sort((a, b) => a.order_index - b.order_index);
                   const isOpen = openSections[section.id];
+                  const available = isSectionAvailable(section);
 
                   return (
-                    <div key={section.id} className="bg-white">
+                    <div key={section.id} className={`bg-white ${!available ? 'opacity-75' : ''}`}>
                       {/* Module Header */}
                       <button
-                        onClick={() => toggleSection(section.id)}
-                        className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors"
+                        onClick={() => available && toggleSection(section.id)}
+                        className={`w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors ${!available ? 'cursor-not-allowed' : ''}`}
                       >
                         <div className="text-left">
                           <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-0.5">Módulo {section.order_index}</p>
-                          <p className="font-bold text-slate-800 text-sm">{section.title}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-bold text-slate-800 text-sm">{section.title}</p>
+                            {!available && <Lock size={14} className="text-slate-400" />}
+                          </div>
+                          {!available && section.available_from && (
+                            <p className="text-[10px] text-red-500 mt-1">
+                              Disponible: {new Date(section.available_from).toLocaleString()}
+                            </p>
+                          )}
                         </div>
-                        {isOpen ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
+                        {available && (isOpen ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />)}
                       </button>
 
                       {/* Module Items List */}
-                      {isOpen && (
+                      {isOpen && available && (
                         <div className="bg-slate-50/50 pb-2">
                           {sectionLessons.length > 0 ? (
                             sectionLessons.map((lesson) => (
