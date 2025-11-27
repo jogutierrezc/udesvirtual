@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, PlusCircle, Edit, Trash2, BookOpen, Clock, User, Award } from "lucide-react";
+import { Loader2, PlusCircle, Edit, Trash2, BookOpen, Clock, User, Award, BarChart } from "lucide-react";
 
 
 interface MoocCourse {
@@ -65,7 +65,7 @@ export const ProfessorMoocPage = () => {
   const loadCourses = async (professorId: string) => {
     try {
       console.log("Cargando cursos del profesor:", professorId);
-      
+
       // Cargar cursos creados por el profesor
       const { data: coursesData, error: coursesError } = await supabase
         .from("mooc_courses")
@@ -204,7 +204,7 @@ export const ProfessorMoocPage = () => {
     setIsModalOpen(false);
     setEditingCourse(null);
   };
-  
+
   const handleSave = () => {
     loadCourses(userId);
     handleModalClose();
@@ -415,6 +415,15 @@ export const ProfessorMoocPage = () => {
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => navigate(`/professor/course/${course.id}/results`)}
+                  className="w-full mt-2"
+                >
+                  <BarChart className="h-4 w-4 mr-2" />
+                  Ver Resultados
+                </Button>
               </CardContent>
             </Card>
           ))}

@@ -14,6 +14,7 @@ import Professor from "./pages/Professor";
 import MisEstudiantes from "./pages/professor/MisEstudiantes";
 import StudentDetail from "./pages/professor/StudentDetail";
 import ProfessorInbox from "./pages/professor/Inbox";
+import CourseResultsPage from "./pages/professor/CourseResultsPage";
 import Lia from "./pages/Lia";
 import Mooc from "./pages/Mooc";
 import MoocDetail from "./pages/MoocDetail";
@@ -151,6 +152,14 @@ const AppContent = () => {
           element={
             <ProtectedRoute>
               <StudentDetail />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/professor/course/:courseId/results"
+          element={
+            <ProtectedRoute>
+              <CourseResultsPage />
             </ProtectedRoute>
           }
         />
