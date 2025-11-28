@@ -729,7 +729,7 @@ export default function CourseLearning() {
                       <h2 className="text-3xl font-bold text-slate-900 mb-4">{currentLesson.title}</h2>
 
                       {currentLesson.description && (
-                        <div className="prose prose-slate text-slate-600 max-w-none leading-relaxed text-justify">
+                        <div className="prose prose-slate text-slate-600 max-w-none leading-relaxed text-justify overflow-x-auto">
                           <div dangerouslySetInnerHTML={{ __html: sanitizeLessonHtml(currentLesson.description) }} />
                         </div>
                       )}
@@ -769,7 +769,7 @@ export default function CourseLearning() {
 
                     {/* Lesson Content (HTML) */}
                     {currentLesson.content && (
-                      <div className="mt-6 prose prose-slate text-slate-600 max-w-none leading-relaxed text-justify">
+                      <div className="mt-6 prose prose-slate text-slate-600 max-w-none leading-relaxed text-justify overflow-x-auto">
                         <div dangerouslySetInnerHTML={{ __html: sanitizeLessonHtml(currentLesson.content) }} />
                       </div>
                     )}
