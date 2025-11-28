@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
-import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Loader2, Download } from "lucide-react";
+import * as XLSX from 'xlsx';
 
 interface GradeReportModalProps {
     isOpen: boolean;
@@ -24,6 +26,7 @@ type ExamGrade = {
 export function GradeReportModal({ isOpen, onClose, courseId, userId }: GradeReportModalProps) {
     const [loading, setLoading] = useState(false);
     const [grades, setGrades] = useState<ExamGrade[]>([]);
+    const [averageScore, setAverageScore] = useState<number | null>(null);
 
     useEffect(() => {
         if (isOpen && courseId && userId) {
@@ -46,6 +49,7 @@ export function GradeReportModal({ isOpen, onClose, courseId, userId }: GradeRep
 
             if (!exams || exams.length === 0) {
                 setGrades([]);
+                setAverageScore(null);
                 return;
             }
 
@@ -63,12 +67,9 @@ export function GradeReportModal({ isOpen, onClose, courseId, userId }: GradeRep
             // Process grades
             const processedGrades: ExamGrade[] = exams.map(exam => {
                 const examAttempts = attempts?.filter(a => a.exam_id === exam.id) || [];
-                const passedAttempt = examAttempts.find(a => a.passed);
-                const latestAttempt = examAttempts[0];
 
-                // If passed, use the passed score (or best score if multiple passed? usually first passed is enough logic)
-                // Let's use the best score if passed, or latest if not.
-                // Actually, usually we want the highest score.
+                // Logic to determine the "best" score. 
+                // Usually highest score is preferred for the student record.
                 const bestAttempt = examAttempts.reduce((prev, current) => {
                     return (prev.score_numeric || 0) > (current.score_numeric || 0) ? prev : current;
                 }, examAttempts[0]);
@@ -94,6 +95,17 @@ export function GradeReportModal({ isOpen, onClose, courseId, userId }: GradeRep
 
             setGrades(processedGrades);
 
+            // Calculate Average
+            // Only include exams that have a score (i.e., have been taken)
+            const takenExams = processedGrades.filter(g => g.score !== null);
+            if (takenExams.length > 0) {
+                const totalScore = takenExams.reduce((sum, g) => sum + (g.score || 0), 0);
+                const avg = totalScore / takenExams.length;
+                setAverageScore(avg);
+            } else {
+                setAverageScore(null);
+            }
+
         } catch (error) {
             console.error("Error fetching grades:", error);
         } finally {
@@ -101,11 +113,42 @@ export function GradeReportModal({ isOpen, onClose, courseId, userId }: GradeRep
         }
     };
 
+    const handleExportExcel = () => {
+        // Prepare data for export
+        const exportData = grades.map(g => ({
+            'Examen': g.title,
+            'Intentos': g.attempts,
+            'Nota': g.score !== null ? g.score.toFixed(1) : 'N/A',
+            'Estado': g.status === 'passed' ? 'Aprobado' : g.status === 'failed' ? 'Reprobado' : 'No iniciado'
+        }));
+
+        // Add Average Row if applicable
+        if (averageScore !== null) {
+            exportData.push({
+                'Examen': 'PROMEDIO GENERAL',
+                'Intentos': 0, // Placeholder
+                'Nota': averageScore.toFixed(1),
+                'Estado': '-'
+            });
+        }
+
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Notas");
+        XLSX.writeFile(wb, "Reporte_Notas.xlsx");
+    };
+
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="max-w-3xl">
-                <DialogHeader>
+                <DialogHeader className="flex flex-row items-center justify-between">
                     <DialogTitle>Reporte de Notas</DialogTitle>
+                    {grades.length > 0 && (
+                        <Button variant="outline" size="sm" onClick={handleExportExcel} className="gap-2">
+                            <Download className="h-4 w-4" />
+                            Exportar Excel
+                        </Button>
+                    )}
                 </DialogHeader>
 
                 {loading ? (
@@ -155,6 +198,15 @@ export function GradeReportModal({ isOpen, onClose, courseId, userId }: GradeRep
                                     </TableRow>
                                 ))}
                             </TableBody>
+                            <TableFooter>
+                                <TableRow className="bg-slate-50 font-bold">
+                                    <TableCell colSpan={2} className="text-right">Promedio General:</TableCell>
+                                    <TableCell className="text-center text-lg">
+                                        {averageScore !== null ? averageScore.toFixed(1) : '-'}
+                                    </TableCell>
+                                    <TableCell></TableCell>
+                                </TableRow>
+                            </TableFooter>
                         </Table>
                     </div>
                 )}
