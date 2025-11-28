@@ -65,6 +65,10 @@ export default function StudentExamPage() {
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // New state for modernized UI
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [showSummary, setShowSummary] = useState(false);
+
   useEffect(() => {
     // Only load exam after user accepts terms
     if (examId && courseId && acceptedTerms) {
@@ -395,6 +399,40 @@ export default function StudentExamPage() {
     navigate(`/courses/${courseId}/learn`);
   };
 
+  // Navigation functions
+  const nextQuestion = () => {
+    if (currentQuestionIndex < questions.length - 1) {
+      setCurrentQuestionIndex(prev => prev + 1);
+    }
+  };
+
+  const prevQuestion = () => {
+    if (currentQuestionIndex > 0) {
+      setCurrentQuestionIndex(prev => prev - 1);
+    }
+  };
+
+  const goToQuestion = (index: number) => {
+    setCurrentQuestionIndex(index);
+    setShowSummary(false);
+  };
+
+  const handleNextOrFinish = () => {
+    if (currentQuestionIndex === questions.length - 1) {
+      setShowSummary(true);
+    } else {
+      nextQuestion();
+    }
+  };
+
+  const isQuestionAnswered = (questionId: string) => {
+    return !!answers[questionId];
+  };
+
+  const getAnsweredCount = () => {
+    return Object.keys(answers).length;
+  };
+
   if (!acceptedTerms) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -410,26 +448,26 @@ export default function StudentExamPage() {
               <p className="text-base font-semibold text-foreground">
                 Antes de iniciar el examen, debes leer y aceptar las siguientes condiciones:
               </p>
-              
+
               <div className="bg-muted p-4 rounded-lg space-y-3 mt-4">
                 <h3 className="text-lg font-semibold text-foreground m-0">Sistema de Detección Antiplagio</h3>
-                
+
                 <p className="text-sm text-muted-foreground m-0">
-                  Este examen cuenta con un sistema automático de detección de comportamientos irregulares. 
-                  El sistema monitoreará tu actividad durante el examen y <strong>anulará automáticamente</strong> tu 
+                  Este examen cuenta con un sistema automático de detección de comportamientos irregulares.
+                  El sistema monitoreará tu actividad durante el examen y <strong>anulará automáticamente</strong> tu
                   intento si detecta alguna de las siguientes acciones:
                 </p>
 
                 <ul className="text-sm space-y-2 ml-4 text-foreground">
                   <li>
-                    <strong>Cambio de pestaña o ventana:</strong> Si sales de la ventana del examen o cambias a otra pestaña 
+                    <strong>Cambio de pestaña o ventana:</strong> Si sales de la ventana del examen o cambias a otra pestaña
                     del navegador.
                   </li>
                   <li>
                     <strong>Pérdida de foco:</strong> Si la ventana del examen pierde el foco o minimizas el navegador.
                   </li>
                   <li>
-                    <strong>Intento de copiar contenido:</strong> Si intentas copiar el texto de las preguntas 
+                    <strong>Intento de copiar contenido:</strong> Si intentas copiar el texto de las preguntas
                     (Ctrl+C o clic derecho).
                   </li>
                   <li>
@@ -443,7 +481,7 @@ export default function StudentExamPage() {
                     Importante
                   </p>
                   <p className="text-sm text-amber-800 dark:text-amber-200 mt-2 m-0">
-                    Si el sistema detecta cualquiera de estas acciones, tu intento será <strong>anulado inmediatamente</strong> 
+                    Si el sistema detecta cualquiera de estas acciones, tu intento será <strong>anulado inmediatamente</strong>
                     y marcado como no aprobado. No podrás continuar con el examen y se contará como un intento utilizado.
                   </p>
                 </div>
@@ -462,7 +500,7 @@ export default function StudentExamPage() {
 
               <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded p-3 mt-4">
                 <p className="text-sm text-blue-900 dark:text-blue-100 m-0">
-                  <strong>Integridad Académica:</strong> Al aceptar estas condiciones, te comprometes a realizar el examen 
+                  <strong>Integridad Académica:</strong> Al aceptar estas condiciones, te comprometes a realizar el examen
                   de manera individual, sin ayuda externa, y cumpliendo con las normas de integridad académica de la institución.
                 </p>
               </div>
@@ -477,8 +515,8 @@ export default function StudentExamPage() {
                 className="mt-1 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
               />
               <label htmlFor="accept-terms" className="text-sm text-foreground cursor-pointer">
-                He leído y acepto las condiciones del examen. Entiendo que el sistema detectará automáticamente 
-                cualquier intento de plagio y anulará mi examen si es necesario. Me comprometo a mantener la 
+                He leído y acepto las condiciones del examen. Entiendo que el sistema detectará automáticamente
+                cualquier intento de plagio y anulará mi examen si es necesario. Me comprometo a mantener la
                 integridad académica durante todo el proceso.
               </label>
             </div>
@@ -522,110 +560,250 @@ export default function StudentExamPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background py-8 px-4">
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* Header */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-start justify-between">
-              <div>
-                <CardTitle className="text-2xl">{exam.title}</CardTitle>
-                {exam.description && <p className="text-muted-foreground mt-2">{exam.description}</p>}
-              </div>
-              {timeLeft !== null && (
-                <div className="flex items-center gap-2 text-lg font-semibold">
-                  <Clock className="h-5 w-5" />
-                  <span className={timeLeft < 60 ? 'text-red-600' : ''}>{formatTime(timeLeft)}</span>
-                </div>
-              )}
+    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans selection:bg-emerald-100 selection:text-emerald-700 overflow-hidden flex flex-col">
+      {/* Header */}
+      <header className="w-full max-w-5xl mx-auto p-4 md:p-6 flex flex-col md:flex-row items-center justify-between gap-4 z-10 relative">
+        <div className="flex items-center gap-4 w-full md:w-auto">
+          <div className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center border border-slate-100 text-emerald-600">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <div>
+            <h1 className="text-lg font-bold text-slate-900 tracking-tight leading-none">{exam.title}</h1>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
+                Aprobar: {exam.passing_score} pts
+              </span>
+              <span className="text-xs text-slate-400">|</span>
+              <p className="text-xs text-slate-500 font-medium">Examen</p>
             </div>
-            <div className="mt-4 space-y-2">
-              <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                <span>Puntaje máximo: {exam.max_score}</span>
-                <span>Puntaje para aprobar: {exam.passing_score}</span>
-              </div>
-              <div>
-                <Label className="text-sm text-muted-foreground">Progreso</Label>
-                <Progress value={progressPercent} className="h-2 mt-1" />
-                <p className="text-xs text-muted-foreground mt-1">
-                  {Object.keys(answers).length} de {questions.length} preguntas respondidas
-                </p>
-              </div>
-            </div>
-          </CardHeader>
-        </Card>
+          </div>
+        </div>
 
-        {/* If we have an attemptResult (just submitted), show only the score to the student */}
+        {/* Timer Animado */}
+        {timeLeft !== null && (
+          <div
+            className={`flex items-center gap-3 px-5 py-2 rounded-full border shadow-sm transition-all duration-300 ${timeLeft < 60 ? 'bg-red-50 border-red-200 animate-pulse' : 'bg-white border-slate-200'
+              }`}
+          >
+            <div className="relative flex items-center justify-center">
+              <svg className={`w-5 h-5 ${timeLeft < 60 ? 'text-red-500' : 'text-emerald-500'} animate-spin`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </div>
+            <span
+              className={`text-lg font-mono font-bold tabular-nums ${timeLeft < 60 ? 'text-red-600' : 'text-slate-700'}`}
+            >
+              {formatTime(timeLeft)}
+            </span>
+          </div>
+        )}
+      </header>
+
+      {/* Main Stage */}
+      <main className="flex-1 flex flex-col items-center w-full max-w-3xl mx-auto px-4 sm:px-6 relative py-4">
+
+        {/* Result View (if finished) */}
         {attemptResult ? (
-          <Card>
-            <CardContent className="text-center py-12">
-              <div className="text-sm text-muted-foreground">Resultado del Examen</div>
-              <div className="text-5xl font-bold mt-4">{attemptResult.score_numeric}</div>
-              <div className="text-lg text-muted-foreground mt-2">{attemptResult.score_percent}%</div>
-              <div className={`mt-4 inline-flex items-center px-4 py-2 rounded ${attemptResult.passed ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                {attemptResult.passed ? 'Aprobado' : 'No aprobado'}
+          <div className="text-center animate-in fade-in zoom-in duration-500 flex flex-col items-center justify-center py-10 w-full">
+            <div className="relative w-24 h-24 mb-6">
+              <div className="absolute inset-0 bg-emerald-100 rounded-full animate-ping opacity-75"></div>
+              <div className="relative w-full h-full bg-emerald-100 rounded-full flex items-center justify-center">
+                <CheckCircle2 className="w-12 h-12 text-emerald-600" />
               </div>
-              <div className="mt-6">
-                <div className="flex items-center justify-center gap-3">
-                  <Button type="button" onClick={() => setShowResultDialog(true)} variant="outline">Ver resultado</Button>
-                  <Button type="button" onClick={() => navigate(`/courses/${courseId}/learn`)}>Volver al curso</Button>
-                </div>
+            </div>
+            <h2 className="text-3xl font-bold text-slate-900 mb-2">¡Examen Enviado!</h2>
+            <p className="text-slate-500 max-w-md mx-auto mb-8">Gracias por completar la evaluación. Tus respuestas han sido registradas en la plataforma.</p>
+
+            <div className="p-6 bg-white rounded-2xl border border-slate-100 shadow-sm mb-8 w-full max-w-sm">
+              <div className="text-sm text-slate-500 mb-1">Calificación Obtenida</div>
+              <div className="text-5xl font-bold text-slate-900 mb-2">{attemptResult.score_numeric}</div>
+              <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${attemptResult.passed ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
+                {attemptResult.passed ? 'Aprobado' : 'No Aprobado'}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+
+            <div className="flex gap-4">
+              <Button onClick={() => setShowResultDialog(true)} variant="outline">Ver Detalles</Button>
+              <Button onClick={() => navigate(`/courses/${courseId}/learn`)} className="bg-emerald-600 hover:bg-emerald-700">Volver al Curso</Button>
+            </div>
+          </div>
         ) : (
           <>
-            {/* Questions */}
-            {questions.map((question, idx) => (
-              <Card key={question.id}>
-                <CardHeader>
-                  <CardTitle className="text-lg">Pregunta {idx + 1}</CardTitle>
-                  <p className="text-base">{question.prompt}</p>
-                </CardHeader>
-                <CardContent>
-                  <RadioGroup
-                    value={answers[question.id] || ''}
-                    onValueChange={(value) => handleAnswerChange(question.id, value)}
-                  >
-                    {question.mooc_exam_options.map((option) => (
-                      <div key={option.id} className="flex items-center space-x-2 p-3 border rounded hover:bg-muted">
-                        <RadioGroupItem value={option.id} id={option.id} />
-                        <Label htmlFor={option.id} className="flex-1 cursor-pointer">
-                          {option.text}
-                        </Label>
+            {/* Navegación de Preguntas (Paginación Interactiva) */}
+            {!showSummary && (
+              <div className="w-full mb-8 overflow-x-auto pb-2">
+                <div className="flex justify-center flex-wrap gap-2">
+                  {questions.map((q, i) => (
+                    <button
+                      key={q.id}
+                      onClick={() => goToQuestion(i)}
+                      className={`w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold transition-all duration-200 border-2 relative ${i === currentQuestionIndex
+                        ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-200 scale-110'
+                        : isQuestionAnswered(q.id)
+                          ? 'bg-emerald-50 border-emerald-100 text-emerald-600 hover:border-emerald-300'
+                          : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'
+                        }`}
+                    >
+                      {i + 1}
+                      {/* Indicador de respondido (check pequeño) */}
+                      {isQuestionAnswered(q.id) && i !== currentQuestionIndex && (
+                        <div className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white flex items-center justify-center">
+                          <svg className="w-2 h-2 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="4"><path d="M5 13l4 4L19 7"></path></svg>
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Contenedor Dinámico */}
+            <div className="w-full relative min-h-[400px] bg-white md:bg-transparent rounded-3xl md:rounded-none shadow-xl md:shadow-none p-6 md:p-0">
+
+              {/* 1. VISTA DE PREGUNTA */}
+              {!showSummary && questions.length > 0 && (
+                <div className="animate-in slide-in-from-bottom-4 duration-500 fade-in">
+                  {/* Question Text */}
+                  <h2 className="text-xl md:text-2xl font-bold text-slate-800 leading-snug mb-8">
+                    <span className="text-emerald-500 mr-2">#{currentQuestionIndex + 1}</span>
+                    {questions[currentQuestionIndex].prompt}
+                  </h2>
+
+                  {/* Options Grid */}
+                  <div className="grid gap-3 md:gap-4">
+                    {questions[currentQuestionIndex].mooc_exam_options.map((option) => {
+                      const isSelected = answers[questions[currentQuestionIndex].id] === option.id;
+                      return (
+                        <button
+                          key={option.id}
+                          onClick={() => handleAnswerChange(questions[currentQuestionIndex].id, option.id)}
+                          className={`group relative w-full text-left p-4 md:p-5 rounded-xl border-2 transition-all duration-200 ease-out outline-none focus:ring-4 focus:ring-emerald-100 ${isSelected
+                            ? 'border-emerald-500 bg-emerald-50/50'
+                            : 'border-slate-200 bg-white hover:border-emerald-300 hover:bg-slate-50'
+                            }`}
+                        >
+                          <div className="flex items-center gap-4">
+                            {/* Square Checkbox Indicator */}
+                            <div
+                              className={`flex-shrink-0 w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all duration-200 ${isSelected
+                                ? 'border-emerald-500 bg-emerald-500'
+                                : 'border-slate-300 group-hover:border-emerald-400 bg-white'
+                                }`}
+                            >
+                              {/* Checkmark Icon */}
+                              {isSelected && (
+                                <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                              )}
+                            </div>
+
+                            {/* Text */}
+                            <span
+                              className={`text-sm md:text-lg font-medium transition-colors ${isSelected ? 'text-emerald-900 font-semibold' : 'text-slate-600 group-hover:text-slate-800'
+                                }`}
+                            >
+                              {option.text}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* 2. VISTA DE RESUMEN */}
+              {showSummary && (
+                <div className="animate-in fade-in duration-300 w-full max-w-2xl mx-auto">
+                  <h2 className="text-2xl font-bold text-slate-800 mb-2">Resumen de Respuestas</h2>
+                  <p className="text-slate-500 mb-6 text-sm">Verifica que has respondido todo antes de enviar. No se muestran tus respuestas por seguridad.</p>
+
+                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8 max-h-[60vh] overflow-y-auto">
+                    {questions.map((q, i) => (
+                      <div
+                        key={q.id}
+                        className="flex items-center justify-between p-4 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors cursor-pointer"
+                        onClick={() => goToQuestion(i)}
+                      >
+                        <div className="flex items-center gap-4 overflow-hidden">
+                          <span className="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 font-bold flex items-center justify-center text-xs flex-shrink-0">
+                            {i + 1}
+                          </span>
+                          <span className="text-sm text-slate-700 truncate font-medium">{q.prompt}</span>
+                        </div>
+
+                        <div className="flex-shrink-0">
+                          {isQuestionAnswered(q.id) ? (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                              Respondida
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700 border border-amber-200">
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                              Sin responder
+                            </span>
+                          )}
+                        </div>
                       </div>
                     ))}
-                  </RadioGroup>
-                </CardContent>
-              </Card>
-            ))}
-
-            {/* Submit */}
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Asegúrate de haber respondido todas las preguntas antes de enviar.</p>
                   </div>
-                  <Button onClick={() => handleSubmit(false)} disabled={submitting || invalidated} size="lg">
-                    {submitting ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Enviando...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 className="h-4 w-4 mr-2" />
-                        Enviar examen
-                      </>
-                    )}
-                  </Button>
+
+                  <div className="flex gap-4">
+                    <button onClick={() => setShowSummary(false)} className="flex-1 py-3 px-6 rounded-xl border border-slate-300 text-slate-600 font-bold hover:bg-slate-50 transition-colors">
+                      Volver a Revisar
+                    </button>
+                    <button
+                      onClick={() => handleSubmit(false)}
+                      disabled={submitting || invalidated}
+                      className="flex-1 py-3 px-6 rounded-xl bg-emerald-600 text-white font-bold shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition-all transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {submitting ? (
+                        <div className="flex items-center justify-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Enviando...
+                        </div>
+                      ) : (
+                        "Confirmar y Enviar"
+                      )}
+                    </button>
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
+              )}
+
+            </div>
           </>
         )}
-      </div>
+      </main>
+
+      {/* Footer Controls (Solo en modo pregunta) */}
+      {!attemptResult && !showSummary && (
+        <footer className="w-full max-w-5xl mx-auto p-4 md:p-6 flex justify-between items-center">
+          <button
+            onClick={prevQuestion}
+            disabled={currentQuestionIndex === 0}
+            className="text-slate-400 hover:text-slate-600 font-bold text-sm flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-white disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path></svg>
+            Anterior
+          </button>
+
+          <button
+            onClick={handleNextOrFinish}
+            className="bg-slate-900 text-white hover:bg-slate-800 px-6 py-2.5 rounded-xl font-bold text-sm shadow-md transition-all flex items-center gap-2"
+          >
+            {currentQuestionIndex === questions.length - 1 ? 'Finalizar Examen' : 'Siguiente'}
+            {currentQuestionIndex !== questions.length - 1 && (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>
+            )}
+          </button>
+        </footer>
+      )}
+
 
       {/* Invalidation Dialog */}
       <AlertDialog open={showInvalidationDialog} onOpenChange={setShowInvalidationDialog}>
@@ -676,13 +854,13 @@ export default function StudentExamPage() {
             <div className="text-lg text-muted-foreground mt-2">{attemptResult?.score_percent}%</div>
           </div>
           <DialogFooter>
-              <div className="w-full flex justify-end gap-2">
+            <div className="w-full flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setShowResultDialog(false)}>Cerrar</Button>
               <Button type="button" onClick={() => navigate(`/courses/${courseId}/learn`)}>Volver al curso</Button>
             </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </div >
   );
 }
