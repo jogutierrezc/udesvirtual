@@ -7,16 +7,17 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { 
-  Clock, 
-  BookOpen, 
-  Award, 
-  PlayCircle, 
+import {
+  Clock,
+  BookOpen,
+  Award,
+  PlayCircle,
   Target,
   ArrowLeft,
   Video,
   Loader2
 } from "lucide-react";
+import { sanitizeLessonHtml } from "@/lib/html";
 
 type Lesson = {
   id: string;
@@ -93,7 +94,7 @@ export default function MoocDetail() {
         .select("role")
         .eq("user_id", user.id)
         .single();
-      
+
       setUserRole(roleData?.role || null);
     }
   };
@@ -124,7 +125,7 @@ export default function MoocDetail() {
     try {
       setEnrolling(true);
       console.log("Verificando inscripción para curso:", id);
-      
+
       // Verificar si ya está inscrito
       const { data: existing } = await supabase
         .from("mooc_enrollments")
@@ -146,7 +147,7 @@ export default function MoocDetail() {
       console.log("Usuario no inscrito, redirigiendo a compromiso");
       // Si no está inscrito, redirigir a la página de compromiso
       navigate(`/mooc/commitment/${id}`);
-      
+
     } catch (error: any) {
       console.error("Error checking enrollment:", error);
       toast({
@@ -268,29 +269,29 @@ export default function MoocDetail() {
       <div className="relative h-[400px] md:h-[500px] overflow-hidden">
         {/* Imagen de fondo */}
         {course.course_image_url ? (
-          <div 
+          <div
             className="absolute inset-0 bg-cover bg-center"
             style={{ backgroundImage: `url(${course.course_image_url})` }}
           />
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-purple-600" />
         )}
-        
+
         {/* Degradado blanco desde abajo */}
         <div className="absolute inset-0 bg-gradient-to-t from-white via-white/80 to-transparent" />
-        
+
         {/* Contenido sobre la imagen */}
         <div className="absolute inset-0 flex items-end">
           <div className="container mx-auto px-4 pb-8 md:pb-12">
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               onClick={() => navigate("/mooc")}
               className="mb-4"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Volver a cursos
             </Button>
-            
+
             {/* Badges de información */}
             <div className="flex flex-wrap gap-3 mb-4">
               <Badge variant="secondary" className="bg-white backdrop-blur-sm text-blue-600 text-sm py-1.5 px-3">
@@ -331,7 +332,7 @@ export default function MoocDetail() {
             {/* Botones de acción */}
             <div className="flex flex-col sm:flex-row gap-4">
               {course.intro_video_url && (
-                <Button 
+                <Button
                   onClick={() => setShowIntroVideo(true)}
                   variant="outline"
                   size="lg"
@@ -341,7 +342,7 @@ export default function MoocDetail() {
                   Ver Introducción
                 </Button>
               )}
-              <Button 
+              <Button
                 onClick={handleTakeCourse}
                 size="lg"
                 disabled={enrolling || (userRole === "student" && isEnrolled) || (currentUser && userRole !== "student")}
@@ -413,7 +414,7 @@ export default function MoocDetail() {
                 <CardContent>
                   <div className="space-y-3">
                     {course.lessons.map((lesson, index) => (
-                      <div 
+                      <div
                         key={lesson.id}
                         className="flex items-start justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors"
                       >
@@ -426,9 +427,10 @@ export default function MoocDetail() {
                               {index + 1}. {lesson.title}
                             </div>
                             {lesson.description && (
-                              <p className="text-sm text-muted-foreground line-clamp-2">
-                                {lesson.description}
-                              </p>
+                              <div
+                                className="text-sm text-muted-foreground line-clamp-2"
+                                dangerouslySetInnerHTML={{ __html: sanitizeLessonHtml(lesson.description) }}
+                              />
                             )}
                           </div>
                         </div>
