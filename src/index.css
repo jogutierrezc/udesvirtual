@@ -115,3 +115,29 @@ All colors MUST be HSL.
     background: radial-gradient(circle at center, var(--tw-gradient-stops));
   }
 }
+
+/* Quill Table Styles */
+.ql-editor table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+.ql-editor td, .ql-editor th {
+  border: 1px solid hsl(var(--border));
+  padding: 0.5rem;
+}
+
+/* Ensure tables in student view (prose) also have borders if they come from Quill */
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+.prose td, .prose th {
+  border: 1px solid hsl(var(--border));
+  padding: 0.5rem;
+}

@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
+import 'quill/dist/quill.snow.css';
 import DOMPurify from 'dompurify';
 import { sanitizeLessonHtml } from '@/lib/html';
 import { useToast } from "@/hooks/use-toast";
@@ -354,12 +354,12 @@ export default function LessonEditorPage() {
 
                 <div>
                   <Label>Descripción (rich text)</Label>
-                  <ReactQuill theme="snow" value={lesson.description || ''} onChange={(val) => setLesson((p: any) => ({ ...p, description: val }))} modules={{ toolbar: [['bold', 'italic', 'underline'], [{ 'align': [] }], [{ 'list': 'ordered' }, { 'list': 'bullet' }], ['link', 'clean'], ['table']] }} />
+                  <ReactQuill theme="snow" value={lesson.description || ''} onChange={(val) => setLesson((p: any) => ({ ...p, description: val }))} modules={{ toolbar: [['bold', 'italic', 'underline'], [{ 'align': [] }], [{ 'list': 'ordered' }, { 'list': 'bullet' }], ['link', 'clean'], ['table']], table: true }} />
                 </div>
 
                 <div>
                   <Label>Contenido (rich text)</Label>
-                  <ReactQuill theme="snow" value={lesson.content || ''} onChange={(val) => setLesson((p: any) => ({ ...p, content: val }))} modules={{ toolbar: [['bold', 'italic', 'underline'], [{ 'align': [] }], [{ 'list': 'ordered' }, { 'list': 'bullet' }], ['link', 'clean'], ['table']] }} />
+                  <ReactQuill theme="snow" value={lesson.content || ''} onChange={(val) => setLesson((p: any) => ({ ...p, content: val }))} modules={{ toolbar: [['bold', 'italic', 'underline'], [{ 'align': [] }], [{ 'list': 'ordered' }, { 'list': 'bullet' }], ['link', 'clean'], ['table']], table: true }} />
                 </div>
               </div>
             </CardContent>
