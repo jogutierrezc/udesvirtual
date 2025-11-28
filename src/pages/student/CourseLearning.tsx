@@ -31,8 +31,10 @@ import {
   ExternalLink,
   MessageSquare
 } from "lucide-react";
+import ReactPlayer from 'react-player';
 import { sanitizeLessonHtml } from '@/lib/html';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { GradeReportModal } from "./components/GradeReportModal";
 
 type Lesson = {
   id: string;
@@ -68,6 +70,7 @@ export default function CourseLearning() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [showExamResultDialog, setShowExamResultDialog] = useState(false);
+  const [showGradeReport, setShowGradeReport] = useState(false);
   const [examResultLoading, setExamResultLoading] = useState(false);
   const [examResult, setExamResult] = useState<null | { score_numeric: number; score_percent: number; passed: boolean }>(null);
   const videoRef = useRef<HTMLIFrameElement>(null);
@@ -81,6 +84,7 @@ export default function CourseLearning() {
   const [progress, setProgress] = useState(0);
   const [completing, setCompleting] = useState(false);
   const [videoWatched, setVideoWatched] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
 
   // Actividad y entrega
   const [activity, setActivity] = useState<any | null>(null);
@@ -164,6 +168,7 @@ export default function CourseLearning() {
         navigate("/auth");
         return;
       }
+      setUserId(user.id);
 
       // Verificar inscripción
       const { data: enrollment } = await supabase
@@ -614,6 +619,7 @@ export default function CourseLearning() {
   const selectLesson = (lesson: Lesson) => {
     setCurrentLesson(lesson);
     setVideoWatched(false);
+    setVideoCompleted(false);
   };
 
   const toggleSection = (id: string) => {
@@ -630,6 +636,7 @@ export default function CourseLearning() {
     }
     setCurrentLesson(lesson);
     setVideoWatched(false);
+    setVideoCompleted(false);
   };
 
   if (loading) {
@@ -640,11 +647,11 @@ export default function CourseLearning() {
     );
   }
 
-  // Solo puede completar si no hay actividad pendiente
+  // Solo puede completar si no hay actividad pendiente y si vio el video completo
   const canCompleteLesson = currentLesson && (
     currentLesson.completed ||
     !currentLesson.video_url ||
-    videoWatched
+    videoCompleted // Changed from videoWatched to videoCompleted which is set by onEnded
   ) && (!currentLesson.exam || currentLesson.exam.passed)
     && (
       !activity || !!activitySubmission
@@ -670,6 +677,15 @@ export default function CourseLearning() {
           </div>
 
           <div className="hidden md:flex items-center gap-4">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={() => setShowGradeReport(true)}
+            >
+              <FileText size={14} />
+              Ver Notas
+            </Button>
             <div className="text-right">
               <p className="text-xs font-bold text-slate-700">Tu Progreso</p>
               <p className="text-xs text-slate-500">{progress}% completado</p>
@@ -739,27 +755,27 @@ export default function CourseLearning() {
                     {currentLesson.video_url && (
                       <div className="mt-6 mb-6">
                         {(() => {
-                          const embed = getEmbedUrl(currentLesson.video_url);
-                          if (!embed) {
-                            return (
-                              <div className="p-4 rounded-lg bg-muted">
-                                <p className="text-sm mb-2">Este video no tiene una vista embebida disponible.</p>
-                                <Button asChild>
-                                  <a href={currentLesson.video_url} target="_blank" rel="noreferrer">Abrir video en YouTube</a>
-                                </Button>
-                              </div>
-                            );
-                          }
+                          // ReactPlayer handles various URLs (YouTube, Vimeo, files, etc.)
                           return (
-                            <div className="aspect-video bg-black rounded-xl overflow-hidden shadow-lg">
-                              <iframe
-                                ref={videoRef}
-                                src={embed}
-                                className="w-full h-full"
-                                frameBorder={0}
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                                allowFullScreen
-                                title={currentLesson.title || 'Video'}
+                            <div className="aspect-video bg-black rounded-xl overflow-hidden shadow-lg relative">
+                              <ReactPlayer
+                                url={currentLesson.video_url}
+                                width="100%"
+                                height="100%"
+                                controls={true}
+                                onEnded={() => {
+                                  setVideoCompleted(true);
+                                  setVideoWatched(true);
+                                  toast({
+                                    title: "¡Video completado!",
+                                    description: "Ahora puedes marcar la lección como completada.",
+                                  });
+                                }}
+                                config={{
+                                  youtube: {
+                                    playerVars: { showinfo: 1 }
+                                  }
+                                }}
                               />
                             </div>
                           );
@@ -947,8 +963,8 @@ export default function CourseLearning() {
                           <p className="text-sm text-slate-500">
                             {activity && !activitySubmission
                               ? "Debes entregar la evidencia de la actividad para completar la lección."
-                              : currentLesson.video_url && !videoWatched
-                                ? "Mira el video completo para continuar"
+                              : currentLesson.video_url && !videoCompleted
+                                ? "Debes ver el video completo para continuar"
                                 : currentLesson.exam && !currentLesson.exam.passed
                                   ? "Debes aprobar el examen para completar"
                                   : "Marca como completada para avanzar"}
@@ -1295,6 +1311,15 @@ export default function CourseLearning() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* Grade Report Modal */}
+      {courseId && userId && (
+        <GradeReportModal
+          isOpen={showGradeReport}
+          onClose={() => setShowGradeReport(false)}
+          courseId={courseId}
+          userId={userId}
+        />
+      )}
     </div>
   );
 }
