@@ -422,13 +422,13 @@ export default function MoocDetail() {
                           <div className="text-indigo-600 mt-1">
                             <Video className="h-5 w-5" />
                           </div>
-                          <div className="flex-1">
-                            <div className="font-medium mb-1">
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium mb-1 truncate">
                               {index + 1}. {lesson.title}
                             </div>
                             {lesson.description && (
                               <div
-                                className="text-sm text-muted-foreground line-clamp-2"
+                                className="text-sm text-muted-foreground line-clamp-2 break-words"
                                 dangerouslySetInnerHTML={{ __html: sanitizeLessonHtml(lesson.description) }}
                               />
                             )}
