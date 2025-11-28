@@ -49,8 +49,11 @@ export function sanitizeLessonHtml(html: string | null | undefined): string {
     }
   });
 
-  // Finally sanitize again to remove any remaining unsafe attributes/tags
-  const cleaned = DOMPurify.sanitize(doc.body.innerHTML);
+  // Finally sanitize again to remove any remaining unsafe attributes/tags, but allow style
+  const cleaned = DOMPurify.sanitize(doc.body.innerHTML, {
+    ADD_ATTR: ['style', 'colspan', 'rowspan', 'border', 'cellpadding', 'cellspacing'],
+    ADD_TAGS: ['table', 'thead', 'tbody', 'tr', 'th', 'td']
+  });
   return cleaned;
 }
 

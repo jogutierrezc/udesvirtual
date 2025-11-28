@@ -1,4 +1,4 @@
-import { useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
+import React, { useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import Quill from 'quill';
 import 'quill/dist/quill.snow.css';
 
@@ -17,6 +17,9 @@ const QuillEditor = forwardRef<Quill | null, QuillEditorProps>(({ value, default
 
     useImperativeHandle(ref, () => quillRef.current);
 
+    const [isHtmlMode, setIsHtmlMode] = React.useState(false);
+    const [htmlContent, setHtmlContent] = React.useState('');
+
     useEffect(() => {
         if (!containerRef.current) return;
 
@@ -28,27 +31,38 @@ const QuillEditor = forwardRef<Quill | null, QuillEditorProps>(({ value, default
         const quill = new Quill(editorContainer, {
             theme: 'snow',
             modules: {
-                toolbar: [
-                    ['bold', 'italic', 'underline', 'strike'],
-                    [{ 'list': 'ordered' }, { 'list': 'bullet' }],
-                    [{ 'script': 'sub' }, { 'script': 'super' }],
-                    [{ 'indent': '-1' }, { 'indent': '+1' }],
-                    [{ 'direction': 'rtl' }],
-                    [{ 'size': ['small', false, 'large', 'huge'] }],
-                    [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
-                    [{ 'color': [] }, { 'background': [] }],
-                    [{ 'font': [] }],
-                    [{ 'align': [] }],
-                    ['clean'],
-                    ['link', 'image', 'video'],
-                    ['table'] // Add table to toolbar
-                ],
+                toolbar: {
+                    container: [
+                        ['bold', 'italic', 'underline', 'strike'],
+                        [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                        [{ 'script': 'sub' }, { 'script': 'super' }],
+                        [{ 'indent': '-1' }, { 'indent': '+1' }],
+                        [{ 'direction': 'rtl' }],
+                        [{ 'size': ['small', false, 'large', 'huge'] }],
+                        [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+                        [{ 'color': [] }, { 'background': [] }],
+                        [{ 'font': [] }],
+                        [{ 'align': [] }],
+                        ['clean'],
+                        ['link', 'image', 'video'],
+                        ['table'],
+                        ['code-block'] // Use code-block icon for HTML mode or add custom button
+                    ],
+                    handlers: {
+                        'code-block': () => {
+                            setIsHtmlMode(prev => !prev);
+                        }
+                    }
+                },
                 table: true, // Enable table module
             },
             placeholder: placeholder,
         });
 
         quillRef.current = quill;
+
+        // Add custom button icon for HTML mode if needed, or just use code-block
+        // Let's use code-block for now as "Source" toggle
 
         if (defaultValue) {
             quill.clipboard.dangerouslyPasteHTML(defaultValue);
@@ -73,7 +87,7 @@ const QuillEditor = forwardRef<Quill | null, QuillEditorProps>(({ value, default
 
     // Sync value changes from prop if needed (be careful with loops)
     useEffect(() => {
-        if (quillRef.current && value !== undefined) {
+        if (quillRef.current && value !== undefined && !isHtmlMode) {
             const currentContent = quillRef.current.getSemanticHTML();
             if (value !== currentContent) {
                 // Only update if significantly different to avoid cursor jumps
@@ -86,9 +100,40 @@ const QuillEditor = forwardRef<Quill | null, QuillEditorProps>(({ value, default
                 quillRef.current.setContents(delta, 'silent');
             }
         }
-    }, [value]);
+    }, [value, isHtmlMode]);
 
-    return <div ref={containerRef} className={className} />;
+    // Sync HTML content when switching modes
+    useEffect(() => {
+        if (isHtmlMode && quillRef.current) {
+            setHtmlContent(quillRef.current.getSemanticHTML());
+        } else if (!isHtmlMode && quillRef.current && htmlContent) {
+            const delta = quillRef.current.clipboard.convert({ html: htmlContent });
+            quillRef.current.setContents(delta, 'silent');
+            // Trigger change
+            if (onChange) onChange(htmlContent);
+        }
+    }, [isHtmlMode]);
+
+    const handleHtmlChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        setHtmlContent(e.target.value);
+        if (onChange) onChange(e.target.value);
+    };
+
+    return (
+        <div className={className} style={{ position: 'relative' }}>
+            <div ref={containerRef} style={{ display: isHtmlMode ? 'none' : 'block' }} />
+            {isHtmlMode && (
+                <textarea
+                    value={htmlContent}
+                    onChange={handleHtmlChange}
+                    className="w-full h-64 p-4 font-mono text-sm border rounded-md bg-slate-50"
+                    style={{ minHeight: '300px' }}
+                />
+            )}
+            {/* Custom toggle button if not using toolbar handler, but toolbar handler is better integrated */}
+            {/* We are using code-block handler above */}
+        </div>
+    );
 });
 
 QuillEditor.displayName = 'QuillEditor';
