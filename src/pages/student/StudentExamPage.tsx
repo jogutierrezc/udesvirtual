@@ -68,6 +68,7 @@ export default function StudentExamPage() {
   // New state for modernized UI
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [showSummary, setShowSummary] = useState(false);
+  const [attemptedFinishWithIncomplete, setAttemptedFinishWithIncomplete] = useState(false);
 
   useEffect(() => {
     // Only load exam after user accepts terms
@@ -379,6 +380,13 @@ export default function StudentExamPage() {
 
   const handleAnswerChange = (questionId: string, optionId: string) => {
     setAnswers((prev) => ({ ...prev, [questionId]: optionId }));
+
+    // Auto-advance with delay
+    setTimeout(() => {
+      if (!showSummary && !attemptResult && currentQuestionIndex < questions.length - 1) {
+        setCurrentQuestionIndex(prev => prev + 1);
+      }
+    }, 500);
   };
 
   const formatTime = (seconds: number) => {
@@ -415,10 +423,12 @@ export default function StudentExamPage() {
   const goToQuestion = (index: number) => {
     setCurrentQuestionIndex(index);
     setShowSummary(false);
+    setAttemptedFinishWithIncomplete(false);
   };
 
   const handleNextOrFinish = () => {
     if (currentQuestionIndex === questions.length - 1) {
+      setAttemptedFinishWithIncomplete(false);
       setShowSummary(true);
     } else {
       nextQuestion();
@@ -608,20 +618,44 @@ export default function StudentExamPage() {
         {/* Result View (if finished) */}
         {attemptResult ? (
           <div className="text-center animate-in fade-in zoom-in duration-500 flex flex-col items-center justify-center py-10 w-full">
-            <div className="relative w-24 h-24 mb-6">
-              <div className="absolute inset-0 bg-emerald-100 rounded-full animate-ping opacity-75"></div>
-              <div className="relative w-full h-full bg-emerald-100 rounded-full flex items-center justify-center">
-                <CheckCircle2 className="w-12 h-12 text-emerald-600" />
+
+            {/* Ícono de Resultado */}
+            <div className="relative w-28 h-28 mb-6">
+              <div className={`absolute inset-0 rounded-full animate-ping opacity-20 ${attemptResult.passed ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
+              <div className={`relative w-full h-full rounded-full flex items-center justify-center border-4 bg-white ${attemptResult.passed ? 'border-emerald-100 text-emerald-600' : 'border-red-100 text-red-500'
+                }`}>
+                {/* Nota Grande */}
+                <div className="flex flex-col items-center leading-none">
+                  <span className="text-4xl font-black">{attemptResult.score_numeric}</span>
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400 mt-1">Nota Final</span>
+                </div>
               </div>
             </div>
-            <h2 className="text-3xl font-bold text-slate-900 mb-2">¡Examen Enviado!</h2>
-            <p className="text-slate-500 max-w-md mx-auto mb-8">Gracias por completar la evaluación. Tus respuestas han sido registradas en la plataforma.</p>
 
-            <div className="p-6 bg-white rounded-2xl border border-slate-100 shadow-sm mb-8 w-full max-w-sm">
-              <div className="text-sm text-slate-500 mb-1">Calificación Obtenida</div>
-              <div className="text-5xl font-bold text-slate-900 mb-2">{attemptResult.score_numeric}</div>
-              <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${attemptResult.passed ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
-                {attemptResult.passed ? 'Aprobado' : 'No Aprobado'}
+            <h2 className="text-3xl font-bold text-slate-900 mb-2">
+              {attemptResult.passed ? '¡Felicidades, Aprobaste!' : 'Examen Finalizado'}
+            </h2>
+
+            <p className="text-slate-500 max-w-md mx-auto mb-8 px-4">
+              {attemptResult.passed
+                ? 'Has demostrado un excelente dominio del tema. Tu calificación ha sido registrada.'
+                : 'Has completado el examen, pero no alcanzaste el puntaje mínimo. Te recomendamos repasar los temas.'}
+            </p>
+
+            {/* Tarjeta de Desglose */}
+            <div className="p-6 bg-white rounded-2xl border border-slate-100 shadow-sm mb-8 w-full max-w-xs mx-auto">
+              <div className="space-y-4">
+                <div className="flex justify-between items-center border-b border-slate-50 pb-3">
+                  <span className="text-slate-500 text-sm">Estado</span>
+                  <span className={`font-bold px-3 py-1 rounded-full text-xs uppercase tracking-wide ${attemptResult.passed ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+                    }`}>
+                    {attemptResult.passed ? 'Aprobado' : 'No Aprobado'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500 text-sm">Mínimo requerido</span>
+                  <span className="font-bold text-slate-700">{exam.passing_score} / {exam.max_score}</span>
+                </div>
               </div>
             </div>
 
@@ -718,15 +752,34 @@ export default function StudentExamPage() {
 
               {/* 2. VISTA DE RESUMEN */}
               {showSummary && (
-                <div className="animate-in fade-in duration-300 w-full max-w-2xl mx-auto">
-                  <h2 className="text-2xl font-bold text-slate-800 mb-2">Resumen de Respuestas</h2>
-                  <p className="text-slate-500 mb-6 text-sm">Verifica que has respondido todo antes de enviar. No se muestran tus respuestas por seguridad.</p>
+                <div className="animate-fadeIn w-full max-w-2xl mx-auto">
 
-                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8 max-h-[60vh] overflow-y-auto">
+                  {/* Alerta de Preguntas Incompletas (Animada) */}
+                  {questions.length - getAnsweredCount() > 0 && attemptedFinishWithIncomplete && (
+                    <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3 animate-shake">
+                      <AlertTriangle className="w-6 h-6 text-amber-500 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <h3 className="font-bold text-amber-900">¡Faltan preguntas por responder!</h3>
+                        <p className="text-sm text-amber-800 mt-1">
+                          Tienes <strong>{questions.length - getAnsweredCount()}</strong> preguntas sin contestar. ¿Estás seguro que deseas enviar tu examen así?
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {!(questions.length - getAnsweredCount() > 0 && attemptedFinishWithIncomplete) && (
+                    <>
+                      <h2 className="text-2xl font-bold text-slate-800 mb-2">Resumen de Respuestas</h2>
+                      <p className="text-slate-500 mb-6 text-sm">Verifica que has respondido todo antes de enviar.</p>
+                    </>
+                  )}
+
+                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8 max-h-[50vh] overflow-y-auto">
                     {questions.map((q, i) => (
                       <div
                         key={q.id}
-                        className="flex items-center justify-between p-4 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors cursor-pointer"
+                        className={`flex items-center justify-between p-4 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors cursor-pointer ${attemptedFinishWithIncomplete && !isQuestionAnswered(q.id) ? 'bg-amber-50/50 animate-pulse-soft' : ''
+                          }`}
                         onClick={() => goToQuestion(i)}
                       >
                         <div className="flex items-center gap-4 overflow-hidden">
@@ -743,7 +796,7 @@ export default function StudentExamPage() {
                               Respondida
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700 border border-amber-200">
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700 border border-amber-200 animate-bounce-subtle">
                               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                               Sin responder
                             </span>
@@ -754,13 +807,26 @@ export default function StudentExamPage() {
                   </div>
 
                   <div className="flex gap-4">
-                    <button onClick={() => setShowSummary(false)} className="flex-1 py-3 px-6 rounded-xl border border-slate-300 text-slate-600 font-bold hover:bg-slate-50 transition-colors">
-                      Volver a Revisar
+                    <button
+                      onClick={() => {
+                        setShowSummary(false);
+                        setAttemptedFinishWithIncomplete(false);
+                      }}
+                      className="flex-1 py-3 px-6 rounded-xl border border-slate-300 text-slate-600 font-bold hover:bg-slate-50 transition-colors"
+                    >
+                      Revisar Examen
                     </button>
                     <button
-                      onClick={() => handleSubmit(false)}
+                      onClick={() => {
+                        if (questions.length - getAnsweredCount() > 0 && !attemptedFinishWithIncomplete) {
+                          setAttemptedFinishWithIncomplete(true);
+                        } else {
+                          handleSubmit(false);
+                        }
+                      }}
                       disabled={submitting || invalidated}
-                      className="flex-1 py-3 px-6 rounded-xl bg-emerald-600 text-white font-bold shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition-all transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className={`flex-1 py-3 px-6 rounded-xl text-white font-bold shadow-lg transition-all transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed ${attemptedFinishWithIncomplete ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-200' : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200'
+                        }`}
                     >
                       {submitting ? (
                         <div className="flex items-center justify-center gap-2">
@@ -768,7 +834,7 @@ export default function StudentExamPage() {
                           Enviando...
                         </div>
                       ) : (
-                        "Confirmar y Enviar"
+                        attemptedFinishWithIncomplete ? 'Sí, Enviar Incompleto' : 'Confirmar y Enviar'
                       )}
                     </button>
                   </div>
