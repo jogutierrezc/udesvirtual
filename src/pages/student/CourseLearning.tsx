@@ -84,6 +84,7 @@ export default function CourseLearning() {
   const [progress, setProgress] = useState(0);
   const [completing, setCompleting] = useState(false);
   const [videoWatched, setVideoWatched] = useState(false);
+  const [videoCompleted, setVideoCompleted] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
 
   // Actividad y entrega
