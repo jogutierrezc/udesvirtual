@@ -354,12 +354,12 @@ export default function LessonEditorPage() {
 
                 <div>
                   <Label>Descripción (rich text)</Label>
-                  <ReactQuill theme="snow" value={lesson.description || ''} onChange={(val) => setLesson((p: any) => ({ ...p, description: val }))} modules={{ toolbar: [['bold', 'italic', 'underline'], [{ 'align': [] }], [{ 'list': 'ordered' }, { 'list': 'bullet' }], ['link', 'clean']] }} />
+                  <ReactQuill theme="snow" value={lesson.description || ''} onChange={(val) => setLesson((p: any) => ({ ...p, description: val }))} modules={{ toolbar: [['bold', 'italic', 'underline'], [{ 'align': [] }], [{ 'list': 'ordered' }, { 'list': 'bullet' }], ['link', 'clean'], ['table']] }} />
                 </div>
 
                 <div>
                   <Label>Contenido (rich text)</Label>
-                  <ReactQuill theme="snow" value={lesson.content || ''} onChange={(val) => setLesson((p: any) => ({ ...p, content: val }))} modules={{ toolbar: [['bold', 'italic', 'underline'], [{ 'align': [] }], [{ 'list': 'ordered' }, { 'list': 'bullet' }], ['link', 'clean']] }} />
+                  <ReactQuill theme="snow" value={lesson.content || ''} onChange={(val) => setLesson((p: any) => ({ ...p, content: val }))} modules={{ toolbar: [['bold', 'italic', 'underline'], [{ 'align': [] }], [{ 'list': 'ordered' }, { 'list': 'bullet' }], ['link', 'clean'], ['table']] }} />
                 </div>
               </div>
             </CardContent>

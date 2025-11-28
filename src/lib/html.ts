@@ -5,7 +5,11 @@ export function sanitizeLessonHtml(html: string | null | undefined): string {
   if (!html) return '';
 
   // Allow the style attribute temporarily so we can extract text-align values.
-  const preserved = DOMPurify.sanitize(html, { ADD_ATTR: ['style'] });
+  // Also allow table-related tags and attributes.
+  const preserved = DOMPurify.sanitize(html, {
+    ADD_ATTR: ['style', 'colspan', 'rowspan', 'border', 'cellpadding', 'cellspacing'],
+    ADD_TAGS: ['table', 'thead', 'tbody', 'tr', 'th', 'td']
+  });
 
   // Parse and map styles to utility classes we control.
   const parser = new DOMParser();
