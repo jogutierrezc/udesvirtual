@@ -697,10 +697,10 @@ export default function CourseLearning() {
                   const now = new Date();
                   if (section.available_from && new Date(section.available_from) > now) {
                     isLocked = true;
-                    lockMessage = `Este módulo estará disponible desde el ${new Date(section.available_from).toLocaleString()}`;
+                    lockMessage = `Este módulo estará disponible desde el ${new Date(section.available_from).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' })}`;
                   } else if (section.available_until && new Date(section.available_until) < now) {
                     isLocked = true;
-                    lockMessage = `Este módulo cerró el ${new Date(section.available_until).toLocaleString()}`;
+                    lockMessage = `Este módulo cerró el ${new Date(section.available_until).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' })}`;
                   }
                 }
               }
@@ -1052,19 +1052,23 @@ export default function CourseLearning() {
                           </div>
 
                           {/* Availability Messages */}
-                          {!available && section.available_from && new Date(section.available_from) > new Date() && (
-                            <p className="text-[10px] text-red-500 mt-1 flex items-center gap-1">
-                              <Clock size={10} /> Disponible desde: {new Date(section.available_from).toLocaleString()}
+                          {/* Availability Messages */}
+                          {section.available_from && (
+                            <p className={`text-[10px] mt-1 flex items-center gap-1 ${!available && new Date(section.available_from) > new Date() ? 'text-red-500' : 'text-slate-500'}`}>
+                              <Clock size={10} />
+                              {!available && new Date(section.available_from) > new Date()
+                                ? `Disponible desde: ${new Date(section.available_from).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' })}`
+                                : `Habilitado desde: ${new Date(section.available_from).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' })}`
+                              }
                             </p>
                           )}
-                          {!available && section.available_until && new Date(section.available_until) < new Date() && (
-                            <p className="text-[10px] text-red-500 mt-1 flex items-center gap-1">
-                              <Lock size={10} /> Cerrado el: {new Date(section.available_until).toLocaleString()}
-                            </p>
-                          )}
-                          {available && section.available_until && (
-                            <p className="text-[10px] text-orange-600 mt-1 flex items-center gap-1">
-                              <Clock size={10} /> Disponible hasta: {new Date(section.available_until).toLocaleString()}
+                          {section.available_until && (
+                            <p className={`text-[10px] mt-1 flex items-center gap-1 ${!available && new Date(section.available_until) < new Date() ? 'text-red-500' : 'text-orange-600'}`}>
+                              <Lock size={10} />
+                              {!available && new Date(section.available_until) < new Date()
+                                ? `Cerrado el: ${new Date(section.available_until).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' })}`
+                                : `Disponible hasta: ${new Date(section.available_until).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' })}`
+                              }
                             </p>
                           )}
                         </div>

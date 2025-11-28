@@ -114,15 +114,15 @@ export const MoocExamManager = ({ courseId }: MoocExamManagerProps) => {
           </div>
         )}
       </CardContent>
-      {showForm && (
-        <MoocExamForm
-          courseId={courseId}
-          exam={editingExam}
-          lessons={lessons}
-          sections={sections}
-          onClose={handleFormClose}
-        />
-      )}
+
+      <MoocExamForm
+        open={showForm}
+        courseId={courseId}
+        exam={editingExam}
+        lessons={lessons}
+        sections={sections}
+        onClose={handleFormClose}
+      />
     </Card>
   );
 };

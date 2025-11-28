@@ -1,17 +1,18 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import { Loader2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { MoocExamQuestionEditor } from "./MoocExamQuestionEditor";
 
 interface MoocExamFormProps {
+  open: boolean;
   courseId: string;
   exam?: any;
   lessons?: Array<{ id: string; title: string; order_index: number }>;
@@ -19,22 +20,55 @@ interface MoocExamFormProps {
   onClose: (refresh?: boolean) => void;
 }
 
-export const MoocExamForm = ({ courseId, exam, lessons, sections, onClose }: MoocExamFormProps) => {
+export const MoocExamForm = ({ open, courseId, exam, lessons, sections, onClose }: MoocExamFormProps) => {
   const [form, setForm] = useState({
-    title: exam?.title || "",
-    description: exam?.description || "",
-    status: exam?.status || "draft",
-    order_index: exam?.order_index || 0,
-    max_score: exam?.max_score || 5,
-    passing_score: exam?.passing_score || 3,
-    time_limit_minutes: exam?.time_limit_minutes || 0,
-    attempts_allowed: exam?.attempts_allowed || 1,
-    lesson_id: exam?.lesson_id || null,
-    section_id: exam?.section_id || null,
+    title: "",
+    description: "",
+    status: "draft",
+    order_index: 0,
+    max_score: 5,
+    passing_score: 3,
+    time_limit_minutes: 0,
+    attempts_allowed: 1,
+    lesson_id: null as string | null,
+    section_id: null as string | null,
   });
   const [saving, setSaving] = useState(false);
-  const [showQuestions, setShowQuestions] = useState(!!exam);
-  const [examId, setExamId] = useState(exam?.id || null);
+  const [examId, setExamId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState("config");
+
+  useEffect(() => {
+    if (exam) {
+      setForm({
+        title: exam.title || "",
+        description: exam.description || "",
+        status: exam.status || "draft",
+        order_index: exam.order_index || 0,
+        max_score: exam.max_score || 5,
+        passing_score: exam.passing_score || 3,
+        time_limit_minutes: exam.time_limit_minutes || 0,
+        attempts_allowed: exam.attempts_allowed || 1,
+        lesson_id: exam.lesson_id || null,
+        section_id: exam.section_id || null,
+      });
+      setExamId(exam.id);
+    } else {
+      setForm({
+        title: "",
+        description: "",
+        status: "draft",
+        order_index: 0,
+        max_score: 5,
+        passing_score: 3,
+        time_limit_minutes: 0,
+        attempts_allowed: 1,
+        lesson_id: null,
+        section_id: null,
+      });
+      setExamId(null);
+      setActiveTab("config");
+    }
+  }, [exam, open]);
 
   const handleChange = (e: any) => {
     const { name, value, type } = e.target;
@@ -57,8 +91,8 @@ export const MoocExamForm = ({ courseId, exam, lessons, sections, onClose }: Moo
       }
 
       let res;
-      if (exam) {
-        res = await supabase.from("mooc_exams").update({ ...form }).eq("id", exam.id).select();
+      if (examId) {
+        res = await supabase.from("mooc_exams").update({ ...form }).eq("id", examId).select();
       } else {
         res = await supabase.from("mooc_exams").insert({
           ...form,
@@ -74,9 +108,10 @@ export const MoocExamForm = ({ courseId, exam, lessons, sections, onClose }: Moo
         return;
       }
 
-      if (!exam && res.data && res.data[0]) {
+      if (!examId && res.data && res.data[0]) {
         setExamId(res.data[0].id);
-        setShowQuestions(true);
+        // Don't close, just update state to allow adding questions
+        // onClose(true); 
       } else {
         onClose(true);
       }
@@ -89,13 +124,22 @@ export const MoocExamForm = ({ courseId, exam, lessons, sections, onClose }: Moo
   };
 
   return (
-    <div className="space-y-6">
-      {!showQuestions ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>{exam ? "Editar evaluación" : "Nueva evaluación"}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+    <Dialog open={open} onOpenChange={(val) => !val && onClose(false)}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{examId ? "Editar evaluación" : "Nueva evaluación"}</DialogTitle>
+          <DialogDescription>
+            Configura los detalles de la evaluación y gestiona las preguntas.
+          </DialogDescription>
+        </DialogHeader>
+
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="config">Configuración</TabsTrigger>
+            <TabsTrigger value="questions" disabled={!examId}>Preguntas</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="config" className="space-y-4 py-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Título</label>
@@ -103,7 +147,7 @@ export const MoocExamForm = ({ courseId, exam, lessons, sections, onClose }: Moo
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Estado</label>
-                <select name="status" value={form.status} onChange={handleChange} className="w-full border rounded px-2 py-1">
+                <select name="status" value={form.status} onChange={handleChange} className="w-full border rounded px-2 py-1 h-10 bg-background">
                   <option value="draft">Borrador</option>
                   <option value="published">Publicado</option>
                 </select>
@@ -174,6 +218,7 @@ export const MoocExamForm = ({ courseId, exam, lessons, sections, onClose }: Moo
               <div>
                 <label className="block text-sm font-medium mb-1">Nota máxima</label>
                 <Input name="max_score" type="number" min={1} max={5} step={0.1} value={form.max_score} onChange={handleChange} />
+                <p className="text-xs text-muted-foreground mt-1">El valor de cada pregunta se ajustará automáticamente.</p>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Nota mínima aprobatoria</label>
@@ -184,28 +229,24 @@ export const MoocExamForm = ({ courseId, exam, lessons, sections, onClose }: Moo
               <label className="block text-sm font-medium mb-1">Descripción</label>
               <Textarea name="description" value={form.description} onChange={handleChange} rows={3} />
             </div>
-            <div className="flex gap-2 mt-4">
+            <div className="flex justify-end gap-2 mt-4">
               <Button variant="outline" onClick={() => onClose(false)} disabled={saving}>Cancelar</Button>
               <Button onClick={handleSave} disabled={saving}>
-                {saving ? <Loader2 className="animate-spin h-4 w-4" /> : exam ? "Guardar cambios" : "Guardar y continuar"}
+                {saving ? <Loader2 className="animate-spin h-4 w-4" /> : examId ? "Guardar cambios" : "Crear y continuar"}
               </Button>
             </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between p-4 bg-secondary rounded-lg">
-            <div>
-              <h3 className="text-lg font-semibold">{form.title}</h3>
-              <p className="text-sm text-muted-foreground">Creando preguntas para este examen</p>
-            </div>
-            <Button variant="outline" onClick={() => onClose(true)}>
-              Finalizar
-            </Button>
-          </div>
-          <MoocExamQuestionEditor examId={examId} />
-        </div>
-      )}
-    </div>
+          </TabsContent>
+
+          <TabsContent value="questions" className="space-y-4 py-4">
+            {examId && (
+              <MoocExamQuestionEditor
+                examId={examId}
+                maxScore={form.max_score}
+              />
+            )}
+          </TabsContent>
+        </Tabs>
+      </DialogContent>
+    </Dialog>
   );
 };
