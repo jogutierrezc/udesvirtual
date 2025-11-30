@@ -30,6 +30,8 @@ type Question = {
   id: string;
   prompt: string;
   order_index: number;
+  type: string;
+  points: number;
   mooc_exam_options: Array<{ id: string; text: string; order_index: number | null; is_correct: boolean }>;
 };
 
@@ -52,7 +54,7 @@ export default function StudentExamPage() {
   const [loading, setLoading] = useState(true);
   const [exam, setExam] = useState<Exam | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [answers, setAnswers] = useState<Record<string, string[]>>({});
   const [attemptId, setAttemptId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [attemptResult, setAttemptResult] = useState<null | { score_numeric: number; score_percent: number; passed: boolean }>(null);
@@ -206,7 +208,7 @@ export default function StudentExamPage() {
       // Load questions with options
       const { data: questionsData, error: questionsError } = await supabase
         .from('mooc_exam_questions')
-        .select('id, prompt, order_index, mooc_exam_options(*)')
+        .select('id, prompt, order_index, type, points, mooc_exam_options(*)')
         .eq('exam_id', examId)
         .order('order_index', { ascending: true });
 
@@ -313,12 +315,18 @@ export default function StudentExamPage() {
       if (!user) return;
 
       // Save answers
-      const answerRows = Object.entries(answers).map(([questionId, optionId]) => ({
-        attempt_id: attemptId,
-        question_id: questionId,
-        selected_option_id: optionId,
-        selected_option_ids: [optionId],
-      }));
+      // answers is now Record<string, string[]> (questionId -> array of optionIds)
+      const answerRows = Object.entries(answers).map(([questionId, optionIds]) => {
+        // For backward compatibility or single choice, we might want to set selected_option_id
+        // But the new schema/logic should rely on selected_option_ids array
+        const selectedIds = Array.isArray(optionIds) ? optionIds : [optionIds];
+        return {
+          attempt_id: attemptId,
+          question_id: questionId,
+          selected_option_id: selectedIds.length === 1 ? selectedIds[0] : null, // Optional: for legacy support
+          selected_option_ids: selectedIds,
+        };
+      });
 
       if (answerRows.length > 0) {
         const { error: answersError } = await supabase.from('mooc_exam_answers').insert(answerRows);
@@ -378,15 +386,31 @@ export default function StudentExamPage() {
     }
   };
 
-  const handleAnswerChange = (questionId: string, optionId: string) => {
-    setAnswers((prev) => ({ ...prev, [questionId]: optionId }));
+  const handleAnswerChange = (questionId: string, optionId: string, isMultiple: boolean) => {
+    setAnswers((prev) => {
+      const currentAnswers = prev[questionId] ? (Array.isArray(prev[questionId]) ? prev[questionId] : [prev[questionId]]) : [];
 
-    // Auto-advance with delay
-    setTimeout(() => {
-      if (!showSummary && !attemptResult && currentQuestionIndex < questions.length - 1) {
-        setCurrentQuestionIndex(prev => prev + 1);
+      if (isMultiple) {
+        // Toggle selection
+        if (currentAnswers.includes(optionId)) {
+          return { ...prev, [questionId]: currentAnswers.filter(id => id !== optionId) };
+        } else {
+          return { ...prev, [questionId]: [...currentAnswers, optionId] };
+        }
+      } else {
+        // Single selection
+        return { ...prev, [questionId]: [optionId] };
       }
-    }, 500);
+    });
+
+    // Auto-advance with delay ONLY for single choice
+    if (!isMultiple) {
+      setTimeout(() => {
+        if (!showSummary && !attemptResult && currentQuestionIndex < questions.length - 1) {
+          setCurrentQuestionIndex(prev => prev + 1);
+        }
+      }, 500);
+    }
   };
 
   const formatTime = (seconds: number) => {
@@ -436,11 +460,12 @@ export default function StudentExamPage() {
   };
 
   const isQuestionAnswered = (questionId: string) => {
-    return !!answers[questionId];
+    const ans = answers[questionId];
+    return ans && ans.length > 0;
   };
 
   const getAnsweredCount = () => {
-    return Object.keys(answers).length;
+    return Object.keys(answers).filter(k => answers[k] && answers[k].length > 0).length;
   };
 
   if (!acceptedTerms) {
@@ -699,7 +724,17 @@ export default function StudentExamPage() {
 
               {/* 1. VISTA DE PREGUNTA */}
               {!showSummary && questions.length > 0 && (
-                <div className="animate-in slide-in-from-bottom-4 duration-500 fade-in">
+                <div key={questions[currentQuestionIndex].id} className="animate-in slide-in-from-bottom-4 duration-500 fade-in">
+                  {/* Question Header with Type */}
+                  <div className="mb-4 flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
+                      {questions[currentQuestionIndex].type === 'multiple_choice' ? 'Selección Múltiple' : 'Selección Única'}
+                    </span>
+                    <span className="text-xs text-slate-400 font-medium">
+                      {questions[currentQuestionIndex].points} puntos
+                    </span>
+                  </div>
+
                   {/* Question Text */}
                   <h2 className="text-xl md:text-2xl font-bold text-slate-800 leading-snug mb-8">
                     <span className="text-emerald-500 mr-2">#{currentQuestionIndex + 1}</span>
@@ -709,29 +744,39 @@ export default function StudentExamPage() {
                   {/* Options Grid */}
                   <div className="grid gap-3 md:gap-4">
                     {questions[currentQuestionIndex].mooc_exam_options.map((option) => {
-                      const isSelected = answers[questions[currentQuestionIndex].id] === option.id;
+                      const currentAnswers = answers[questions[currentQuestionIndex].id] || [];
+                      const isSelected = Array.isArray(currentAnswers)
+                        ? currentAnswers.includes(option.id)
+                        : currentAnswers === option.id; // Fallback
+
+                      const isMultiple = questions[currentQuestionIndex].type === 'multiple_choice';
+
                       return (
                         <button
                           key={option.id}
-                          onClick={() => handleAnswerChange(questions[currentQuestionIndex].id, option.id)}
+                          onClick={() => handleAnswerChange(questions[currentQuestionIndex].id, option.id, isMultiple)}
                           className={`group relative w-full text-left p-4 md:p-5 rounded-xl border-2 transition-all duration-200 ease-out outline-none focus:ring-4 focus:ring-emerald-100 ${isSelected
                             ? 'border-emerald-500 bg-emerald-50/50'
                             : 'border-slate-200 bg-white hover:border-emerald-300 hover:bg-slate-50'
                             }`}
                         >
                           <div className="flex items-center gap-4">
-                            {/* Square Checkbox Indicator */}
+                            {/* Checkbox or Radio Indicator */}
                             <div
-                              className={`flex-shrink-0 w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all duration-200 ${isSelected
+                              className={`flex-shrink-0 w-6 h-6 ${isMultiple ? 'rounded-md' : 'rounded-full'} border-2 flex items-center justify-center transition-all duration-200 ${isSelected
                                 ? 'border-emerald-500 bg-emerald-500'
                                 : 'border-slate-300 group-hover:border-emerald-400 bg-white'
                                 }`}
                             >
-                              {/* Checkmark Icon */}
+                              {/* Checkmark or Dot Icon */}
                               {isSelected && (
-                                <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                </svg>
+                                isMultiple ? (
+                                  <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                  </svg>
+                                ) : (
+                                  <div className="w-2.5 h-2.5 bg-white rounded-full" />
+                                )
                               )}
                             </div>
 
