@@ -20,12 +20,23 @@ export default function ForgotPassword(): JSX.Element {
     }
     try {
       setLoading(true);
+
+      // Construct the correct redirect URL for HashRouter
+      // In production, Supabase needs the full URL with the hash route
+      const baseUrl = window.location.origin;
+      const isLocalhost = baseUrl.includes('localhost');
+
+      // For HashRouter, we need to ensure the URL includes the hash (#) before the route
+      // Format should be: https://domain.com/#/reset-password
+      let redirectUrl = `${baseUrl}/#/reset-password`;
+
+      console.log('🔐 Sending password reset email with redirect:', redirectUrl);
+
       // Supabase method to send password reset email
       const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
         // redirect the user to the reset page so the app can complete the recovery flow
-        // Using hash (#) because we're using HashRouter
-        redirectTo: window.location.origin + '/#/reset-password',
-      } as any);
+        redirectTo: redirectUrl,
+      });
 
       if (error) throw error;
 

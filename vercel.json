@@ -1,5 +1,20 @@
 {
+  "redirects": [
+    {
+      "source": "/reset-password",
+      "destination": "/#/reset-password",
+      "permanent": false
+    },
+    {
+      "source": "/forgot-password",
+      "destination": "/#/forgot-password",
+      "permanent": false
+    }
+  ],
   "rewrites": [
-    { "source": "(.*)", "destination": "/index.html" }
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
   ]
 }
