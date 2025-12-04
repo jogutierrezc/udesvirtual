@@ -2,7 +2,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { HashRouter, Routes, Route, useLocation } from "react-router-dom";
+import { HashRouter, Routes, Route, useLocation, useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 import { AdminProvider } from "./contexts/AdminContext";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
@@ -78,6 +79,30 @@ const queryClient = new QueryClient();
 
 const AppContent = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+
+  // Handle Supabase recovery tokens that come without a proper route
+  // Example: /#/access_token=xxx&type=recovery
+  // This happens when Supabase doesn't respect the redirectTo parameter properly
+  useEffect(() => {
+    const hash = window.location.hash;
+
+    // Check if we have tokens directly in the hash without a proper route
+    // Pattern: #/access_token=... or #/token_type=...
+    if (hash.includes('access_token=') && hash.includes('type=recovery')) {
+      console.log('🔧 Detected orphaned recovery token in URL:', hash);
+
+      // Extract the token part (everything after #/)
+      const tokenPart = hash.substring(2); // Remove #/
+
+      // Check if we're not already on reset-password
+      if (!hash.includes('/reset-password')) {
+        console.log('🔧 Redirecting to /reset-password with tokens...');
+        // Redirect to reset-password with the tokens as a nested hash
+        navigate(`/reset-password#${tokenPart}`, { replace: true });
+      }
+    }
+  }, [location, navigate]);
 
   // Rutas donde se debe ocultar el Navbar
   const hideNavbarRoutes = ['/unauthorized', '/profile-setup', '/welcome', '/welcome-profesor'];
