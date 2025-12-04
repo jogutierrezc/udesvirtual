@@ -148,7 +148,7 @@ const AppContent = () => {
           }
         />
         <Route
-          path="/professor/course/:courseId/student/:studentId"
+          path="/professor/student/:courseId/:studentId"
           element={
             <ProtectedRoute>
               <StudentDetail />

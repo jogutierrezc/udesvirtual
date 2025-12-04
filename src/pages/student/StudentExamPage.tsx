@@ -126,7 +126,7 @@ export default function StudentExamPage() {
 
     try {
       // Invalidate attempt by updating submitted and passed fields
-      await supabase
+      const { error: updateError } = await supabase
         .from('mooc_exam_attempts')
         .update({
           submitted_at: new Date().toISOString(),
@@ -134,8 +134,15 @@ export default function StudentExamPage() {
           score_numeric: 0,
           score_percent: 0,
           updated_at: new Date().toISOString(),
-        })
+          is_annulled: true,
+          annulment_reason: reason
+        } as any) // Cast to any to avoid TS error until types are regenerated
         .eq('id', attemptId);
+
+      if (updateError) {
+        console.error('Error updating attempt with annulment:', updateError);
+        throw updateError;
+      }
 
       // Optionally log the cheating reason (you could create a separate table or use a JSON field)
       console.warn(`Cheating detected for attempt ${attemptId}: ${reason}`);

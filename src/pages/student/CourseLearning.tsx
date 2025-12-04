@@ -174,7 +174,7 @@ export default function CourseLearning() {
       // Verificar inscripción
       const { data: enrollment } = await supabase
         .from("mooc_enrollments")
-        .select("progress")
+        .select("progress, status")
         .eq("course_id", courseId)
         .eq("user_id", user.id)
         .single();
@@ -183,6 +183,16 @@ export default function CourseLearning() {
         toast({
           title: "No inscrito",
           description: "No estás inscrito en este curso",
+          variant: "destructive",
+        });
+        navigate("/dashboard");
+        return;
+      }
+
+      if (enrollment.status === 'retired' || enrollment.status === 'blocked') {
+        toast({
+          title: "Acceso denegado",
+          description: "Has sido retirado de este curso. Contacta a tu profesor.",
           variant: "destructive",
         });
         navigate("/dashboard");

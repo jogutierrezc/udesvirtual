@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reporte de Notas del Estudiante - Vista Imprimible</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        html {
+            font-family: 'Inter', sans-serif;
+        }
+
+        @media print {
+            @page {
+                size: letter;
+                margin: 0.5cm;
+            }
+
+            body {
+                background-color: #ffffff !important;
+                -webkit-print-color-adjust: exact;
+                color-adjust: exact;
+                margin: 0;
+            }
+
+            .header-print {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 50px;
+                z-index: 100;
+                background-color: #ffffff;
+                padding-bottom: 0.5rem;
+            }
+
+            .report-container {
+                padding-top: 60px !important;
+                margin-top: 0 !important;
+            }
+
+            .printable-card {
+                box-shadow: none !important;
+                border: 1px solid #e5e7eb !important;
+                padding: 0.75rem !important;
+                margin-bottom: 0.5rem !important;
+                page-break-inside: avoid;
+            }
+
+            .page-break-before {
+                page-break-before: always;
+            }
+
+            .table-auto-layout {
+                width: 100%;
+                page-break-inside: auto;
+                font-size: 0.7rem;
+            }
+
+            .table-auto-layout tr {
+                page-break-inside: avoid;
+                page-break-after: auto;
+            }
+
+            .table-auto-layout th,
+            .table-auto-layout td {
+                padding: 0.25rem !important;
+            }
+        }
+
+        .report-container {
+            max-width: 215.9mm;
+            margin: 2rem auto;
+            padding: 1rem;
+            background-color: #ffffff;
+        }
+
+        .table-auto-layout {
+            table-layout: auto;
+            width: 100%;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100">
+
+    <header id="report-header-fixed"
+        class="mb-4 p-3 bg-white shadow-lg border-b-4 border-blue-600 print:hidden report-container mx-auto">
+        <div class="text-center">
+            <h1 class="text-2xl font-extrabold text-gray-900">Reporte de Detalles del Estudiante</h1>
+            <p class="text-sm text-gray-500 mt-1" id="fecha-generacion-display"></p>
+        </div>
+    </header>
+
+
+    <div id="reporte-container" class="report-container">
+        <div class="flex justify-center items-center h-64 text-gray-500">
+            Cargando el reporte...
+        </div>
+    </div>
+
+    <script>
+        const Estado = {
+            APROBADO: "Aprobado",
+            REPROBADO: "Reprobado",
+            PENDIENTE: "Pendiente"
+        };
+
+        const fechaGeneracion = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' });
+
+        const mockReporte = {
+            encabezado: {
+                tituloReporte: "Reporte de Detalles del Estudiante",
+                fechaGeneracion: fechaGeneracion
+            },
+            datosEstudiante: {
+                nombreCompleto: "juanpablo chaparro fragozo",
+                tipoDocumento: "CC",
+                numeroDocumento: "10987654321",
+                correoElectronico: "juanpablochaparro285@gmail.com",
+                ciudad: "valledupar",
+                departamento: "Cesar"
+            },
+            datosCurso: {
+                tituloCurso: "Curso Completo de Conciliación y Conflicto",
+                progresoCurso: "8%",
+                fechaInscripcion: "21/11/2025, 10:05:12 a. m.",
+                leccionesVistas: 3,
+                examenesCompletados: 3
+            },
+            resumenExamenes: [
+                {
+                    tituloExamen: "MASC y Marco Legal de la Conciliación",
+                    notaMejorIntento: "3.0",
+                    numeroIntentos: 2,
+                    estadoExamen: Estado.APROBADO
+                },
+                {
+                    tituloExamen: "Mecanismos Alternativos de Solución de Conflictos",
+                    notaMejorIntento: "5.0",
+                    numeroIntentos: 1,
+                    estadoExamen: Estado.APROBADO
+                }
+            ],
+            intentosDetallados: [
+                {
+                    tituloExamen: "MASC y Marco Legal de la Conciliación",
+                    numeroIntento: 2,
+                    notaObtenida: "3.0",
+                    estadoIntento: Estado.APROBADO,
+                    horaInicio: "27/11/2025, 8:57:23 a. m.",
+                    horaEnvio: "27/11/2025, 9:03:38 a. m.",
+                    hizoPlagio: false,
+                    motivoPlagio: null
+                },
+                {
+                    tituloExamen: "MASC y Marco Legal de la Conciliación",
+                    numeroIntento: 1,
+                    notaObtenida: "2.5",
+                    estadoIntento: Estado.REPROBADO,
+                    horaInicio: "27/11/2025, 8:50:00 a. m.",
+                    horaEnvio: "27/11/2025, 8:52:00 a. m.",
+                    hizoPlagio: false,
+                    motivoPlagio: null
+                }
+            ]
+        };
+
+        function calcularTiempoDuracion(horaInicio, horaEnvio) {
+            try {
+                if (!horaInicio || !horaEnvio || horaInicio === 'N/A' || horaEnvio === 'N/A') {
+                    return null;
+                }
+
+                const inicio = new Date(horaInicio);
+                const envio = new Date(horaEnvio);
+
+                if (isNaN(inicio.getTime()) || isNaN(envio.getTime())) {
+                    return null;
+                }
+
+                const diferenciaMilisegundos = envio.getTime() - inicio.getTime();
+                const diferenciaMinutos = diferenciaMilisegundos / (1000 * 60);
+
+                return parseFloat(diferenciaMinutos.toFixed(1));
+            } catch (error) {
+                console.error("Error al calcular la duración del examen:", error);
+                return null;
+            }
+        }
+
+        function renderReporte(data) {
+            const container = document.getElementById('reporte-container');
+            const fechaDisplay = document.getElementById('fecha-generacion-display');
+
+            if (!container || !fechaDisplay) return;
+
+            fechaDisplay.textContent = data.encabezado.fechaGeneracion;
+
+            let html = `
+                <header class="header-print p-3 hidden print:block border-b-4 border-blue-600">
+                    <div class="text-center">
+                        <h1 class="text-lg font-extrabold text-gray-900">${data.encabezado.tituloReporte}</h1>
+                        <p class="text-xs text-gray-500">Generado el: ${data.encabezado.fechaGeneracion}</p>
+                    </div>
+                </header>
+            `;
+
+            html += `
+                <div class="printable-card bg-white p-4 mb-4 rounded-lg shadow-md border border-gray-200">
+                    <h2 class="text-base font-bold mb-3 text-blue-700 border-b pb-2">Datos del Estudiante</h2>
+                    <div class="space-y-1 text-sm">
+                        <div>
+                            <span class="font-semibold text-gray-700">Nombre Completo:</span><br>
+                            <span class="text-gray-900">${data.datosEstudiante.nombreCompleto}</span>
+                        </div>
+                        <div>
+                            <span class="font-semibold text-gray-700">Tipo de Documento:</span><br>
+                            <span class="text-gray-900">${data.datosEstudiante.tipoDocumento}</span>
+                        </div>
+                        <div>
+                            <span class="font-semibold text-gray-700">No. de Documento:</span><br>
+                            <span class="text-gray-900">${data.datosEstudiante.numeroDocumento}</span>
+                        </div>
+                        <div>
+                            <span class="font-semibold text-gray-700">Correo Electrónico:</span><br>
+                            <span class="text-gray-900">${data.datosEstudiante.correoElectronico}</span>
+                        </div>
+                        <div>
+                            <span class="font-semibold text-gray-700">Ciudad:</span><br>
+                            <span class="text-gray-900">${data.datosEstudiante.ciudad}</span>
+                        </div>
+                        <div>
+                            <span class="font-semibold text-gray-700">Departamento:</span><br>
+                            <span class="text-gray-900">${data.datosEstudiante.departamento}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            html += `
+                <div class="printable-card bg-white p-4 mb-4 rounded-lg shadow-md border border-gray-200">
+                    <h2 class="text-base font-bold mb-3 text-blue-700 border-b pb-2">Detalles del Curso</h2>
+                    <h3 class="text-sm font-semibold mb-3 text-gray-900">${data.datosCurso.tituloCurso}</h3>
+                    <div class="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
+                        <div>
+                            <span class="font-semibold text-gray-700">Progreso:</span><br>
+                            <span class="text-lg font-bold text-blue-600">${data.datosCurso.progresoCurso}</span>
+                        </div>
+                        <div>
+                            <span class="font-semibold text-gray-700">Fecha de Inscripción:</span><br>
+                            <span class="text-gray-900">${data.datosCurso.fechaInscripcion}</span>
+                        </div>
+                        <div>
+                            <span class="font-semibold text-gray-700">Lecciones Vistas:</span><br>
+                            <span class="text-gray-900">${data.datosCurso.leccionesVistas}</span>
+                        </div>
+                        <div>
+                            <span class="font-semibold text-gray-700">Exámenes Completados:</span><br>
+                            <span class="text-gray-900">${data.datosCurso.examenesCompletados}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            html += `
+                <div class="printable-card bg-white p-4 mb-4 rounded-lg shadow-md border border-gray-200">
+                    <h2 class="text-base font-bold mb-2 text-blue-700 border-b pb-1">Resumen de Exámenes</h2>
+                    <table class="table-auto-layout text-xs border-collapse">
+                        <thead>
+                            <tr class="bg-gray-100 text-gray-600 uppercase text-left">
+                                <th class="p-2 border-b-2 font-semibold">Título del Examen</th>
+                                <th class="p-2 border-b-2 font-semibold w-20 text-center">Nota Mejor Intento</th>
+                                <th class="p-2 border-b-2 font-semibold w-20 text-center">No. Intentos</th>
+                                <th class="p-2 border-b-2 font-semibold w-24 text-center">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.resumenExamenes.map(exam => `
+                                <tr class="border-b hover:bg-gray-50">
+                                    <td class="p-2 font-medium text-gray-800">${exam.tituloExamen}</td>
+                                    <td class="p-2 text-center font-bold">${exam.notaMejorIntento}</td>
+                                    <td class="p-2 text-center">${exam.numeroIntentos}</td>
+                                    <td class="p-2 text-center">
+                                        <span class="px-2 py-0.5 text-xs font-semibold rounded-full 
+                                            ${exam.estadoExamen === Estado.APROBADO ? 'bg-green-100 text-green-800' :
+                    exam.estadoExamen === Estado.REPROBADO ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}">
+                                            ${exam.estadoExamen}
+                                        </span>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            html += `
+                <div class="printable-card bg-white p-4 mb-4 rounded-lg shadow-md border border-gray-200">
+                    <h2 class="text-base font-bold mb-2 text-blue-700 border-b pb-1">Intentos Detallados por Examen</h2>
+                    <table class="table-auto-layout text-xs border-collapse">
+                        <thead>
+                            <tr class="bg-gray-100 text-gray-600 uppercase text-left">
+                                <th class="p-1 border-b-2 font-semibold">Examen</th>
+                                <th class="p-1 border-b-2 font-semibold text-center w-12">No.</th>
+                                <th class="p-1 border-b-2 font-semibold text-center w-12">Nota</th>
+                                <th class="p-1 border-b-2 font-semibold text-center w-16">Estado</th>
+                                <th class="p-1 border-b-2 font-semibold w-24">Inicio</th>
+                                <th class="p-1 border-b-2 font-semibold w-24">Envío</th>
+                                <th class="p-1 border-b-2 font-semibold text-center w-16">Duración (min)</th>
+                                <th class="p-1 border-b-2 font-semibold w-32">Plagio</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.intentosDetallados.map(intento => {
+                const duracion = calcularTiempoDuracion(intento.horaInicio, intento.horaEnvio);
+                const duracionText = duracion !== null ? duracion.toFixed(1) : 'N/A';
+
+                return `
+                                <tr class="border-b hover:bg-gray-50">
+                                    <td class="p-1 font-medium text-gray-800">${intento.tituloExamen}</td>
+                                    <td class="p-1 text-center">${intento.numeroIntento}</td>
+                                    <td class="p-1 text-center font-bold">${intento.notaObtenida}</td>
+                                    <td class="p-1 text-center">
+                                        <span class="px-1 py-0.5 text-xs font-semibold rounded-full 
+                                            ${intento.estadoIntento === Estado.APROBADO ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                                            ${intento.estadoIntento}
+                                        </span>
+                                    </td>
+                                    <td class="p-1 text-xs">${intento.horaInicioDisplay}</td>
+                                    <td class="p-1 text-xs">${intento.horaEnvioDisplay}</td>
+                                    <td class="p-1 font-bold text-center">${duracionText}</td>
+                                    <td class="p-1 text-xs">
+                                        ${intento.hizoPlagio ?
+                        `<span class="text-red-600 font-semibold">Sí:</span> ${intento.motivoPlagio || 'No especificado'}` :
+                        'No'}
+                                    </td>
+                                </tr>
+                                `;
+            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('fecha-generacion-display').textContent = fechaGeneracion;
+            renderReporte(mockReporte);
+        });
+
+    </script>
+</body>
+
+</html>

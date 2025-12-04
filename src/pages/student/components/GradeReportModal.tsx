@@ -40,7 +40,7 @@ export function GradeReportModal({ isOpen, onClose, courseId, userId }: GradeRep
             // Fetch all exams for the course
             const { data: exams, error: examsError } = await supabase
                 .from('mooc_exams')
-                .select('id, title, passing_score')
+                .select('id, title, passing_score, max_score')
                 .eq('course_id', courseId)
                 .eq('status', 'published')
                 .order('order_index', { ascending: true });
@@ -89,18 +89,24 @@ export function GradeReportModal({ isOpen, onClose, courseId, userId }: GradeRep
                     passed,
                     score,
                     attempts: attemptsCount,
-                    status
+                    status,
+                    max_score: exam.max_score || 100 // Default to 100 if not set
                 };
             });
 
             setGrades(processedGrades);
 
-            // Calculate Average
-            // Only include exams that have a score (i.e., have been taken)
+            // Calculate Average on 0-5 scale
+            // Normalize each exam score to 0-5 before averaging
             const takenExams = processedGrades.filter(g => g.score !== null);
             if (takenExams.length > 0) {
-                const totalScore = takenExams.reduce((sum, g) => sum + (g.score || 0), 0);
-                const avg = totalScore / takenExams.length;
+                const totalNormalizedScore = takenExams.reduce((sum, g) => {
+                    const max = (g as any).max_score || 100;
+                    const score = g.score || 0;
+                    const normalized = (score / max) * 5;
+                    return sum + normalized;
+                }, 0);
+                const avg = totalNormalizedScore / takenExams.length;
                 setAverageScore(avg);
             } else {
                 setAverageScore(null);
