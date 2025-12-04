@@ -23,7 +23,8 @@ export default function ForgotPassword(): JSX.Element {
       // Supabase method to send password reset email
       const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
         // redirect the user to the reset page so the app can complete the recovery flow
-        redirectTo: window.location.origin + '/reset-password',
+        // Using hash (#) because we're using HashRouter
+        redirectTo: window.location.origin + '/#/reset-password',
       } as any);
 
       if (error) throw error;
