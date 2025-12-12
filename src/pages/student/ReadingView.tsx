@@ -46,6 +46,20 @@ const ReadingView: React.FC = () => {
           return;
         }
 
+        // Check enrollment status
+        const { data: enrollment } = await supabase
+            .from('mooc_enrollments')
+            .select('status')
+            .eq('course_id', courseId)
+            .eq('user_id', user.id)
+            .maybeSingle();
+            
+        if (enrollment && (enrollment.status === 'retired' || enrollment.status === 'blocked')) {
+             toast({ title: 'Acceso denegado', description: 'No tienes acceso a este curso', variant: 'destructive' });
+             navigate('/dashboard');
+             return;
+        }
+
         // Mark reading completed for the user
         await supabase.from('student_reading_progress').upsert({
           user_id: user.id,

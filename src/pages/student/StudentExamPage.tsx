@@ -169,13 +169,23 @@ export default function StudentExamPage() {
       // First, check if user is enrolled in the course
       const { data: enrollmentData, error: enrollmentError } = await supabase
         .from('mooc_enrollments')
-        .select('id')
+        .select('id, status')
         .eq('course_id', courseId)
         .eq('user_id', user.id)
         .maybeSingle();
 
       if (enrollmentError) {
         console.error('Error checking enrollment:', enrollmentError);
+      }
+
+      if (!enrollmentData || enrollmentData.status === 'retired' || enrollmentData.status === 'blocked') {
+        toast({
+          title: "Acceso denegado",
+          description: "No tienes acceso a este curso",
+          variant: "destructive",
+        });
+        navigate('/dashboard');
+        return;
       }
 
       if (!enrollmentData) {

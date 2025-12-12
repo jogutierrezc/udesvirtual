@@ -111,6 +111,7 @@ export default function StudentDashboard() {
           progress,
           completed,
           enrolled_at,
+          status,
           course:mooc_courses!inner(
             id,
             title,
@@ -121,6 +122,8 @@ export default function StudentDashboard() {
           )
         `)
         .eq("user_id", user.id)
+        .neq("status", "retired")
+        .neq("status", "blocked")
         .order("enrolled_at", { ascending: false });
 
       if (enrollments) {

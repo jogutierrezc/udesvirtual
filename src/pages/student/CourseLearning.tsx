@@ -9,11 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Check,
-  CheckCircle2,
-  Circle,
-  ArrowLeft,
+import { 
+  Check, 
+  CheckCircle2, 
+  Circle, 
+  ArrowLeft, 
   Loader2,
   PlayCircle,
   Lock,
@@ -31,10 +31,8 @@ import {
   ExternalLink,
   MessageSquare
 } from "lucide-react";
-import ReactPlayer from 'react-player';
 import { sanitizeLessonHtml } from '@/lib/html';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { GradeReportModal } from "./components/GradeReportModal";
 
 type Lesson = {
   id: string;
@@ -61,8 +59,6 @@ type Course = {
   description: string;
   profession: string;
   course_image_url: string | null;
-  completion_criteria?: string;
-  virtual_session_date?: string | null;
 };
 
 export default function CourseLearning() {
@@ -70,7 +66,6 @@ export default function CourseLearning() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [showExamResultDialog, setShowExamResultDialog] = useState(false);
-  const [showGradeReport, setShowGradeReport] = useState(false);
   const [examResultLoading, setExamResultLoading] = useState(false);
   const [examResult, setExamResult] = useState<null | { score_numeric: number; score_percent: number; passed: boolean }>(null);
   const videoRef = useRef<HTMLIFrameElement>(null);
@@ -78,14 +73,12 @@ export default function CourseLearning() {
   const [loading, setLoading] = useState(true);
   const [course, setCourse] = useState<Course | null>(null);
   const [lessons, setLessons] = useState<Lesson[]>([]);
-  const [sections, setSections] = useState<Array<{ id: string; title: string; order_index: number; available_from?: string | null; available_until?: string | null }>>([]);
+  const [sections, setSections] = useState<Array<{ id: string; title: string; order_index: number }>>([]);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
   const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null);
   const [progress, setProgress] = useState(0);
   const [completing, setCompleting] = useState(false);
   const [videoWatched, setVideoWatched] = useState(false);
-  const [videoCompleted, setVideoCompleted] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
 
   // Actividad y entrega
   const [activity, setActivity] = useState<any | null>(null);
@@ -137,39 +130,15 @@ export default function CourseLearning() {
     return () => clearTimeout(timer);
   }, [currentLesson, videoWatched]);
 
-  useEffect(() => {
-    const checkCompletion = async () => {
-      if (progress === 100 && course?.virtual_session_date && courseId) {
-        const sessionDate = new Date(course.virtual_session_date);
-        if (new Date() >= sessionDate) {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (!user) return;
-
-          // Check if enrollment is already completed
-          const { data: enrollment } = await supabase.from('mooc_enrollments').select('completed').eq('course_id', courseId).eq('user_id', user.id).single();
-          if (enrollment && !enrollment.completed) {
-            // Mark as completed
-            const { error } = await supabase.from('mooc_enrollments').update({ completed: true }).eq('course_id', courseId).eq('user_id', user.id);
-            if (!error) {
-              toast({ title: "¡Curso Finalizado!", description: "La fecha de la sesión virtual ha pasado. Tu curso ha sido marcado como completado." });
-            }
-          }
-        }
-      }
-    };
-    checkCompletion();
-  }, [progress, course, courseId]);
-
   const loadCourse = async () => {
     try {
       setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
-
+      
       if (!user) {
         navigate("/auth");
         return;
       }
-      setUserId(user.id);
 
       // Verificar inscripción
       const { data: enrollment } = await supabase
@@ -179,20 +148,10 @@ export default function CourseLearning() {
         .eq("user_id", user.id)
         .single();
 
-      if (!enrollment) {
-        toast({
-          title: "No inscrito",
-          description: "No estás inscrito en este curso",
-          variant: "destructive",
-        });
-        navigate("/dashboard");
-        return;
-      }
-
-      if (enrollment.status === 'retired' || enrollment.status === 'blocked') {
+      if (!enrollment || enrollment.status === 'retired' || enrollment.status === 'blocked') {
         toast({
           title: "Acceso denegado",
-          description: "Has sido retirado de este curso. Contacta a tu profesor.",
+          description: "No tienes acceso a este curso",
           variant: "destructive",
         });
         navigate("/dashboard");
@@ -204,7 +163,7 @@ export default function CourseLearning() {
       // Cargar curso
       const { data: courseData } = await supabase
         .from("mooc_courses")
-        .select("id, title, description, profession, course_image_url, completion_criteria, virtual_session_date")
+        .select("id, title, description, profession, course_image_url")
         .eq("id", courseId)
         .single();
 
@@ -258,7 +217,7 @@ export default function CourseLearning() {
         // Cargar exámenes vinculados a lecciones Y globales
         const { data: examsData } = await supabase
           .from('mooc_exams')
-          .select('id, title, lesson_id, section_id, passing_score, description, order_index')
+          .select('id, title, lesson_id, passing_score, description, order_index')
           .eq('course_id', courseId)
           .eq('status', 'published');
 
@@ -277,9 +236,9 @@ export default function CourseLearning() {
           (attemptsData || []).forEach((att: any) => {
             const existing = examAttemptsMap.get(att.exam_id);
             if (!existing) {
-              examAttemptsMap.set(att.exam_id, {
-                passed: att.passed || false,
-                attempts: 1
+              examAttemptsMap.set(att.exam_id, { 
+                passed: att.passed || false, 
+                attempts: 1 
               });
             } else {
               examAttemptsMap.set(att.exam_id, {
@@ -324,14 +283,6 @@ export default function CourseLearning() {
           exam: examsByLesson.get(lesson.id) || null,
         } as any));
 
-        // Cargar actividades
-        const { data: activitiesData } = await supabase
-          .from('mooc_activities')
-          .select('id, lesson_id, title')
-          .in('lesson_id', lessonsData.map(l => l.id));
-
-        const activitiesMap = new Map((activitiesData || []).map((a: any) => [a.lesson_id, a]));
-
         // Agregar exámenes globales como "lecciones" virtuales
         const globalExams = (examsData || []).filter(e => !e.lesson_id);
         globalExams.forEach(exam => {
@@ -346,7 +297,7 @@ export default function CourseLearning() {
             video_url: null,
             completed: attemptInfo.passed,
             content_type: 'exam',
-            section_id: exam.section_id || null,
+            section_id: null,
             exam: {
               id: exam.id,
               title: exam.title,
@@ -354,14 +305,6 @@ export default function CourseLearning() {
               attempts: attemptInfo.attempts
             }
           } as any);
-        });
-
-        // Marcar lecciones que tienen actividad como tipo 'exam' para el sidebar si no tienen sección
-        // O mejor, ajustamos la lógica del sidebar para incluir lessons con actividad en la sección de exámenes
-        lessonsWithProgress.forEach(l => {
-          if (activitiesMap.has(l.id)) {
-            (l as any).has_activity = true;
-          }
         });
 
         // Ordenar todas las lecciones por order_index
@@ -372,57 +315,22 @@ export default function CourseLearning() {
         // Cargar secciones reales para encabezados
         const { data: sectionsData } = await supabase
           .from('mooc_course_sections')
-          .select('id, title, order_index, available_from, available_until')
+          .select('id, title, order_index')
           .eq('course_id', courseId)
           .order('order_index', { ascending: true });
-        const mappedSections = (sectionsData || []).map((s: any) => ({
-          id: s.id,
-          title: s.title,
-          order_index: s.order_index || 0,
-          available_from: s.available_from,
-          available_until: s.available_until
-        }));
+        const mappedSections = (sectionsData || []).map((s: any) => ({ id: s.id, title: s.title, order_index: s.order_index || 0 }));
         setSections(mappedSections);
         // Inicialmente todas las secciones abiertas
         const initialOpen: Record<string, boolean> = {};
         mappedSections.forEach(s => { initialOpen[s.id] = true; });
-        if (lessonsWithProgress.some(l => !l.section_id && l.content_type !== 'exam' && !(l as any).has_activity)) {
+        if (lessonsWithProgress.some(l => !l.section_id)) {
           initialOpen['__unsectioned'] = true;
-        }
-        if (lessonsWithProgress.some(l => !l.section_id && (l.content_type === 'exam' || (l as any).has_activity))) {
-          initialOpen['__unsectioned_exams'] = true;
         }
         setOpenSections(initialOpen);
 
-        // Seleccionar la primera lección no completada o la primera que esté disponible
-        const firstIncomplete = lessonsWithProgress.find(l => {
-          if (l.completed) return false;
-          // Check availability
-          if (l.section_id) {
-            const section = mappedSections.find(s => s.id === l.section_id);
-            if (section) {
-              const now = new Date();
-              if (section.available_from && new Date(section.available_from) > now) return false;
-              if (section.available_until && new Date(section.available_until) < now) return false;
-            }
-          }
-          return true;
-        });
-
-        // Fallback to first available lesson if all are completed or none found
-        const firstAvailable = lessonsWithProgress.find(l => {
-          if (l.section_id) {
-            const section = mappedSections.find(s => s.id === l.section_id);
-            if (section) {
-              const now = new Date();
-              if (section.available_from && new Date(section.available_from) > now) return false;
-              if (section.available_until && new Date(section.available_until) < now) return false;
-            }
-          }
-          return true;
-        });
-
-        setCurrentLesson(firstIncomplete || firstAvailable || lessonsWithProgress[0] || null);
+        // Seleccionar la primera lección no completada o la primera
+        const firstIncomplete = lessonsWithProgress.find(l => !l.completed);
+        setCurrentLesson(firstIncomplete || lessonsWithProgress[0] || null);
       }
     } catch (error: any) {
       console.error("Error loading course:", error);
@@ -556,30 +464,6 @@ export default function CourseLearning() {
             variant: "destructive"
           });
         } else {
-          // Check virtual session date
-          if (course?.virtual_session_date) {
-            const sessionDate = new Date(course.virtual_session_date);
-            if (new Date() < sessionDate) {
-              toast({
-                title: "Curso completado parcialmente",
-                description: `Has completado todas las lecciones, pero el curso finalizará oficialmente el ${sessionDate.toLocaleString()}`,
-              });
-              // We update progress to 100 but NOT completed: true
-              try {
-                const { error: enrollErr } = await supabase
-                  .from('mooc_enrollments')
-                  .update({ progress: 100, updated_at: new Date().toISOString() }) // completed is NOT set to true
-                  .eq('course_id', courseId)
-                  .eq('user_id', user.id);
-
-                if (enrollErr) throw enrollErr;
-              } catch (e) {
-                console.error('Error updating enrollment progress', e);
-              }
-              return; // Exit here
-            }
-          }
-
           // Marcar la inscripción como completada en la tabla mooc_enrollments
           try {
             const { error: enrollErr } = await supabase
@@ -620,17 +504,9 @@ export default function CourseLearning() {
     }
   };
 
-  const isSectionAvailable = (section: { available_from?: string | null; available_until?: string | null }) => {
-    const now = new Date();
-    if (section.available_from && new Date(section.available_from) > now) return false;
-    if (section.available_until && new Date(section.available_until) < now) return false;
-    return true;
-  };
-
   const selectLesson = (lesson: Lesson) => {
     setCurrentLesson(lesson);
     setVideoWatched(false);
-    setVideoCompleted(false);
   };
 
   const toggleSection = (id: string) => {
@@ -640,14 +516,11 @@ export default function CourseLearning() {
   const selectLessonAndExpand = (lesson: Lesson) => {
     if (lesson.section_id) {
       setOpenSections(prev => ({ ...prev, [lesson.section_id!]: true }));
-    } else if (lesson.content_type === 'exam' || (lesson as any).has_activity) {
-      setOpenSections(prev => ({ ...prev, ['__unsectioned_exams']: true }));
     } else {
       setOpenSections(prev => ({ ...prev, ['__unsectioned']: true }));
     }
     setCurrentLesson(lesson);
     setVideoWatched(false);
-    setVideoCompleted(false);
   };
 
   if (loading) {
@@ -658,11 +531,11 @@ export default function CourseLearning() {
     );
   }
 
-  // Solo puede completar si no hay actividad pendiente y si vio el video completo
+  // Solo puede completar si no hay actividad pendiente
   const canCompleteLesson = currentLesson && (
-    currentLesson.completed ||
-    !currentLesson.video_url ||
-    videoCompleted // Changed from videoWatched to videoCompleted which is set by onEnded
+    currentLesson.completed || 
+    !currentLesson.video_url || 
+    videoWatched
   ) && (!currentLesson.exam || currentLesson.exam.passed)
     && (
       !activity || !!activitySubmission
@@ -670,12 +543,12 @@ export default function CourseLearning() {
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-slate-800">
-
+      
       {/* --- TOP HEADER (Contexto del Curso) --- */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <button
+            <button 
               onClick={() => navigate("/dashboard")}
               className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors"
             >
@@ -688,15 +561,6 @@ export default function CourseLearning() {
           </div>
 
           <div className="hidden md:flex items-center gap-4">
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              onClick={() => setShowGradeReport(true)}
-            >
-              <FileText size={14} />
-              Ver Notas
-            </Button>
             <div className="text-right">
               <p className="text-xs font-bold text-slate-700">Tu Progreso</p>
               <p className="text-xs text-slate-500">{progress}% completado</p>
@@ -709,332 +573,298 @@ export default function CourseLearning() {
       </header>
 
       <main className="max-w-7xl mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-
+        
         {/* --- COLUMNA IZQUIERDA: CONTENIDO PRINCIPAL (2/3 del ancho) --- */}
         <section className="lg:col-span-2 space-y-6">
-
+          
           {currentLesson ? (
-            (() => {
-              // Check if the current lesson belongs to a locked section
-              let isLocked = false;
-              let lockMessage = "";
-              if (currentLesson.section_id) {
-                const section = sections.find(s => s.id === currentLesson.section_id);
-                if (section) {
-                  const now = new Date();
-                  if (section.available_from && new Date(section.available_from) > now) {
-                    isLocked = true;
-                    lockMessage = `Este módulo estará disponible desde el ${new Date(section.available_from).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' })}`;
-                  } else if (section.available_until && new Date(section.available_until) < now) {
-                    isLocked = true;
-                    lockMessage = `Este módulo cerró el ${new Date(section.available_until).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' })}`;
-                  }
-                }
-              }
+            <>
+              {/* 1. Título y Descripción del Tema Actual */}
+              <div className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-slate-100">
+                <div className="mb-6">
+                  <span className="inline-block px-3 py-1 bg-blue-50 text-[#003366] text-xs font-bold uppercase tracking-wider rounded-full mb-3">
+                    Tema Actual
+                  </span>
+                  <h2 className="text-3xl font-bold text-slate-900 mb-4">{currentLesson.title}</h2>
+                  
+                  {currentLesson.description && (
+                    <div className="prose prose-slate text-slate-600 max-w-none leading-relaxed">
+                      <div dangerouslySetInnerHTML={{ __html: sanitizeLessonHtml(currentLesson.description) }} />
+                    </div>
+                  )}
+                </div>
 
-              if (isLocked) {
-                return (
-                  <div className="bg-white rounded-2xl p-12 text-center shadow-sm border border-slate-100">
-                    <Lock className="h-16 w-16 text-slate-300 mx-auto mb-4" />
-                    <h3 className="text-xl font-bold text-slate-900">Contenido Bloqueado</h3>
-                    <p className="text-slate-500 mt-2">{lockMessage}</p>
-                    <Button variant="outline" className="mt-6" onClick={() => navigate("/dashboard")}>
-                      Volver al Panel
-                    </Button>
+                {/* Video Player if available */}
+                {currentLesson.video_url && (
+                  <div className="mt-6 mb-6">
+                    {(() => {
+                      const embed = getEmbedUrl(currentLesson.video_url);
+                      if (!embed) {
+                        return (
+                          <div className="p-4 rounded-lg bg-muted">
+                            <p className="text-sm mb-2">Este video no tiene una vista embebida disponible.</p>
+                            <Button asChild>
+                              <a href={currentLesson.video_url} target="_blank" rel="noreferrer">Abrir video en YouTube</a>
+                            </Button>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div className="aspect-video bg-black rounded-xl overflow-hidden shadow-lg">
+                          <iframe
+                            ref={videoRef}
+                            src={embed}
+                            className="w-full h-full"
+                            frameBorder={0}
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                            allowFullScreen
+                            title={currentLesson.title || 'Video'}
+                          />
+                        </div>
+                      );
+                    })()}
                   </div>
-                );
-              }
+                )}
 
-              return (
-                <>
-                  {/* 1. Título y Descripción del Tema Actual */}
-                  <div className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-slate-100">
-                    <div className="mb-6">
-                      <span className="inline-block px-3 py-1 bg-blue-50 text-[#003366] text-xs font-bold uppercase tracking-wider rounded-full mb-3">
-                        Tema Actual
-                      </span>
-                      <h2 className="text-3xl font-bold text-slate-900 mb-4">{currentLesson.title}</h2>
+                {/* Lesson Content (HTML) */}
+                {currentLesson.content && (
+                  <div className="mt-6 prose prose-slate text-slate-600 max-w-none leading-relaxed">
+                    <div dangerouslySetInnerHTML={{ __html: sanitizeLessonHtml(currentLesson.content) }} />
+                  </div>
+                )}
 
-                      {currentLesson.description && (
-                        <div className="prose prose-slate text-slate-600 max-w-none leading-relaxed text-justify overflow-x-auto">
-                          <div dangerouslySetInnerHTML={{ __html: sanitizeLessonHtml(currentLesson.description) }} />
+                {/* 2. TARJETA DE ENCUENTRO SINCRÓNICO (Rediseñada) */}
+                {currentLesson.content_type === 'live_session' && (
+                  <div className="mt-8 relative overflow-hidden rounded-xl bg-gradient-to-br from-[#464775] to-[#6264A7] text-white shadow-lg">
+                    {/* Decorative circles */}
+                    <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
+                    <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-32 h-32 bg-black/10 rounded-full blur-xl"></div>
+                    
+                    <div className="relative p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="px-2 py-0.5 bg-white/20 rounded text-xs font-semibold border border-white/10 backdrop-blur-sm">
+                            EN VIVO
+                          </span>
+                          <span className="text-xs text-white/80 flex items-center gap-1">
+                            <Video size={12} /> {currentLesson.live_platform || 'Plataforma Virtual'}
+                          </span>
+                        </div>
+                        <h3 className="text-xl font-bold mb-1">Encuentro Sincrónico</h3>
+                        <div className="flex flex-wrap gap-4 text-sm text-white/90 mt-3">
+                          {currentLesson.live_date && (
+                            <div className="flex items-center gap-1.5 bg-black/20 px-3 py-1 rounded-lg">
+                              <Calendar size={14} />
+                              <span>
+                                {(() => {
+                                  // Parse YYYY-MM-DD as local date, not UTC
+                                  const [year, month, day] = currentLesson.live_date!.split('-').map(Number);
+                                  const localDate = new Date(year, month - 1, day);
+                                  return localDate.toLocaleDateString('es-ES', {
+                                    weekday: 'long',
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric'
+                                  });
+                                })()}
+                              </span>
+                            </div>
+                          )}
+                          {currentLesson.live_time && (
+                            <div className="flex items-center gap-1.5 bg-black/20 px-3 py-1 rounded-lg">
+                              <Clock size={14} />
+                              <span>{currentLesson.live_time}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {currentLesson.live_url && (
+                        <div className="flex-shrink-0 w-full md:w-auto">
+                          <a 
+                            href={currentLesson.live_url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="w-full md:w-auto flex items-center justify-center gap-2 bg-white text-[#464775] hover:bg-gray-100 px-5 py-3 rounded-lg font-bold transition-all shadow-md active:scale-95"
+                          >
+                            Unirse a la sesión <ExternalLink size={16} />
+                          </a>
+                          <p className="text-center text-[10px] text-white/60 mt-2">Se abrirá en una nueva pestaña</p>
                         </div>
                       )}
                     </div>
+                  </div>
+                )}
 
-                    {/* Video Player if available */}
-                    {currentLesson.video_url && (
-                      <div className="mt-6 mb-6">
-                        {(() => {
-                          // ReactPlayer handles various URLs (YouTube, Vimeo, files, etc.)
-                          return (
-                            <div className="aspect-video bg-black rounded-xl overflow-hidden shadow-lg relative">
-                              <ReactPlayer
-                                url={currentLesson.video_url}
-                                width="100%"
-                                height="100%"
-                                controls={true}
-                                onEnded={() => {
-                                  setVideoCompleted(true);
-                                  setVideoWatched(true);
-                                  toast({
-                                    title: "¡Video completado!",
-                                    description: "Ahora puedes marcar la lección como completada.",
-                                  });
-                                }}
-                                config={{
-                                  youtube: {
-                                    playerVars: { showinfo: 1 }
-                                  }
-                                }}
-                              />
-                            </div>
-                          );
-                        })()}
-                      </div>
-                    )}
-
-                    {/* Lesson Content (HTML) */}
-                    {currentLesson.content && (
-                      <div className="mt-6 prose prose-slate text-slate-600 max-w-none leading-relaxed text-justify overflow-x-auto">
-                        <div dangerouslySetInnerHTML={{ __html: sanitizeLessonHtml(currentLesson.content) }} />
-                      </div>
-                    )}
-
-                    {/* 2. TARJETA DE ENCUENTRO SINCRÓNICO (Rediseñada) */}
-                    {currentLesson.content_type === 'live_session' && (
-                      <div className="mt-8 relative overflow-hidden rounded-xl bg-gradient-to-br from-[#464775] to-[#6264A7] text-white shadow-lg">
-                        {/* Decorative circles */}
-                        <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
-                        <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-32 h-32 bg-black/10 rounded-full blur-xl"></div>
-
-                        <div className="relative p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <span className="px-2 py-0.5 bg-white/20 rounded text-xs font-semibold border border-white/10 backdrop-blur-sm">
-                                EN VIVO
-                              </span>
-                              <span className="text-xs text-white/80 flex items-center gap-1">
-                                <Video size={12} /> {currentLesson.live_platform || 'Plataforma Virtual'}
-                              </span>
-                            </div>
-                            <h3 className="text-xl font-bold mb-1">Encuentro Sincrónico</h3>
-                            <div className="flex flex-wrap gap-4 text-sm text-white/90 mt-3">
-                              {currentLesson.live_date && (
-                                <div className="flex items-center gap-1.5 bg-black/20 px-3 py-1 rounded-lg">
-                                  <Calendar size={14} />
-                                  <span>
-                                    {(() => {
-                                      // Parse YYYY-MM-DD as local date, not UTC
-                                      const [year, month, day] = currentLesson.live_date!.split('-').map(Number);
-                                      const localDate = new Date(year, month - 1, day);
-                                      return localDate.toLocaleDateString('es-ES', {
-                                        weekday: 'long',
-                                        year: 'numeric',
-                                        month: 'long',
-                                        day: 'numeric'
-                                      });
-                                    })()}
-                                  </span>
-                                </div>
-                              )}
-                              {currentLesson.live_time && (
-                                <div className="flex items-center gap-1.5 bg-black/20 px-3 py-1 rounded-lg">
-                                  <Clock size={14} />
-                                  <span>{currentLesson.live_time}</span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          {currentLesson.live_url && (
-                            <div className="flex-shrink-0 w-full md:w-auto">
-                              <a
-                                href={currentLesson.live_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="w-full md:w-auto flex items-center justify-center gap-2 bg-white text-[#464775] hover:bg-gray-100 px-5 py-3 rounded-lg font-bold transition-all shadow-md active:scale-95"
-                              >
-                                Unirse a la sesión <ExternalLink size={16} />
-                              </a>
-                              <p className="text-center text-[10px] text-white/60 mt-2">Se abrirá en una nueva pestaña</p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Exam Card */}
-                    {currentLesson.exam && (
-                      <div className={`mt-8 p-6 rounded-xl border ${currentLesson.exam.passed ? "border-green-200 bg-green-50" : "border-orange-200 bg-orange-50"}`}>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h3 className="font-bold text-slate-900 flex items-center gap-2">
-                              <CheckCircle2 size={20} className={currentLesson.exam.passed ? "text-green-600" : "text-orange-600"} />
-                              Examen: {currentLesson.exam.title}
-                            </h3>
-                            <p className="text-sm text-slate-600 mt-1">
-                              {currentLesson.exam.passed ? (
-                                <span className="text-green-700 font-medium">✓ Aprobado</span>
-                              ) : currentLesson.exam.attempts > 0 ? (
-                                <span className="text-orange-700">Intentos realizados: {currentLesson.exam.attempts}</span>
-                              ) : (
-                                <span>No iniciado</span>
-                              )}
-                            </p>
-                          </div>
-                          <Button
-                            variant={currentLesson.exam.passed ? "outline" : "default"}
-                            className={!currentLesson.exam.passed ? "bg-[#003366] hover:bg-[#002a55]" : ""}
-                            onClick={async (e) => {
-                              if (currentLesson.exam?.passed) {
-                                // View result logic
-                                try {
-                                  setExamResultLoading(true);
-                                  const { data: { user } } = await supabase.auth.getUser();
-                                  if (!user) return;
-                                  const { data: attempts } = await supabase
-                                    .from('mooc_exam_attempts')
-                                    .select('score_numeric, score_percent, passed')
-                                    .eq('exam_id', currentLesson.exam.id)
-                                    .eq('user_id', user.id)
-                                    .order('created_at', { ascending: false })
-                                    .limit(1);
-                                  const att = (attempts && attempts[0]) || null;
-                                  if (att) {
-                                    setExamResult({ score_numeric: att.score_numeric || 0, score_percent: att.score_percent || 0, passed: !!att.passed });
-                                    setShowExamResultDialog(true);
-                                  }
-                                } catch (err) {
-                                  console.error(err);
-                                } finally {
-                                  setExamResultLoading(false);
-                                }
-                              } else {
-                                navigate(`/mooc/${courseId}/exam/${currentLesson.exam?.id}`);
-                              }
-                            }}
-                          >
-                            {currentLesson.exam.passed ? "Ver resultado" : "Realizar examen"}
-                          </Button>
-                        </div>
-                        {!currentLesson.exam.passed && (
-                          <div className="mt-3 text-xs text-orange-800 bg-orange-100/50 p-2 rounded">
-                            ⚠️ Importante: Debes aprobar este examen para completar la lección
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Evidencia de actividad */}
-                    {activityLoading ? (
-                      <div className="mt-8 flex items-center gap-2 text-blue-600"><Loader2 className="animate-spin" /> Cargando actividad...</div>
-                    ) : activity && !activitySubmission ? (
-                      <div className="mt-8">
-                        <div className="mb-4">
-                          <h4 className="font-bold text-slate-900 text-lg mb-1">Actividad</h4>
-                          <div className="text-slate-700 mb-2">{activity.title}</div>
-                          {activity.description && <div className="text-slate-500 mb-2">{activity.description}</div>}
-                          <div className="text-xs text-slate-500 mb-2">Debes entregar evidencia para poder completar la lección.</div>
-                        </div>
-                        <ActivitySubmissionForm
-                          activityId={activity.id}
-                          allowedTypes={activity.allowed_types as ActivityEvidenceType[]}
-                          loading={activitySubmitting}
-                          onSubmit={async (data) => {
-                            setActivitySubmitting(true);
-                            try {
-                              const { data: { user } } = await supabase.auth.getUser();
-                              if (!user) throw new Error('No autenticado');
-                              await submitActivityEvidence({
-                                activityId: activity.id,
-                                userId: user.id,
-                                ...data,
-                              });
-                              toast({ title: 'Evidencia enviada', description: 'Tu entrega fue registrada correctamente.' });
-                              // Refrescar estado
-                              const { activity: act, submission } = await getLessonActivity(currentLesson.id, user.id);
-                              setActivity(act);
-                              setActivitySubmission(submission);
-                            } catch (e: any) {
-                              toast({ title: 'Error', description: e.message || 'No se pudo enviar la evidencia', variant: 'destructive' });
-                            } finally {
-                              setActivitySubmitting(false);
-                            }
-                          }}
-                        />
-                      </div>
-                    ) : null}
-
-                    {/* Completion Button */}
-                    {!currentLesson.completed && (
-                      <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between">
-                        <div>
-                          <p className="font-medium text-slate-900">¿Terminaste esta lección?</p>
-                          <p className="text-sm text-slate-500">
-                            {activity && !activitySubmission
-                              ? "Debes entregar la evidencia de la actividad para completar la lección."
-                              : currentLesson.video_url && !videoCompleted
-                                ? "Debes ver el video completo para continuar"
-                                : currentLesson.exam && !currentLesson.exam.passed
-                                  ? "Debes aprobar el examen para completar"
-                                  : "Marca como completada para avanzar"}
-                          </p>
-                        </div>
-                        <Button
-                          onClick={markLessonComplete}
-                          disabled={!canCompleteLesson || completing}
-                          size="lg"
-                          className="bg-[#003366] hover:bg-[#002a55] text-white"
-                        >
-                          {completing ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Guardando...
-                            </>
+                {/* Exam Card */}
+                {currentLesson.exam && (
+                  <div className={`mt-8 p-6 rounded-xl border ${currentLesson.exam.passed ? "border-green-200 bg-green-50" : "border-orange-200 bg-orange-50"}`}>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                          <CheckCircle2 size={20} className={currentLesson.exam.passed ? "text-green-600" : "text-orange-600"} />
+                          Examen: {currentLesson.exam.title}
+                        </h3>
+                        <p className="text-sm text-slate-600 mt-1">
+                          {currentLesson.exam.passed ? (
+                            <span className="text-green-700 font-medium">✓ Aprobado</span>
+                          ) : currentLesson.exam.attempts > 0 ? (
+                            <span className="text-orange-700">Intentos realizados: {currentLesson.exam.attempts}</span>
                           ) : (
-                            <>
-                              <Check className="h-4 w-4 mr-2" />
-                              Marcar completa
-                            </>
+                            <span>No iniciado</span>
                           )}
-                        </Button>
+                        </p>
+                      </div>
+                      <Button 
+                        variant={currentLesson.exam.passed ? "outline" : "default"}
+                        className={!currentLesson.exam.passed ? "bg-[#003366] hover:bg-[#002a55]" : ""}
+                        onClick={async (e) => {
+                          if (currentLesson.exam?.passed) {
+                            // View result logic
+                            try {
+                              setExamResultLoading(true);
+                              const { data: { user } } = await supabase.auth.getUser();
+                              if (!user) return;
+                              const { data: attempts } = await supabase
+                                .from('mooc_exam_attempts')
+                                .select('score_numeric, score_percent, passed')
+                                .eq('exam_id', currentLesson.exam.id)
+                                .eq('user_id', user.id)
+                                .order('created_at', { ascending: false })
+                                .limit(1);
+                              const att = (attempts && attempts[0]) || null;
+                              if (att) {
+                                setExamResult({ score_numeric: att.score_numeric || 0, score_percent: att.score_percent || 0, passed: !!att.passed });
+                                setShowExamResultDialog(true);
+                              }
+                            } catch (err) {
+                              console.error(err);
+                            } finally {
+                              setExamResultLoading(false);
+                            }
+                          } else {
+                            navigate(`/mooc/${courseId}/exam/${currentLesson.exam?.id}`);
+                          }
+                        }}
+                      >
+                        {currentLesson.exam.passed ? "Ver resultado" : "Realizar examen"}
+                      </Button>
+                    </div>
+                    {!currentLesson.exam.passed && (
+                      <div className="mt-3 text-xs text-orange-800 bg-orange-100/50 p-2 rounded">
+                        ⚠️ Importante: Debes aprobar este examen para completar la lección
                       </div>
                     )}
                   </div>
+                )}
 
-                  {/* Recursos Adicionales (Bonus) */}
-                  {currentLesson.readings && currentLesson.readings.length > 0 && (
-                    <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-                      <h3 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
-                        <FileText size={20} className="text-[#003366]" />
-                        Material de Apoyo
-                      </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {currentLesson.readings.map((r) => (
-                          <div
-                            key={r.id}
-                            onClick={() => navigate(`/courses/${courseId}/lessons/${currentLesson.id}/reading/${r.id}`)}
-                            className="p-4 border border-slate-100 rounded-xl flex items-center gap-3 hover:bg-slate-50 transition-colors cursor-pointer group"
-                          >
-                            <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center group-hover:bg-blue-100 transition-colors">
-                              <FileText size={20} />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-slate-800 text-sm truncate">{r.title}</p>
-                              <p className="text-xs text-slate-500">
-                                {r.completed ? <span className="text-green-600">Completado</span> : "Lectura pendiente"}
-                              </p>
-                            </div>
-                            <ChevronRight size={16} className="text-slate-300 group-hover:text-slate-500" />
-                          </div>
-                        ))}
-                      </div>
+                {/* Evidencia de actividad */}
+                {activityLoading ? (
+                  <div className="mt-8 flex items-center gap-2 text-blue-600"><Loader2 className="animate-spin" /> Cargando actividad...</div>
+                ) : activity && !activitySubmission ? (
+                  <div className="mt-8">
+                    <div className="mb-4">
+                      <h4 className="font-bold text-slate-900 text-lg mb-1">Actividad</h4>
+                      <div className="text-slate-700 mb-2">{activity.title}</div>
+                      {activity.description && <div className="text-slate-500 mb-2">{activity.description}</div>}
+                      <div className="text-xs text-slate-500 mb-2">Debes entregar evidencia para poder completar la lección.</div>
                     </div>
-                  )}
-                </>
-              );
-            })()
+                    <ActivitySubmissionForm
+                      activityId={activity.id}
+                      allowedTypes={activity.allowed_types as ActivityEvidenceType[]}
+                      loading={activitySubmitting}
+                      onSubmit={async (data) => {
+                        setActivitySubmitting(true);
+                        try {
+                          const { data: { user } } = await supabase.auth.getUser();
+                          if (!user) throw new Error('No autenticado');
+                          await submitActivityEvidence({
+                            activityId: activity.id,
+                            userId: user.id,
+                            ...data,
+                          });
+                          toast({ title: 'Evidencia enviada', description: 'Tu entrega fue registrada correctamente.' });
+                          // Refrescar estado
+                          const { activity: act, submission } = await getLessonActivity(currentLesson.id, user.id);
+                          setActivity(act);
+                          setActivitySubmission(submission);
+                        } catch (e: any) {
+                          toast({ title: 'Error', description: e.message || 'No se pudo enviar la evidencia', variant: 'destructive' });
+                        } finally {
+                          setActivitySubmitting(false);
+                        }
+                      }}
+                    />
+                  </div>
+                ) : null}
+
+                {/* Completion Button */}
+                {!currentLesson.completed && (
+                  <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-slate-900">¿Terminaste esta lección?</p>
+                      <p className="text-sm text-slate-500">
+                        {activity && !activitySubmission
+                          ? "Debes entregar la evidencia de la actividad para completar la lección."
+                          : currentLesson.video_url && !videoWatched
+                          ? "Mira el video completo para continuar"
+                          : currentLesson.exam && !currentLesson.exam.passed
+                          ? "Debes aprobar el examen para completar"
+                          : "Marca como completada para avanzar"}
+                      </p>
+                    </div>
+                    <Button
+                      onClick={markLessonComplete}
+                      disabled={!canCompleteLesson || completing}
+                      size="lg"
+                      className="bg-[#003366] hover:bg-[#002a55] text-white"
+                    >
+                      {completing ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Guardando...
+                        </>
+                      ) : (
+                        <>
+                          <Check className="h-4 w-4 mr-2" />
+                          Marcar completa
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {/* Recursos Adicionales (Bonus) */}
+              {currentLesson.readings && currentLesson.readings.length > 0 && (
+                <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+                  <h3 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <FileText size={20} className="text-[#003366]" /> 
+                    Material de Apoyo
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {currentLesson.readings.map((r) => (
+                      <div 
+                        key={r.id} 
+                        onClick={() => navigate(`/courses/${courseId}/lessons/${currentLesson.id}/reading/${r.id}`)}
+                        className="p-4 border border-slate-100 rounded-xl flex items-center gap-3 hover:bg-slate-50 transition-colors cursor-pointer group"
+                      >
+                        <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center group-hover:bg-blue-100 transition-colors">
+                          <FileText size={20} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-slate-800 text-sm truncate">{r.title}</p>
+                          <p className="text-xs text-slate-500">
+                            {r.completed ? <span className="text-green-600">Completado</span> : "Lectura pendiente"}
+                          </p>
+                        </div>
+                        <ChevronRight size={16} className="text-slate-300 group-hover:text-slate-500" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
           ) : (
             <div className="bg-white rounded-2xl p-12 text-center shadow-sm border border-slate-100">
               <BookOpen className="h-16 w-16 text-slate-300 mx-auto mb-4" />
@@ -1060,55 +890,30 @@ export default function CourseLearning() {
               {/* Secciones */}
               {sections.length > 0 ? (
                 sections.map((section) => {
-                  const sectionLessons = lessons.filter(l => (l as any).section_id === section.id).sort((a, b) => a.order_index - b.order_index);
+                  const sectionLessons = lessons.filter(l => (l as any).section_id === section.id).sort((a,b)=>a.order_index-b.order_index);
                   const isOpen = openSections[section.id];
-                  const available = isSectionAvailable(section);
-
+                  
                   return (
-                    <div key={section.id} className={`bg-white ${!available ? 'opacity-75' : ''}`}>
+                    <div key={section.id} className="bg-white">
                       {/* Module Header */}
-                      <button
-                        onClick={() => available && toggleSection(section.id)}
-                        className={`w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors ${!available ? 'cursor-not-allowed' : ''}`}
+                      <button 
+                        onClick={() => toggleSection(section.id)}
+                        className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors"
                       >
                         <div className="text-left">
                           <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-0.5">Módulo {section.order_index}</p>
-                          <div className="flex items-center gap-2">
-                            <p className="font-bold text-slate-800 text-sm">{section.title}</p>
-                            {!available && <Lock size={14} className="text-slate-400" />}
-                          </div>
-
-                          {/* Availability Messages */}
-                          {/* Availability Messages */}
-                          {section.available_from && (
-                            <p className={`text-[10px] mt-1 flex items-center gap-1 ${!available && new Date(section.available_from) > new Date() ? 'text-red-500' : 'text-slate-500'}`}>
-                              <Clock size={10} />
-                              {!available && new Date(section.available_from) > new Date()
-                                ? `Disponible desde: ${new Date(section.available_from).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' })}`
-                                : `Habilitado desde: ${new Date(section.available_from).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' })}`
-                              }
-                            </p>
-                          )}
-                          {section.available_until && (
-                            <p className={`text-[10px] mt-1 flex items-center gap-1 ${!available && new Date(section.available_until) < new Date() ? 'text-red-500' : 'text-orange-600'}`}>
-                              <Lock size={10} />
-                              {!available && new Date(section.available_until) < new Date()
-                                ? `Cerrado el: ${new Date(section.available_until).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' })}`
-                                : `Disponible hasta: ${new Date(section.available_until).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' })}`
-                              }
-                            </p>
-                          )}
+                          <p className="font-bold text-slate-800 text-sm">{section.title}</p>
                         </div>
-                        {available && (isOpen ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />)}
+                        {isOpen ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
                       </button>
 
                       {/* Module Items List */}
-                      {isOpen && available && (
+                      {isOpen && (
                         <div className="bg-slate-50/50 pb-2">
                           {sectionLessons.length > 0 ? (
                             sectionLessons.map((lesson) => (
-                              <div
-                                key={lesson.id}
+                              <div 
+                                key={lesson.id} 
                                 onClick={() => selectLessonAndExpand(lesson)}
                                 className={`
                                   relative pl-4 pr-4 py-3 flex gap-3 items-start transition-all cursor-pointer
@@ -1155,8 +960,8 @@ export default function CourseLearning() {
                 // Fallback si no hay secciones (lista plana)
                 <div className="bg-slate-50/50 pb-2">
                   {lessons.map((lesson) => (
-                    <div
-                      key={lesson.id}
+                    <div 
+                      key={lesson.id} 
                       onClick={() => selectLesson(lesson)}
                       className={`
                         relative pl-4 pr-4 py-3 flex gap-3 items-start transition-all cursor-pointer
@@ -1184,118 +989,61 @@ export default function CourseLearning() {
                   ))}
                 </div>
               )}
-
+              
               {/* Lecciones sin sección (si hay secciones pero algunas lecciones no tienen) */}
-              {sections.length > 0 && (
-                <>
-                  {/* 1. Lecciones Adicionales (No exámenes ni actividades) */}
-                  {lessons.filter(l => !(l as any).section_id && l.content_type !== 'exam' && !(l as any).has_activity).length > 0 && (
-                    <div className="bg-white">
-                      <button
-                        onClick={() => toggleSection('__unsectioned')}
-                        className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors"
-                      >
-                        <div className="text-left">
-                          <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-0.5">Otros</p>
-                          <p className="font-bold text-slate-800 text-sm">Lecciones Adicionales</p>
-                        </div>
-                        {openSections['__unsectioned'] ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
-                      </button>
-
-                      {openSections['__unsectioned'] && (
-                        <div className="bg-slate-50/50 pb-2">
-                          {lessons.filter(l => !(l as any).section_id && l.content_type !== 'exam' && !(l as any).has_activity).map((lesson) => (
-                            <div
-                              key={lesson.id}
-                              onClick={() => selectLessonAndExpand(lesson)}
-                              className={`
-                                relative pl-4 pr-4 py-3 flex gap-3 items-start transition-all cursor-pointer
-                                ${currentLesson?.id === lesson.id ? 'bg-blue-50 border-l-4 border-[#003366]' : 'hover:bg-slate-100 border-l-4 border-transparent'}
-                              `}
-                            >
-                              <div className="mt-0.5 flex-shrink-0">
-                                {lesson.completed ? (
-                                  <CheckCircle2 size={18} className="text-green-500" />
-                                ) : currentLesson?.id === lesson.id ? (
-                                  <PlayCircle size={18} className="text-[#003366] fill-blue-100" />
-                                ) : (
-                                  <div className="w-[18px] h-[18px] rounded-full border-2 border-slate-300"></div>
-                                )}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className={`text-sm font-medium leading-snug ${currentLesson?.id === lesson.id ? 'text-[#003366]' : 'text-slate-600'}`}>
-                                  {lesson.title}
-                                </p>
-                                <div className="flex items-center gap-2 mt-1 text-xs text-slate-400">
-                                  <span>{lesson.duration_hours}h</span>
-                                </div>
-                              </div>
+              {sections.length > 0 && lessons.filter(l => !(l as any).section_id).length > 0 && (
+                <div className="bg-white">
+                  <button 
+                    onClick={() => toggleSection('__unsectioned')}
+                    className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors"
+                  >
+                    <div className="text-left">
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-0.5">Otros</p>
+                      <p className="font-bold text-slate-800 text-sm">Lecciones Adicionales</p>
+                    </div>
+                    {openSections['__unsectioned'] ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
+                  </button>
+                  
+                  {openSections['__unsectioned'] && (
+                    <div className="bg-slate-50/50 pb-2">
+                      {lessons.filter(l => !(l as any).section_id).map((lesson) => (
+                        <div 
+                          key={lesson.id} 
+                          onClick={() => selectLessonAndExpand(lesson)}
+                          className={`
+                            relative pl-4 pr-4 py-3 flex gap-3 items-start transition-all cursor-pointer
+                            ${currentLesson?.id === lesson.id ? 'bg-blue-50 border-l-4 border-[#003366]' : 'hover:bg-slate-100 border-l-4 border-transparent'}
+                          `}
+                        >
+                          <div className="mt-0.5 flex-shrink-0">
+                            {lesson.completed ? (
+                              <CheckCircle2 size={18} className="text-green-500" />
+                            ) : currentLesson?.id === lesson.id ? (
+                              <PlayCircle size={18} className="text-[#003366] fill-blue-100" />
+                            ) : (
+                              <div className="w-[18px] h-[18px] rounded-full border-2 border-slate-300"></div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm font-medium leading-snug ${currentLesson?.id === lesson.id ? 'text-[#003366]' : 'text-slate-600'}`}>
+                              {lesson.title}
+                            </p>
+                            <div className="flex items-center gap-2 mt-1 text-xs text-slate-400">
+                              <span>{lesson.duration_hours}h</span>
                             </div>
-                          ))}
+                          </div>
                         </div>
-                      )}
+                      ))}
                     </div>
                   )}
-
-                  {/* 2. Exámenes / Actividades sin sección */}
-                  {lessons.filter(l => !(l as any).section_id && (l.content_type === 'exam' || (l as any).has_activity)).length > 0 && (
-                    <div className="bg-white">
-                      <button
-                        onClick={() => toggleSection('__unsectioned_exams')}
-                        className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors"
-                      >
-                        <div className="text-left">
-                          <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-0.5">Evaluación</p>
-                          <p className="font-bold text-slate-800 text-sm">Exámenes y Actividades</p>
-                        </div>
-                        {openSections['__unsectioned_exams'] ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
-                      </button>
-
-                      {openSections['__unsectioned_exams'] && (
-                        <div className="bg-slate-50/50 pb-2">
-                          {lessons.filter(l => !(l as any).section_id && (l.content_type === 'exam' || (l as any).has_activity)).map((lesson) => (
-                            <div
-                              key={lesson.id}
-                              onClick={() => selectLessonAndExpand(lesson)}
-                              className={`
-                                relative pl-4 pr-4 py-3 flex gap-3 items-start transition-all cursor-pointer
-                                ${currentLesson?.id === lesson.id ? 'bg-blue-50 border-l-4 border-[#003366]' : 'hover:bg-slate-100 border-l-4 border-transparent'}
-                              `}
-                            >
-                              <div className="mt-0.5 flex-shrink-0">
-                                {lesson.completed ? (
-                                  <CheckCircle2 size={18} className="text-green-500" />
-                                ) : currentLesson?.id === lesson.id ? (
-                                  <PlayCircle size={18} className="text-[#003366] fill-blue-100" />
-                                ) : (
-                                  <div className="w-[18px] h-[18px] rounded-full border-2 border-slate-300"></div>
-                                )}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className={`text-sm font-medium leading-snug ${currentLesson?.id === lesson.id ? 'text-[#003366]' : 'text-slate-600'}`}>
-                                  {lesson.title}
-                                </p>
-                                <div className="flex items-center gap-2 mt-1 text-xs text-slate-400">
-                                  <span className="flex items-center gap-1">
-                                    <FileText size={10} />
-                                    {lesson.content_type === 'exam' ? 'Examen' : 'Actividad'}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </>
+                </div>
               )}
             </div>
           </div>
         </aside>
 
       </main>
-
+      
       {/* Exam result dialog */}
       <Dialog open={showExamResultDialog} onOpenChange={setShowExamResultDialog}>
         <DialogContent>
@@ -1322,15 +1070,6 @@ export default function CourseLearning() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      {/* Grade Report Modal */}
-      {courseId && userId && (
-        <GradeReportModal
-          isOpen={showGradeReport}
-          onClose={() => setShowGradeReport(false)}
-          courseId={courseId}
-          userId={userId}
-        />
-      )}
     </div>
   );
 }

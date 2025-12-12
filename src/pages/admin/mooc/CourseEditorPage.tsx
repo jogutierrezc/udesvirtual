@@ -13,7 +13,6 @@ import { MoocExamManager } from '@/pages/professor/components/MoocExamManager';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import { useToast } from "@/hooks/use-toast";
-import { ChevronUp, ChevronDown, Trash2 } from "lucide-react";
 
 type Lesson = {
   id?: string;
@@ -27,14 +26,7 @@ type Lesson = {
   section_id?: string | null;
 };
 
-type Section = {
-  id?: string;
-  title: string;
-  description?: string;
-  order_index: number;
-  available_from?: string | null;
-  available_until?: string | null;
-};
+type Section = { id?: string; title: string; description?: string; order_index: number };
 
 export default function CourseEditorPage() {
   const { courseId } = useParams();
@@ -43,7 +35,7 @@ export default function CourseEditorPage() {
 
   const [loading, setLoading] = useState(false);
   const [course, setCourse] = useState<any>(null);
-  const [categories, setCategories] = useState<Array<{ id: string; title: string }>>([]);
+  const [categories, setCategories] = useState<Array<{id:string; title:string}>>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [sections, setSections] = useState<Section[]>([]);
   const [selectedLessonIndex, setSelectedLessonIndex] = useState<number | null>(null);
@@ -71,7 +63,7 @@ export default function CourseEditorPage() {
       const { data, error } = await supabase.from('mooc_courses').select('*').eq('id', id).single();
       if (error) throw error;
       setCourse(data);
-    } catch (e: any) {
+    } catch (e:any) {
       console.error('loadCourse', e);
       toast({ title: 'Error', description: e.message || 'No se pudo cargar el curso', variant: 'destructive' });
     }
@@ -81,13 +73,13 @@ export default function CourseEditorPage() {
     try {
       const { data, error } = await supabase.from('mooc_lessons').select('*').eq('course_id', id).order('order_index');
       if (error) throw error;
-      setLessons((data || []).map((l: any) => ({
+      setLessons((data||[]).map((l:any)=>({
         ...l,
         content_type: l.content_type || 'video',
         duration_hours: l.duration_hours || 1,
         section_id: l.section_id || null
       })));
-    } catch (e: any) {
+    } catch (e:any) {
       console.error('loadLessons', e);
       toast({ title: 'Error', description: 'No se pudieron cargar las lecciones', variant: 'destructive' });
     }
@@ -97,21 +89,14 @@ export default function CourseEditorPage() {
     try {
       const { data, error } = await supabase.from('mooc_course_sections').select('*').eq('course_id', id).order('order_index');
       if (error) throw error;
-      setSections((data || []).map((s: any) => ({
-        id: s.id,
-        title: s.title,
-        description: s.description,
-        order_index: s.order_index,
-        available_from: s.available_from,
-        available_until: s.available_until
-      })));
-    } catch (e: any) {
+      setSections((data||[]).map((s:any)=>({ id: s.id, title: s.title, description: s.description, order_index: s.order_index })));
+    } catch (e:any) {
       console.error('loadSections', e);
     }
   };
 
   const handleCourseChange = (field: string, value: any) => {
-    setCourse((prev: any) => ({ ...prev, [field]: value }));
+    setCourse((prev:any)=> ({ ...prev, [field]: value }));
   };
 
   const handleSaveCourse = async () => {
@@ -125,13 +110,11 @@ export default function CourseEditorPage() {
         description: course.description,
         course_image_url: course.course_image_url,
         intro_video_url: course.intro_video_url,
-        category_id: course.category_id || null,
-        completion_criteria: course.completion_criteria || 'all_lessons',
-        virtual_session_date: course.virtual_session_date || null
+        category_id: course.category_id || null
       }).eq('id', courseId);
       if (error) throw error;
       toast({ title: 'Curso guardado' });
-    } catch (e: any) {
+    } catch (e:any) {
       console.error('save course', e);
       toast({ title: 'Error', description: e.message || 'No se pudo guardar el curso', variant: 'destructive' });
     } finally { setLoading(false); }
@@ -141,15 +124,15 @@ export default function CourseEditorPage() {
     setSelectedLessonIndex(index);
   };
 
-  const handleLessonField = (index: number, field: keyof Lesson, value: any) => {
-    setLessons(prev => {
+  const handleLessonField = (index:number, field: keyof Lesson, value:any) => {
+    setLessons(prev=>{
       const copy = [...prev];
       copy[index] = { ...copy[index], [field]: value };
       return copy;
     });
   };
 
-  const saveLessonToDB = async (index: number) => {
+  const saveLessonToDB = async (index:number) => {
     const lesson = lessons[index];
     if (!lesson) return;
     setLoading(true);
@@ -170,14 +153,14 @@ export default function CourseEditorPage() {
         const { data, error } = await supabase.from('mooc_lessons').insert([{ ...lesson, course_id: courseId }]).select().single();
         if (error) throw error;
         // replace id locally
-        setLessons(prev => {
+        setLessons(prev=>{
           const copy = [...prev];
           copy[index] = { ...copy[index], id: data.id };
           return copy;
         });
       }
       toast({ title: 'Lección guardada' });
-    } catch (e: any) {
+    } catch (e:any) {
       console.error('saveLesson', e);
       toast({ title: 'Error', description: e.message || 'No se pudo guardar la lección', variant: 'destructive' });
     } finally { setLoading(false); }
@@ -187,38 +170,26 @@ export default function CourseEditorPage() {
     setLessons(prev => [...prev, { title: '', description: '', duration_hours: 1, order_index: prev.length + 1, content: '', content_type: 'video', video_url: '' }]);
   };
 
-  const addSection = async (title: string) => {
+  const addSection = async (title:string) => {
     if (!courseId) return;
     try {
       const { data, error } = await supabase.from('mooc_course_sections').insert([{ course_id: courseId, title, order_index: sections.length + 1 }]).select().single();
       if (error) throw error;
       setSections(prev => [...prev, { id: data.id, title: data.title, order_index: data.order_index }]);
       toast({ title: 'Sección creada' });
-    } catch (e: any) {
+    } catch (e:any) {
       console.error('addSection', e);
       toast({ title: 'Error', description: e.message || 'No se pudo crear la sección', variant: 'destructive' });
     }
   };
 
-  const updateSection = async (sectionId: string, field: string, value: any) => {
-    try {
-      const { error } = await supabase.from('mooc_course_sections').update({ [field]: value }).eq('id', sectionId);
-      if (error) throw error;
-      setSections(prev => prev.map(s => s.id === sectionId ? { ...s, [field]: value } : s));
-      toast({ title: 'Sección actualizada' });
-    } catch (e: any) {
-      console.error('updateSection', e);
-      toast({ title: 'Error', description: 'No se pudo actualizar la sección', variant: 'destructive' });
-    }
-  };
-
-  // Open lesson editor: navigate to the lesson editor page
-  // Use the /mooc route (not /admin) for consistency with professor access
+  // Open lesson editor: if the lesson has an id navigate to the lesson editor page,
+  // otherwise create a minimal lesson record and then navigate.
   const openLessonEditor = async (lessonObj: any) => {
     if (!courseId) return;
     try {
       if (lessonObj.id) {
-        navigate(`/mooc/course/${courseId}/lesson/${lessonObj.id}/edit`);
+        navigate(`/admin/mooc/course/${courseId}/lesson/${lessonObj.id}/edit`);
         return;
       }
       // create minimal lesson first
@@ -235,56 +206,9 @@ export default function CourseEditorPage() {
       if (error) throw error;
       // update local state
       setLessons(prev => prev.map(l => l === lessonObj ? { ...l, id: data.id } : l));
-      navigate(`/mooc/course/${courseId}/lesson/${data.id}/edit`);
-    } catch (e: any) {
+      navigate(`/admin/mooc/course/${courseId}/lesson/${data.id}/edit`);
+    } catch (e:any) {
       console.error('openLessonEditor', e);
-    }
-  };
-
-  const deleteLesson = async (lessonId: string) => {
-    if (!confirm('¿Estás seguro de eliminar esta lección? Esta acción no se puede deshacer.')) return;
-
-    try {
-      const { error } = await supabase.from('mooc_lessons').delete().eq('id', lessonId);
-      if (error) throw error;
-
-      toast({ title: 'Lección eliminada' });
-      if (courseId) await loadLessons(courseId);
-    } catch (e: any) {
-      console.error('deleteLesson', e);
-      toast({ title: 'Error', description: e.message || 'No se pudo eliminar la lección', variant: 'destructive' });
-    }
-  };
-
-  const moveLessonOrder = async (lessonId: string, direction: 'up' | 'down') => {
-    const lessonIndex = lessons.findIndex(l => l.id === lessonId);
-    if (lessonIndex === -1) return;
-
-    const currentLesson = lessons[lessonIndex];
-    const targetIndex = direction === 'up' ? lessonIndex - 1 : lessonIndex + 1;
-
-    // Check bounds
-    const sameSectionLessons = lessons.filter(l => l.section_id === currentLesson.section_id);
-    const currentIndexInSection = sameSectionLessons.findIndex(l => l.id === lessonId);
-
-    if (direction === 'up' && currentIndexInSection === 0) return;
-    if (direction === 'down' && currentIndexInSection === sameSectionLessons.length - 1) return;
-
-    const targetLesson = sameSectionLessons[direction === 'up' ? currentIndexInSection - 1 : currentIndexInSection + 1];
-    if (!targetLesson) return;
-
-    try {
-      // Swap order_index
-      const tempOrder = currentLesson.order_index;
-
-      await supabase.from('mooc_lessons').update({ order_index: targetLesson.order_index }).eq('id', currentLesson.id);
-      await supabase.from('mooc_lessons').update({ order_index: tempOrder }).eq('id', targetLesson.id);
-
-      toast({ title: 'Orden actualizado' });
-      if (courseId) await loadLessons(courseId);
-    } catch (e: any) {
-      console.error('moveLessonOrder', e);
-      toast({ title: 'Error', description: e.message || 'No se pudo actualizar el orden', variant: 'destructive' });
     }
   };
 
@@ -310,15 +234,15 @@ export default function CourseEditorPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="md:col-span-3">
             <Label>Título</Label>
-            <Input value={course?.title || ''} onChange={e => handleCourseChange('title', e.target.value)} />
+            <Input value={course?.title||''} onChange={e=>handleCourseChange('title', e.target.value)} />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
               <div>
                 <Label>Programa</Label>
-                <Input value={course?.profession || ''} onChange={e => handleCourseChange('profession', e.target.value)} />
+                <Input value={course?.profession||''} onChange={e=>handleCourseChange('profession', e.target.value)} />
               </div>
               <div>
                 <Label>Objetivo</Label>
-                <Input value={course?.objective || ''} onChange={e => handleCourseChange('objective', e.target.value)} />
+                <Input value={course?.objective||''} onChange={e=>handleCourseChange('objective', e.target.value)} />
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
@@ -342,35 +266,7 @@ export default function CourseEditorPage() {
             </div>
             <div className="mt-3">
               <Label>Descripción</Label>
-              <Textarea rows={4} value={course?.description || ''} onChange={e => handleCourseChange('description', e.target.value)} />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 p-4 bg-slate-50 rounded-lg border">
-              <div className="md:col-span-2 font-medium mb-2">Configuración de Finalización</div>
-              <div>
-                <Label>Criterio de Finalización</Label>
-                <Select
-                  value={course?.completion_criteria || 'all_lessons'}
-                  onValueChange={(val) => handleCourseChange('completion_criteria', val)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar criterio" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all_lessons">Completar todas las lecciones</SelectItem>
-                    <SelectItem value="manual">Manual (Profesor aprueba)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Fecha de Sesión Virtual (Opcional)</Label>
-                <Input
-                  type="datetime-local"
-                  value={course?.virtual_session_date ? new Date(course.virtual_session_date).toISOString().slice(0, 16) : ''}
-                  onChange={e => handleCourseChange('virtual_session_date', e.target.value ? new Date(e.target.value).toISOString() : null)}
-                />
-                <p className="text-xs text-muted-foreground mt-1">El curso no se marcará como completado hasta esta fecha.</p>
-              </div>
+              <Textarea rows={4} value={course?.description||''} onChange={e=>handleCourseChange('description', e.target.value)} />
             </div>
           </div>
         </div>
@@ -396,75 +292,25 @@ export default function CourseEditorPage() {
         {sections.length === 0 && <div className="text-sm text-muted-foreground">No hay secciones aún</div>}
 
         <div className="space-y-3">
-          {sections.sort((a, b) => (a.order_index || 0) - (b.order_index || 0)).map(s => (
+          {sections.sort((a,b)=>(a.order_index||0)-(b.order_index||0)).map(s => (
             <details key={s.id} className="group border rounded-md" open>
               <summary className="flex items-center justify-between cursor-pointer px-4 py-3 font-semibold bg-muted/30">
                 <div>{s.order_index}. {s.title}</div>
                 <div className="flex items-center gap-3">
-                  <div className="text-sm text-muted-foreground">{lessons.filter(l => l.section_id === s.id).length} lecciones • {lessons.filter(l => l.section_id === s.id).reduce((sum, l) => sum + (l.duration_hours || 0), 0)}h</div>
+                  <div className="text-sm text-muted-foreground">{lessons.filter(l=>l.section_id===s.id).length} lecciones • {lessons.filter(l=>l.section_id===s.id).reduce((sum, l)=> sum + (l.duration_hours||0), 0)}h</div>
                 </div>
               </summary>
               <div className="p-4 space-y-3">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 p-3 bg-slate-50 rounded border text-sm">
-                  <div>
-                    <Label className="text-xs">Disponible desde</Label>
-                    <Input
-                      type="datetime-local"
-                      className="h-8 text-xs"
-                      value={s.available_from ? new Date(s.available_from).toISOString().slice(0, 16) : ''}
-                      onChange={e => s.id && updateSection(s.id, 'available_from', e.target.value ? new Date(e.target.value).toISOString() : null)}
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Disponible hasta</Label>
-                    <Input
-                      type="datetime-local"
-                      className="h-8 text-xs"
-                      value={s.available_until ? new Date(s.available_until).toISOString().slice(0, 16) : ''}
-                      onChange={e => s.id && updateSection(s.id, 'available_until', e.target.value ? new Date(e.target.value).toISOString() : null)}
-                    />
-                  </div>
-                </div>
-                {lessons.filter(l => l.section_id === s.id).sort((a, b) => (a.order_index || 0) - (b.order_index || 0)).map((l, idx, arr) => (
+                {lessons.filter(l=>l.section_id===s.id).map(l => (
                   <Card key={l.id || l.order_index}>
-                    <CardContent className="flex items-center justify-between py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="flex flex-col gap-1">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => l.id && moveLessonOrder(l.id, 'up')}
-                            disabled={idx === 0}
-                            className="h-6 w-6 p-0"
-                          >
-                            <ChevronUp className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => l.id && moveLessonOrder(l.id, 'down')}
-                            disabled={idx === arr.length - 1}
-                            className="h-6 w-6 p-0"
-                          >
-                            <ChevronDown className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        <div>
-                          <div className="font-medium">{l.title || '(Sin título)'}</div>
-                          <div className="text-sm text-muted-foreground">{l.duration_hours || 0} horas</div>
-                        </div>
+                    <CardContent className="flex items-center justify-between">
+                      <div>
+                        <div className="font-medium">{l.title || '(Sin título)'}</div>
+                        <div className="text-sm text-muted-foreground">{l.duration_hours || 0} horas</div>
                       </div>
                       <div className="flex gap-2">
-                        <Button size="sm" onClick={async () => { await openLessonEditor(l); }}>Editar</Button>
-                        <Button size="sm" variant="outline" onClick={() => setShowExamForm(true)}>Crear examen</Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => l.id && deleteLesson(l.id)}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <Button size="sm" onClick={async ()=>{ await openLessonEditor(l); }}>Editar</Button>
+                        <Button size="sm" variant="outline" onClick={()=> setShowExamForm(true)}>Crear examen</Button>
                       </div>
                     </CardContent>
                   </Card>
@@ -478,49 +324,19 @@ export default function CourseEditorPage() {
         <details className="group border rounded-md">
           <summary className="flex items-center justify-between cursor-pointer px-4 py-3 font-semibold bg-muted/30">
             <div>Sin sección</div>
-            <div className="text-sm text-muted-foreground">{lessons.filter(l => !l.section_id).length} lecciones • {lessons.filter(l => !l.section_id).reduce((sum, l) => sum + (l.duration_hours || 0), 0)}h</div>
+            <div className="text-sm text-muted-foreground">{lessons.filter(l=>!l.section_id).length} lecciones • {lessons.filter(l=>!l.section_id).reduce((sum, l)=> sum + (l.duration_hours||0), 0)}h</div>
           </summary>
           <div className="p-4 space-y-3">
-            {lessons.filter(l => !l.section_id).sort((a, b) => (a.order_index || 0) - (b.order_index || 0)).map((l, idx, arr) => (
+            {lessons.filter(l=>!l.section_id).map(l => (
               <Card key={l.id || l.order_index}>
-                <CardContent className="flex items-center justify-between py-3">
-                  <div className="flex items-center gap-3">
-                    <div className="flex flex-col gap-1">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => l.id && moveLessonOrder(l.id, 'up')}
-                        disabled={idx === 0}
-                        className="h-6 w-6 p-0"
-                      >
-                        <ChevronUp className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => l.id && moveLessonOrder(l.id, 'down')}
-                        disabled={idx === arr.length - 1}
-                        className="h-6 w-6 p-0"
-                      >
-                        <ChevronDown className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <div>
-                      <div className="font-medium">{l.title || '(Sin título)'}</div>
-                      <div className="text-sm text-muted-foreground">{l.duration_hours || 0} horas</div>
-                    </div>
+                <CardContent className="flex items-center justify-between">
+                  <div>
+                    <div className="font-medium">{l.title || '(Sin título)'}</div>
+                    <div className="text-sm text-muted-foreground">{l.duration_hours || 0} horas</div>
                   </div>
                   <div className="flex gap-2">
-                    <Button size="sm" onClick={async () => { await openLessonEditor(l); }}>Editar</Button>
-                    <Button size="sm" variant="outline" onClick={() => setShowExamForm(true)}>Crear examen</Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => l.id && deleteLesson(l.id)}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <Button size="sm" onClick={async ()=>{ await openLessonEditor(l); }}>Editar</Button>
+                    <Button size="sm" variant="outline" onClick={()=> setShowExamForm(true)}>Crear examen</Button>
                   </div>
                 </CardContent>
               </Card>
@@ -537,7 +353,7 @@ export default function CourseEditorPage() {
               <MoocExamForm
                 courseId={courseId}
                 exam={null}
-                lessons={lessons.map(l => ({ id: l.id || '', title: l.title, order_index: l.order_index }))}
+                lessons={lessons.map(l=>({ id: l.id || '', title: l.title, order_index: l.order_index }))}
                 onClose={(refresh) => {
                   setShowExamForm(false);
                   if (refresh && courseId) loadLessons(courseId);

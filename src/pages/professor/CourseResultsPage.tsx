@@ -231,14 +231,26 @@ export default function CourseResultsPage() {
         if (!course) return;
 
         const data = filteredStudents.map(student => {
+            // Calculate average for export
+            let totalScore = 0;
+            exams.forEach(exam => {
+                const attempt = getBestAttempt(student.id, exam.id);
+                if (attempt) {
+                    totalScore += (attempt.score_percent || 0);
+                }
+            });
+            const avgPercent = exams.length > 0 ? totalScore / exams.length : 0;
+            const avgScale5 = (avgPercent / 100) * 5;
+
             const row: any = {
                 "Estudiante": student.full_name || "Sin nombre",
                 "Email": student.email || "",
+                "Promedio": avgScale5.toFixed(1),
             };
 
             exams.forEach(exam => {
                 const attempt = getBestAttempt(student.id, exam.id);
-                row[exam.title] = attempt ? `${attempt.score_numeric} (${attempt.passed ? 'Aprobado' : 'Reprobado'})` : "Sin intento";
+                row[exam.title] = attempt ? `${attempt.score_numeric} (${attempt.passed ? 'Aprobado' : 'Reprobado'})` : "0 (Sin intento)";
             });
 
             return row;
@@ -336,15 +348,14 @@ export default function CourseResultsPage() {
                                     filteredStudents.map(student => {
                                         // Calculate average
                                         let totalScore = 0;
-                                        let examsTaken = 0;
                                         exams.forEach(exam => {
                                             const attempt = getBestAttempt(student.id, exam.id);
                                             if (attempt) {
-                                                totalScore += attempt.score_percent;
-                                                examsTaken++;
+                                                totalScore += (attempt.score_percent || 0);
                                             }
                                         });
-                                        const avgPercent = examsTaken > 0 ? totalScore / examsTaken : 0;
+                                        // Divide by total exams count (unattempted = 0)
+                                        const avgPercent = exams.length > 0 ? totalScore / exams.length : 0;
                                         const avgScale5 = (avgPercent / 100) * 5;
                                         const isRetired = student.enrollment_status === 'retired' || student.enrollment_status === 'blocked';
 
@@ -438,15 +449,16 @@ export default function CourseResultsPage() {
                                     exams.forEach(exam => {
                                         const attempt = getBestAttempt(student.id, exam.id);
                                         if (attempt) {
-                                            totalScore += attempt.score_percent;
+                                            totalScore += (attempt.score_percent || 0);
                                             examsTaken++;
                                         }
                                     });
-                                    const avg = examsTaken > 0 ? totalScore / examsTaken : 0;
-                                    const avgScale5 = (avg / 100) * 5;
+                                    // Calculate average based on total exams (unattempted = 0)
+                                    const avgPercent = exams.length > 0 ? totalScore / exams.length : 0;
+                                    const avgScale5 = (avgPercent / 100) * 5;
                                     return { ...student, avg: avgScale5, examsTaken };
                                 })
-                                .filter(s => s.examsTaken > 0)
+                                .filter(s => s.avg > 0) // Show students with some score
                                 .sort((a, b) => b.avg - a.avg)
                                 .slice(0, 5)
                                 .map((student, index) => (
