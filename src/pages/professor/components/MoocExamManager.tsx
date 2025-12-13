@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, PlusCircle, Edit, Trash2 } from "lucide-react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { MoocExamForm } from "./MoocExamForm";
 
 export interface MoocExam {
@@ -115,14 +116,16 @@ export const MoocExamManager = ({ courseId }: MoocExamManagerProps) => {
         )}
       </CardContent>
 
-      <MoocExamForm
-        open={showForm}
-        courseId={courseId}
-        exam={editingExam}
-        lessons={lessons}
-        sections={sections}
-        onClose={handleFormClose}
-      />
+      <Dialog open={showForm} onOpenChange={(open) => !open && handleFormClose()}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <MoocExamForm
+            courseId={courseId}
+            exam={editingExam}
+            lessons={lessons}
+            onClose={handleFormClose}
+          />
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };

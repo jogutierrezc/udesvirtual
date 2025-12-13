@@ -346,6 +346,10 @@ export default function CourseEditorPage() {
 
       </div>
 
+      <div className="mt-8">
+        <MoocExamManager courseId={courseId} />
+      </div>
+
       {showExamForm && courseId && (
         <Dialog open={showExamForm} onOpenChange={setShowExamForm}>
           <DialogContent className="max-w-[95vw] w-[95vw] h-[95vh] p-0 overflow-hidden">
