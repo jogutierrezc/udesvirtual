@@ -166,8 +166,31 @@ export default function CourseEditorPage() {
     } finally { setLoading(false); }
   };
 
-  const addLesson = () => {
-    setLessons(prev => [...prev, { title: '', description: '', duration_hours: 1, order_index: prev.length + 1, content: '', content_type: 'video', video_url: '' }]);
+  const addLesson = async () => {
+    if (!courseId) return;
+    const title = prompt("Título de la nueva lección");
+    if (!title) return;
+
+    try {
+      const payload = {
+        title,
+        description: '',
+        duration_hours: 1,
+        order_index: lessons.length + 1,
+        course_id: courseId,
+        content_type: 'video',
+        content: ''
+      };
+      
+      const { data, error } = await supabase.from('mooc_lessons').insert([payload]).select().single();
+      if (error) throw error;
+
+      setLessons(prev => [...prev, { ...payload, id: data.id }]);
+      toast({ title: 'Lección creada', description: 'La lección ha sido creada exitosamente.' });
+    } catch (e:any) {
+      console.error('addLesson', e);
+      toast({ title: 'Error', description: e.message || 'No se pudo crear la lección', variant: 'destructive' });
+    }
   };
 
   const addSection = async (title:string) => {
@@ -321,7 +344,7 @@ export default function CourseEditorPage() {
         </div>
 
         {/* Unsectioned */}
-        <details className="group border rounded-md">
+        <details className="group border rounded-md" open>
           <summary className="flex items-center justify-between cursor-pointer px-4 py-3 font-semibold bg-muted/30">
             <div>Sin sección</div>
             <div className="text-sm text-muted-foreground">{lessons.filter(l=>!l.section_id).length} lecciones • {lessons.filter(l=>!l.section_id).reduce((sum, l)=> sum + (l.duration_hours||0), 0)}h</div>

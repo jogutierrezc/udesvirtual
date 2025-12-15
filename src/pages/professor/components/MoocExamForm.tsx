@@ -31,7 +31,7 @@ export const MoocExamForm = ({ courseId, exam, lessons, onClose }: MoocExamFormP
     lesson_id: exam?.lesson_id || null,
   });
   const [saving, setSaving] = useState(false);
-  const [showQuestions, setShowQuestions] = useState(!!exam);
+  const [showQuestions, setShowQuestions] = useState(false);
   const [examId, setExamId] = useState(exam?.id || null);
 
   const handleChange = (e: any) => {
@@ -96,15 +96,23 @@ export const MoocExamForm = ({ courseId, exam, lessons, onClose }: MoocExamFormP
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Título</label>
-                <Input name="title" value={form.title} onChange={handleChange} required />
+                <label className="block text-sm font-medium mb-1">Título del Examen</label>
+                <Input name="title" value={form.title} onChange={handleChange} required placeholder="Ej: Examen Final - Módulo 1" />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Estado</label>
-                <select name="status" value={form.status} onChange={handleChange} className="w-full border rounded px-2 py-1">
-                  <option value="draft">Borrador</option>
-                  <option value="published">Publicado</option>
-                </select>
+                <Select 
+                  value={form.status} 
+                  onValueChange={(value) => setForm(f => ({ ...f, status: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar estado" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="draft">Borrador</SelectItem>
+                    <SelectItem value="published">Publicado</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="md:col-span-2">
                 <Label>Vincular a lección específica (opcional)</Label>
@@ -136,11 +144,27 @@ export const MoocExamForm = ({ courseId, exam, lessons, onClose }: MoocExamFormP
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Intentos permitidos</label>
-                <Input name="attempts_allowed" type="number" min={1} value={form.attempts_allowed} onChange={handleChange} />
+                <Input 
+                  name="attempts_allowed" 
+                  type="number" 
+                  min={1} 
+                  value={form.attempts_allowed} 
+                  onChange={handleChange} 
+                  placeholder="Ej: 1, 2, 3..."
+                />
+                <p className="text-xs text-muted-foreground mt-1">Número de veces que el estudiante puede presentar el examen.</p>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Límite de tiempo (minutos)</label>
-                <Input name="time_limit_minutes" type="number" min={0} value={form.time_limit_minutes} onChange={handleChange} />
+                <Input 
+                  name="time_limit_minutes" 
+                  type="number" 
+                  min={0} 
+                  value={form.time_limit_minutes} 
+                  onChange={handleChange} 
+                  placeholder="0 para sin límite"
+                />
+                <p className="text-xs text-muted-foreground mt-1">0 = Sin límite de tiempo.</p>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Nota máxima</label>
@@ -157,6 +181,13 @@ export const MoocExamForm = ({ courseId, exam, lessons, onClose }: MoocExamFormP
             </div>
             <div className="flex gap-2 mt-4">
               <Button variant="outline" onClick={() => onClose(false)} disabled={saving}>Cancelar</Button>
+              
+              {exam && (
+                 <Button variant="secondary" onClick={() => setShowQuestions(true)} disabled={saving}>
+                    Gestionar Preguntas
+                 </Button>
+              )}
+
               <Button onClick={handleSave} disabled={saving}>
                 {saving ? <Loader2 className="animate-spin h-4 w-4" /> : exam ? "Guardar cambios" : "Guardar y continuar"}
               </Button>
@@ -170,9 +201,14 @@ export const MoocExamForm = ({ courseId, exam, lessons, onClose }: MoocExamFormP
               <h3 className="text-lg font-semibold">{form.title}</h3>
               <p className="text-sm text-muted-foreground">Creando preguntas para este examen</p>
             </div>
-            <Button variant="outline" onClick={() => onClose(true)}>
-              Finalizar
-            </Button>
+            <div className="flex gap-2">
+                <Button variant="ghost" onClick={() => setShowQuestions(false)}>
+                  Configuración
+                </Button>
+                <Button variant="outline" onClick={() => onClose(true)}>
+                  Finalizar
+                </Button>
+            </div>
           </div>
           <MoocExamQuestionEditor examId={examId} />
         </div>
