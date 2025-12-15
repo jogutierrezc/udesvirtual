@@ -13,7 +13,7 @@ import { MoocExamManager } from '@/pages/professor/components/MoocExamManager';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import { useToast } from "@/hooks/use-toast";
-import { Trash2 } from "lucide-react";
+import { Trash2, Menu, BookOpen, ClipboardList, GraduationCap, GripVertical, ChevronDown, ChevronUp, Pencil, Eye, EyeOff, Plus, Rocket, X, FileText, ArrowLeft, Save } from "lucide-react";
 
 type Lesson = {
   id?: string;
@@ -44,6 +44,9 @@ export default function CourseEditorPage() {
   const [showCreateLessonDialog, setShowCreateLessonDialog] = useState(false);
   const [newLessonTitle, setNewLessonTitle] = useState("");
   const [newLessonSectionId, setNewLessonSectionId] = useState<string | null>(null);
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
+  const [showCreationModal, setShowCreationModal] = useState(false);
+  const [examsExpanded, setExamsExpanded] = useState(true);
 
   useEffect(() => {
     if (!courseId) return;
@@ -260,149 +263,308 @@ export default function CourseEditorPage() {
     }
   };
 
+  const toggleSectionExpansion = (sectionId: string) => {
+    setExpandedSections(prev => ({ ...prev, [sectionId]: !prev[sectionId] }));
+  };
+
+  const getContentIcon = (type: 'lesson' | 'activity' | 'exam') => {
+    switch (type) {
+      case 'lesson': return { Icon: BookOpen, color: 'text-blue-500' };
+      case 'activity': return { Icon: Rocket, color: 'text-orange-500' };
+      case 'exam': return { Icon: GraduationCap, color: 'text-red-500' };
+      default: return { Icon: ClipboardList, color: 'text-gray-500' };
+    }
+  };
+
+  const CreationModal = ({ onClose }: { onClose: () => void }) => {
+    const [selectedType, setSelectedType] = useState<'section' | 'lesson' | 'activity' | 'exam' | null>(null);
+    const [targetSectionId, setTargetSectionId] = useState(sections[0]?.id || '');
+
+    const handleConfirm = () => {
+      if (selectedType === 'section') {
+        const title = prompt('Título de la nueva sección');
+        if (title) addSection(title);
+        onClose();
+      } else if (selectedType === 'lesson') {
+        setNewLessonTitle("");
+        setNewLessonSectionId(targetSectionId === 'none' ? null : targetSectionId);
+        setShowCreateLessonDialog(true);
+        onClose();
+      } else if (selectedType === 'exam') {
+        setShowExamForm(true);
+        onClose();
+      } else if (selectedType === 'activity') {
+        alert("Funcionalidad de actividad en desarrollo");
+        onClose();
+      }
+    };
+
+    const CreationOption = ({ type, icon, title, description }: any) => (
+      <button
+        onClick={() => setSelectedType(type)}
+        className={`flex items-start p-4 border rounded-lg transition-all text-left w-full ${selectedType === type ? 'bg-blue-50 border-blue-600 ring-2 ring-blue-200' : 'bg-white border-gray-200 hover:border-blue-400'}`}
+      >
+        <div className={`p-2 rounded-full ${type === 'section' ? 'bg-gray-100' : type === 'lesson' ? 'bg-blue-100' : type === 'activity' ? 'bg-orange-100' : 'bg-red-100'}`}>
+          {icon}
+        </div>
+        <div className="ml-3">
+          <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
+          <p className="text-sm text-gray-500">{description}</p>
+        </div>
+      </button>
+    );
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg">
+          <div className="p-5 border-b flex justify-between items-center">
+            <h2 className="text-xl font-bold text-gray-800">{selectedType ? `Crear Nuevo ${selectedType.charAt(0).toUpperCase() + selectedType.slice(1)}` : 'Crear Contenido'}</h2>
+            <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 text-gray-500"><X className="h-5 w-5" /></button>
+          </div>
+          <div className="p-5 space-y-4">
+            {!selectedType && (
+              <div className="space-y-3">
+                <CreationOption type="section" icon={<ClipboardList className="h-6 w-6 text-gray-600" />} title="Nueva Sección" description="Organiza el contenido en módulos." />
+                <CreationOption type="lesson" icon={<BookOpen className="h-6 w-6 text-blue-600" />} title="Nueva Lección" description="Unidad de aprendizaje con video/texto." />
+                <CreationOption type="activity" icon={<Rocket className="h-6 w-6 text-orange-600" />} title="Nueva Actividad" description="Tareas o elementos interactivos." />
+                <CreationOption type="exam" icon={<GraduationCap className="h-6 w-6 text-red-600" />} title="Nueva Evaluación" description="Cuestionarios o exámenes." />
+              </div>
+            )}
+            {(selectedType === 'lesson' || selectedType === 'activity') && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Seleccionar Sección de Destino</label>
+                <select value={targetSectionId} onChange={(e) => setTargetSectionId(e.target.value)} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border">
+                  <option value="none">Sin sección</option>
+                  {sections.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
+                </select>
+              </div>
+            )}
+            <div className="flex justify-between pt-4">
+              <button onClick={() => setSelectedType(null)} className={`px-4 py-2 text-sm font-medium rounded-lg ${selectedType ? 'text-gray-600 hover:bg-gray-100' : 'hidden'}`}>← Volver</button>
+              <button onClick={handleConfirm} disabled={!selectedType} className={`px-6 py-2 text-sm font-semibold rounded-lg ${!selectedType ? 'hidden' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>Continuar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div className="p-6 space-y-6">
-      {/* Course image large */}
-      {course?.course_image_url && (
-        <div className="w-full h-56 md:h-96 rounded-lg overflow-hidden shadow">
-          <img src={course.course_image_url} alt={course.title} className="w-full h-full object-cover" />
-        </div>
-      )}
+    <div className="min-h-screen bg-gray-50 font-sans pb-20">
+      <style>{`
+        @keyframes fadeInScale { from { opacity: 0; transform: scale(0.9) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        .animate-fade-in-up { animation: fadeInScale 0.2s ease-out forwards; }
+      `}</style>
 
-      {/* Course details full width */}
-      <div className="bg-white rounded-lg p-6 shadow">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-semibold">{course?.title || 'Editar Curso'}</h2>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => navigate(-1)}>Volver</Button>
-            <Button onClick={handleSaveCourse} disabled={loading}>Guardar Curso</Button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="md:col-span-3">
-            <Label>Título</Label>
-            <Input value={course?.title||''} onChange={e=>handleCourseChange('title', e.target.value)} />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
-              <div>
-                <Label>Programa</Label>
-                <Input value={course?.profession||''} onChange={e=>handleCourseChange('profession', e.target.value)} />
-              </div>
-              <div>
-                <Label>Objetivo</Label>
-                <Input value={course?.objective||''} onChange={e=>handleCourseChange('objective', e.target.value)} />
+      {/* New Sticky Header */}
+      <header className="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm">
+        <div className="w-full px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center gap-4">
+              <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition-colors">
+                <ArrowLeft className="h-5 w-5" />
+              </button>
+              <div className="h-8 w-px bg-gray-200 mx-2 hidden sm:block"></div>
+              <div className="flex flex-col">
+                 <h1 className="text-lg font-bold text-gray-900 flex items-center gap-2 truncate max-w-[200px] sm:max-w-md">
+                    {course?.title || 'Cargando curso...'}
+                 </h1>
+                 <span className="text-xs text-gray-500 font-medium">Editor de Contenido</span>
               </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
-              <div>
-                <Label>Categoría</Label>
-                <Select
-                  value={course?.category_id ?? 'none'}
-                  onValueChange={(val) => handleCourseChange('category_id', val === 'none' ? null : val)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar categoría" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">(Sin categoría)</SelectItem>
-                    {categories.map(c => (
-                      <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="mt-3">
-              <Label>Descripción</Label>
-              <Textarea rows={4} value={course?.description||''} onChange={e=>handleCourseChange('description', e.target.value)} />
+            
+            <div className="flex items-center gap-3">
+               <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={handleSaveCourse} 
+                  disabled={loading} 
+                  className="hidden sm:flex text-gray-600 hover:text-blue-600 hover:bg-blue-50"
+               >
+                  <Save className="h-4 w-4 mr-2" />
+                  Guardar
+               </Button>
+               <button 
+                  onClick={() => setShowCreationModal(true)} 
+                  className="flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-all shadow-sm hover:shadow-md active:scale-95"
+               >
+                  <Plus className="h-4 w-4 mr-1.5" />
+                  Crear
+               </button>
             </div>
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* Sections accordion */}
-      {/* Exams manager: muestra y administra evaluaciones del curso */}
-      {courseId && (
-        <div>
-          <MoocExamManager courseId={courseId} />
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
+        
+        {/* Course Details Collapsible */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 mb-8 max-w-full mx-auto">
+           <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                <ClipboardList className="h-5 w-5 text-gray-500" />
+                Información General
+              </h2>
+           </div>
+           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                  <Label className="text-gray-600">Título del Curso</Label>
+                  <Input 
+                    value={course?.title||''} 
+                    onChange={e=>handleCourseChange('title', e.target.value)} 
+                    className="bg-gray-50 border-gray-200 focus:bg-white transition-colors"
+                  />
+              </div>
+              <div className="space-y-2">
+                  <Label className="text-gray-600">Descripción Corta</Label>
+                  <Input 
+                    value={course?.description||''} 
+                    onChange={e=>handleCourseChange('description', e.target.value)} 
+                    className="bg-gray-50 border-gray-200 focus:bg-white transition-colors"
+                  />
+              </div>
+           </div>
         </div>
-      )}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-medium">Secciones</h3>
-          <div className="flex gap-2">
-            <Button onClick={addLesson}>Agregar Lección</Button>
-            <Button onClick={() => { const t = prompt('Título de la nueva sección'); if (t) addSection(t); }} variant="outline">Agregar Sección</Button>
-            <Button onClick={() => setShowExamForm(true)} variant="secondary">Crear examen</Button>
-          </div>
-        </div>
 
-        {sections.length === 0 && <div className="text-sm text-muted-foreground">No hay secciones aún</div>}
+        {/* Main Content - Full Width */}
+        <main className="space-y-4 w-full mx-auto">
+            {sections.sort((a,b)=>(a.order_index||0)-(b.order_index||0)).map(section => {
+                const sectionLessons = lessons.filter(l => l.section_id === section.id);
+                const isExpanded = expandedSections[section.id!] !== false;
 
-        <div className="space-y-3">
-          {sections.sort((a,b)=>(a.order_index||0)-(b.order_index||0)).map(s => (
-            <details key={s.id} className="group border rounded-md" open>
-              <summary className="flex items-center justify-between cursor-pointer px-4 py-3 font-semibold bg-muted/30">
-                <div>{s.order_index}. {s.title}</div>
-                <div className="flex items-center gap-3">
-                  <div className="text-sm text-muted-foreground">{lessons.filter(l=>l.section_id===s.id).length} lecciones • {lessons.filter(l=>l.section_id===s.id).reduce((sum, l)=> sum + (l.duration_hours||0), 0)}h</div>
+                return (
+                    <div key={section.id} className="bg-white rounded-xl border border-gray-200 shadow-sm transition-all duration-200 hover:shadow-md">
+                        {/* Section Header */}
+                        <div 
+                            className={`flex items-center justify-between p-4 cursor-pointer select-none ${isExpanded ? 'border-b border-gray-100' : ''}`}
+                            onClick={() => toggleSectionExpansion(section.id!)}
+                        >
+                            <div className="flex items-center gap-4 flex-1">
+                                <div className="p-2 bg-gray-50 rounded-lg text-gray-400 cursor-grab active:cursor-grabbing hover:bg-gray-100 hover:text-gray-600 transition-colors" onClick={(e) => e.stopPropagation()}>
+                                  <GripVertical className="h-5 w-5" />
+                                </div>
+                                <div className="flex-1">
+                                    <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                                      {section.title}
+                                      <span className="text-xs font-normal px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full">
+                                        {sectionLessons.length} items
+                                      </span>
+                                    </h2>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button 
+                                  className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors" 
+                                  onClick={(e) => { e.stopPropagation(); const t = prompt('Nuevo título', section.title); if(t) {/* update logic */} }}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </button>
+                                <div className="p-2 text-gray-400">
+                                  {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Section Content */}
+                        <div className={`transition-all duration-300 ease-in-out ${isExpanded ? 'opacity-100' : 'opacity-0 max-h-0 overflow-hidden'}`}>
+                            <div className="p-2 space-y-2 bg-gray-50/50 rounded-b-xl">
+                                {sectionLessons.length > 0 ? (
+                                    sectionLessons.map(lesson => {
+                                        const { Icon, color } = getContentIcon('lesson');
+                                        return (
+                                            <div key={lesson.id} className="group flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200 shadow-sm hover:border-blue-300 hover:shadow-md transition-all">
+                                                <div className="flex items-center gap-4 flex-1">
+                                                    <GripVertical className="h-4 w-4 text-gray-300 group-hover:text-gray-500 cursor-grab" />
+                                                    <div className={`p-2 rounded-lg bg-opacity-10 ${color.replace('text-', 'bg-')}`}>
+                                                      <Icon className={`h-5 w-5 ${color}`} />
+                                                    </div>
+                                                    <div className="flex flex-col">
+                                                        <span className="font-medium text-gray-800">{lesson.title}</span>
+                                                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                                                          <span className="uppercase tracking-wider font-semibold">Lección</span>
+                                                          <span>•</span>
+                                                          <span>{lesson.duration_hours}h</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button onClick={() => openLessonEditor(lesson)} className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Editar">
+                                                      <Pencil className="h-4 w-4" />
+                                                    </button>
+                                                    <button onClick={() => deleteLesson(lesson.id!)} className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Eliminar">
+                                                      <Trash2 className="h-4 w-4" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })
+                                ) : (
+                                    <div className="py-8 text-center border-2 border-dashed border-gray-200 rounded-lg bg-gray-50">
+                                      <p className="text-gray-400 text-sm">Esta sección está vacía</p>
+                                      <button onClick={() => setShowCreationModal(true)} className="mt-2 text-blue-600 text-sm font-medium hover:underline">Agregar contenido</button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                );
+            })}
+
+            {/* Unsectioned Lessons */}
+            {lessons.filter(l => !l.section_id).length > 0 && (
+                <div className="bg-white rounded-xl border border-yellow-200 shadow-sm overflow-hidden">
+                    <div className="bg-yellow-50 px-4 py-3 border-b border-yellow-100 flex items-center gap-2">
+                      <div className="p-1 bg-yellow-100 rounded text-yellow-600">
+                        <ClipboardList className="h-4 w-4" />
+                      </div>
+                      <h3 className="font-bold text-yellow-800">Contenido sin asignar</h3>
+                    </div>
+                    <div className="p-2 space-y-2 bg-gray-50">
+                        {lessons.filter(l => !l.section_id).map(lesson => (
+                            <div key={lesson.id} className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
+                                 <div className="flex items-center gap-3">
+                                    <BookOpen className="h-5 w-5 text-gray-400" />
+                                    <span className="text-sm font-medium text-gray-700">{lesson.title}</span>
+                                 </div>
+                                 <div className="flex gap-2">
+                                    <button onClick={() => openLessonEditor(lesson)} className="p-1 hover:bg-gray-100 rounded"><Pencil className="h-4 w-4 text-gray-500" /></button>
+                                    <button onClick={() => deleteLesson(lesson.id!)} className="p-1 hover:bg-red-50 rounded"><Trash2 className="h-4 w-4 text-red-500" /></button>
+                                 </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
-              </summary>
-              <div className="p-4 space-y-3">
-                {lessons.filter(l=>l.section_id===s.id).map(l => (
-                  <Card key={l.id || l.order_index}>
-                    <CardContent className="flex items-center justify-between">
-                      <div>
-                        <div className="font-medium">{l.title || '(Sin título)'}</div>
-                        <div className="text-sm text-muted-foreground">{l.duration_hours || 0} horas</div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button size="sm" onClick={async ()=>{ await openLessonEditor(l); }}>Editar</Button>
-                        <Button size="sm" variant="outline" onClick={()=> setShowExamForm(true)}>Crear examen</Button>
-                        {l.id && (
-                          <Button size="sm" variant="destructive" onClick={() => deleteLesson(l.id!)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </details>
-          ))}
-        </div>
+            )}
 
-        {/* Unsectioned */}
-        <details className="group border rounded-md" open>
-          <summary className="flex items-center justify-between cursor-pointer px-4 py-3 font-semibold bg-muted/30">
-            <div>Sin sección</div>
-            <div className="text-sm text-muted-foreground">{lessons.filter(l=>!l.section_id).length} lecciones • {lessons.filter(l=>!l.section_id).reduce((sum, l)=> sum + (l.duration_hours||0), 0)}h</div>
-          </summary>
-          <div className="p-4 space-y-3">
-            {lessons.filter(l=>!l.section_id).map(l => (
-              <Card key={l.id || l.order_index}>
-                <CardContent className="flex items-center justify-between">
-                  <div>
-                    <div className="font-medium">{l.title || '(Sin título)'}</div>
-                    <div className="text-sm text-muted-foreground">{l.duration_hours || 0} horas</div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button size="sm" onClick={async ()=>{ await openLessonEditor(l); }}>Editar</Button>
-                    <Button size="sm" variant="outline" onClick={()=> setShowExamForm(true)}>Crear examen</Button>
-                    {l.id && (
-                      <Button size="sm" variant="destructive" onClick={() => deleteLesson(l.id!)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </details>
-
+            {/* Exams Section */}
+            {courseId && (
+                <div className="mt-8 bg-white rounded-xl border border-gray-200 shadow-sm transition-all duration-200 hover:shadow-md">
+                    <div 
+                        className={`flex items-center justify-between p-4 cursor-pointer select-none ${examsExpanded ? 'border-b border-gray-100' : ''}`}
+                        onClick={() => setExamsExpanded(!examsExpanded)}
+                    >
+                        <div className="flex items-center gap-4 flex-1">
+                            <div className="p-2 bg-red-50 rounded-lg text-red-500">
+                                <GraduationCap className="h-5 w-5" />
+                            </div>
+                            <h2 className="text-lg font-bold text-gray-800">Evaluaciones y Certificación</h2>
+                        </div>
+                        <div className="p-2 text-gray-400">
+                            {examsExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                        </div>
+                    </div>
+                    
+                    <div className={`transition-all duration-300 ease-in-out ${examsExpanded ? 'opacity-100' : 'opacity-0 max-h-0 overflow-hidden'}`}>
+                        <div className="p-6">
+                            <MoocExamManager courseId={courseId} />
+                        </div>
+                    </div>
+                </div>
+            )}
+        </main>
       </div>
+
+      {showCreationModal && <CreationModal onClose={() => setShowCreationModal(false)} />}
 
       {showExamForm && courseId && (
         <Dialog open={showExamForm} onOpenChange={setShowExamForm}>
