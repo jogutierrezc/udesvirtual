@@ -73,7 +73,13 @@ export default function CourseLearning() {
   const [loading, setLoading] = useState(true);
   const [course, setCourse] = useState<Course | null>(null);
   const [lessons, setLessons] = useState<Lesson[]>([]);
-  const [sections, setSections] = useState<Array<{ id: string; title: string; order_index: number }>>([]);
+  const [sections, setSections] = useState<Array<{ 
+    id: string; 
+    title: string; 
+    order_index: number;
+    available_from?: string | null;
+    available_until?: string | null;
+  }>>([]);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
   const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null);
   const [progress, setProgress] = useState(0);
@@ -307,30 +313,52 @@ export default function CourseLearning() {
           } as any);
         });
 
-        // Ordenar todas las lecciones por order_index
-        lessonsWithProgress.sort((a, b) => a.order_index - b.order_index);
-
-        setLessons(lessonsWithProgress);
-
         // Cargar secciones reales para encabezados
         const { data: sectionsData } = await supabase
           .from('mooc_course_sections')
-          .select('id, title, order_index')
+          .select('id, title, order_index, is_published, available_from, available_until')
           .eq('course_id', courseId)
           .order('order_index', { ascending: true });
-        const mappedSections = (sectionsData || []).map((s: any) => ({ id: s.id, title: s.title, order_index: s.order_index || 0 }));
+        
+        // Identificar secciones ocultas
+        const unpublishedSectionIds = new Set(
+          (sectionsData || [])
+            .filter((s: any) => s.is_published === false)
+            .map((s: any) => s.id)
+        );
+
+        const mappedSections = (sectionsData || [])
+          .filter((s: any) => s.is_published !== false)
+          .map((s: any) => ({ 
+            id: s.id, 
+            title: s.title, 
+            order_index: s.order_index || 0,
+            available_from: s.available_from,
+            available_until: s.available_until
+          }));
         setSections(mappedSections);
+
+        // Filtrar lecciones que pertenecen a secciones ocultas
+        const visibleLessons = lessonsWithProgress.filter(l => 
+          !l.section_id || !unpublishedSectionIds.has(l.section_id)
+        );
+
+        // Ordenar todas las lecciones por order_index
+        visibleLessons.sort((a, b) => a.order_index - b.order_index);
+
+        setLessons(visibleLessons);
+
         // Inicialmente todas las secciones abiertas
         const initialOpen: Record<string, boolean> = {};
         mappedSections.forEach(s => { initialOpen[s.id] = true; });
-        if (lessonsWithProgress.some(l => !l.section_id)) {
+        if (visibleLessons.some(l => !l.section_id)) {
           initialOpen['__unsectioned'] = true;
         }
         setOpenSections(initialOpen);
 
         // Seleccionar la primera lección no completada o la primera
-        const firstIncomplete = lessonsWithProgress.find(l => !l.completed);
-        setCurrentLesson(firstIncomplete || lessonsWithProgress[0] || null);
+        const firstIncomplete = visibleLessons.find(l => !l.completed);
+        setCurrentLesson(firstIncomplete || visibleLessons[0] || null);
       }
     } catch (error: any) {
       console.error("Error loading course:", error);
@@ -540,6 +568,24 @@ export default function CourseLearning() {
     && (
       !activity || !!activitySubmission
     );
+
+  const isSectionLocked = (section: any) => {
+    const now = new Date();
+    if (section.available_from && new Date(section.available_from) > now) return true;
+    if (section.available_until && new Date(section.available_until) < now) return true;
+    return false;
+  };
+
+  const getSectionAvailabilityText = (section: any) => {
+    const now = new Date();
+    if (section.available_from && new Date(section.available_from) > now) {
+      return `Disponible desde: ${new Date(section.available_from).toLocaleDateString()}`;
+    }
+    if (section.available_until && new Date(section.available_until) < now) {
+      return `Finalizó: ${new Date(section.available_until).toLocaleDateString()}`;
+    }
+    return null;
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-slate-800">
@@ -892,6 +938,8 @@ export default function CourseLearning() {
                 sections.map((section) => {
                   const sectionLessons = lessons.filter(l => (l as any).section_id === section.id).sort((a,b)=>a.order_index-b.order_index);
                   const isOpen = openSections[section.id];
+                  const isLocked = isSectionLocked(section);
+                  const availabilityText = getSectionAvailabilityText(section);
                   
                   return (
                     <div key={section.id} className="bg-white">
@@ -902,7 +950,11 @@ export default function CourseLearning() {
                       >
                         <div className="text-left">
                           <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-0.5">Módulo {section.order_index}</p>
-                          <p className="font-bold text-slate-800 text-sm">{section.title}</p>
+                          <p className="font-bold text-slate-800 text-sm flex items-center gap-2">
+                            {section.title}
+                            {isLocked && <Lock size={14} className="text-orange-500" />}
+                          </p>
+                          {isLocked && <p className="text-xs text-orange-600 mt-1">{availabilityText}</p>}
                         </div>
                         {isOpen ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
                       </button>
@@ -914,15 +966,24 @@ export default function CourseLearning() {
                             sectionLessons.map((lesson) => (
                               <div 
                                 key={lesson.id} 
-                                onClick={() => selectLessonAndExpand(lesson)}
+                                onClick={() => {
+                                  if (isLocked) {
+                                    toast({ title: "Sección bloqueada", description: availabilityText || "Esta sección no está disponible actualmente.", variant: "destructive" });
+                                    return;
+                                  }
+                                  selectLessonAndExpand(lesson);
+                                }}
                                 className={`
-                                  relative pl-4 pr-4 py-3 flex gap-3 items-start transition-all cursor-pointer
+                                  relative pl-4 pr-4 py-3 flex gap-3 items-start transition-all 
+                                  ${isLocked ? 'cursor-not-allowed opacity-60 grayscale' : 'cursor-pointer'}
                                   ${currentLesson?.id === lesson.id ? 'bg-blue-50 border-l-4 border-[#003366]' : 'hover:bg-slate-100 border-l-4 border-transparent'}
                                 `}
                               >
                                 {/* Status Icon */}
                                 <div className="mt-0.5 flex-shrink-0">
-                                  {lesson.completed ? (
+                                  {isLocked ? (
+                                    <Lock size={18} className="text-slate-400" />
+                                  ) : lesson.completed ? (
                                     <CheckCircle2 size={18} className="text-green-500" />
                                   ) : currentLesson?.id === lesson.id ? (
                                     <PlayCircle size={18} className="text-[#003366] fill-blue-100" />

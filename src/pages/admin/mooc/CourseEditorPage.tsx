@@ -13,7 +13,7 @@ import { MoocExamManager } from '@/pages/professor/components/MoocExamManager';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, Menu, BookOpen, ClipboardList, GraduationCap, GripVertical, ChevronDown, ChevronUp, Pencil, Eye, EyeOff, Plus, Rocket, X, FileText, ArrowLeft, Save } from "lucide-react";
+import { Trash2, Menu, BookOpen, ClipboardList, GraduationCap, GripVertical, ChevronDown, ChevronUp, Pencil, Eye, EyeOff, Plus, Rocket, X, FileText, ArrowLeft, Save, Calendar, Clock } from "lucide-react";
 
 type Lesson = {
   id?: string;
@@ -27,7 +27,15 @@ type Lesson = {
   section_id?: string | null;
 };
 
-type Section = { id?: string; title: string; description?: string; order_index: number };
+type Section = { 
+  id?: string; 
+  title: string; 
+  description?: string; 
+  order_index: number; 
+  is_published?: boolean;
+  available_from?: string | null;
+  available_until?: string | null;
+};
 
 export default function CourseEditorPage() {
   const { courseId } = useParams();
@@ -47,6 +55,10 @@ export default function CourseEditorPage() {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const [showCreationModal, setShowCreationModal] = useState(false);
   const [examsExpanded, setExamsExpanded] = useState(true);
+  
+  // Section editing state
+  const [editingSection, setEditingSection] = useState<Section | null>(null);
+  const [showSectionSettings, setShowSectionSettings] = useState(false);
 
   useEffect(() => {
     if (!courseId) return;
@@ -96,9 +108,59 @@ export default function CourseEditorPage() {
     try {
       const { data, error } = await supabase.from('mooc_course_sections').select('*').eq('course_id', id).order('order_index');
       if (error) throw error;
-      setSections((data||[]).map((s:any)=>({ id: s.id, title: s.title, description: s.description, order_index: s.order_index })));
+      setSections((data||[]).map((s:any)=>({ 
+        id: s.id, 
+        title: s.title, 
+        description: s.description, 
+        order_index: s.order_index,
+        is_published: s.is_published !== false,
+        available_from: s.available_from,
+        available_until: s.available_until
+      })));
     } catch (e:any) {
       console.error('loadSections', e);
+    }
+  };
+
+  const handleUpdateSection = async () => {
+    if (!editingSection || !editingSection.id) return;
+    
+    try {
+      const { error } = await supabase
+        .from('mooc_course_sections')
+        .update({
+          title: editingSection.title,
+          available_from: editingSection.available_from || null,
+          available_until: editingSection.available_until || null
+        })
+        .eq('id', editingSection.id);
+
+      if (error) throw error;
+
+      setSections(prev => prev.map(s => s.id === editingSection.id ? editingSection : s));
+      toast({ title: "Sección actualizada" });
+      setShowSectionSettings(false);
+      setEditingSection(null);
+    } catch (e) {
+      console.error('Error updating section', e);
+      toast({ title: "Error", description: "No se pudo actualizar la sección", variant: "destructive" });
+    }
+  };
+
+  const toggleSectionVisibility = async (sectionId: string, currentStatus: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('mooc_course_sections')
+        .update({ is_published: !currentStatus })
+        .eq('id', sectionId);
+      
+      if (error) throw error;
+      
+      setSections(prev => prev.map(s => s.id === sectionId ? { ...s, is_published: !currentStatus } : s));
+      toast({ title: !currentStatus ? "Sección publicada" : "Sección ocultada" });
+    } catch (e) {
+      console.error('Error toggling visibility', e);
+      toast({ title: "Error", description: "No se pudo cambiar la visibilidad", variant: "destructive" });
     }
   };
 
@@ -444,18 +506,45 @@ export default function CourseEditorPage() {
                                   <GripVertical className="h-5 w-5" />
                                 </div>
                                 <div className="flex-1">
-                                    <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                                    <h2 className={`text-lg font-bold flex items-center gap-2 ${section.is_published !== false ? 'text-gray-800' : 'text-gray-400'}`}>
                                       {section.title}
+                                      {section.is_published === false && (
+                                          <span className="text-xs font-normal px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full">
+                                            Oculto
+                                          </span>
+                                      )}
                                       <span className="text-xs font-normal px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full">
                                         {sectionLessons.length} items
                                       </span>
+                                      {(section.available_from || section.available_until) && (
+                                        <span className="text-xs font-normal px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full flex items-center gap-1">
+                                          <Clock className="h-3 w-3" />
+                                          {section.available_from ? new Date(section.available_from).toLocaleDateString() : 'Inicio'} 
+                                          {' - '}
+                                          {section.available_until ? new Date(section.available_until).toLocaleDateString() : 'Fin'}
+                                        </span>
+                                      )}
                                     </h2>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
+                                <button
+                                    className={`p-2 rounded-full transition-colors ${section.is_published !== false ? 'text-green-600 hover:bg-green-50' : 'text-gray-400 hover:bg-gray-100'}`}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        toggleSectionVisibility(section.id!, section.is_published !== false);
+                                    }}
+                                    title={section.is_published !== false ? "Visible para estudiantes" : "Oculto para estudiantes"}
+                                >
+                                    {section.is_published !== false ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                                </button>
                                 <button 
                                   className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors" 
-                                  onClick={(e) => { e.stopPropagation(); const t = prompt('Nuevo título', section.title); if(t) {/* update logic */} }}
+                                  onClick={(e) => { 
+                                    e.stopPropagation(); 
+                                    setEditingSection(section);
+                                    setShowSectionSettings(true);
+                                  }}
                                 >
                                   <Pencil className="h-4 w-4" />
                                 </button>
@@ -583,6 +672,43 @@ export default function CourseEditorPage() {
           </DialogContent>
         </Dialog>
       )}
+
+      <Dialog open={showSectionSettings} onOpenChange={setShowSectionSettings}>
+        <DialogContent>
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium">Configuración de la Sección</h3>
+            <div>
+              <Label>Título</Label>
+              <Input 
+                value={editingSection?.title || ''} 
+                onChange={(e) => setEditingSection(prev => prev ? { ...prev, title: e.target.value } : null)} 
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Disponible desde</Label>
+                <Input 
+                  type="datetime-local"
+                  value={editingSection?.available_from ? new Date(editingSection.available_from).toISOString().slice(0, 16) : ''}
+                  onChange={(e) => setEditingSection(prev => prev ? { ...prev, available_from: e.target.value ? new Date(e.target.value).toISOString() : null } : null)}
+                />
+              </div>
+              <div>
+                <Label>Disponible hasta</Label>
+                <Input 
+                  type="datetime-local"
+                  value={editingSection?.available_until ? new Date(editingSection.available_until).toISOString().slice(0, 16) : ''}
+                  onChange={(e) => setEditingSection(prev => prev ? { ...prev, available_until: e.target.value ? new Date(e.target.value).toISOString() : null } : null)}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowSectionSettings(false)}>Cancelar</Button>
+              <Button onClick={handleUpdateSection}>Guardar Cambios</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showCreateLessonDialog} onOpenChange={setShowCreateLessonDialog}>
         <DialogContent>
