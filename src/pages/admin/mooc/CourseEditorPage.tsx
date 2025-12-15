@@ -40,6 +40,9 @@ export default function CourseEditorPage() {
   const [sections, setSections] = useState<Section[]>([]);
   const [selectedLessonIndex, setSelectedLessonIndex] = useState<number | null>(null);
   const [showExamForm, setShowExamForm] = useState(false);
+  const [showCreateLessonDialog, setShowCreateLessonDialog] = useState(false);
+  const [newLessonTitle, setNewLessonTitle] = useState("");
+  const [newLessonSectionId, setNewLessonSectionId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!courseId) return;
@@ -167,19 +170,24 @@ export default function CourseEditorPage() {
   };
 
   const addLesson = async () => {
-    if (!courseId) return;
-    const title = prompt("Título de la nueva lección");
-    if (!title) return;
+    setNewLessonTitle("");
+    setNewLessonSectionId(null);
+    setShowCreateLessonDialog(true);
+  };
 
+  const handleCreateLesson = async () => {
+    if (!courseId || !newLessonTitle.trim()) return;
+    
     try {
       const payload = {
-        title,
+        title: newLessonTitle,
         description: '',
         duration_hours: 1,
         order_index: lessons.length + 1,
         course_id: courseId,
         content_type: 'video',
-        content: ''
+        content: '',
+        section_id: newLessonSectionId === 'none' ? null : newLessonSectionId
       };
       
       const { data, error } = await supabase.from('mooc_lessons').insert([payload]).select().single();
@@ -187,6 +195,7 @@ export default function CourseEditorPage() {
 
       setLessons(prev => [...prev, { ...payload, id: data.id }]);
       toast({ title: 'Lección creada', description: 'La lección ha sido creada exitosamente.' });
+      setShowCreateLessonDialog(false);
     } catch (e:any) {
       console.error('addLesson', e);
       toast({ title: 'Error', description: e.message || 'No se pudo crear la lección', variant: 'destructive' });
@@ -390,6 +399,43 @@ export default function CourseEditorPage() {
           </DialogContent>
         </Dialog>
       )}
+
+      <Dialog open={showCreateLessonDialog} onOpenChange={setShowCreateLessonDialog}>
+        <DialogContent>
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium">Nueva Lección</h3>
+            <div>
+              <Label>Título de la lección</Label>
+              <Input 
+                value={newLessonTitle} 
+                onChange={(e) => setNewLessonTitle(e.target.value)} 
+                placeholder="Ej: Introducción al tema"
+              />
+            </div>
+            <div>
+              <Label>Sección (Opcional)</Label>
+              <Select 
+                value={newLessonSectionId || "none"} 
+                onValueChange={(val) => setNewLessonSectionId(val)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar sección" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sin sección</SelectItem>
+                  {sections.map(s => (
+                    <SelectItem key={s.id} value={s.id || "unknown"}>{s.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowCreateLessonDialog(false)}>Cancelar</Button>
+              <Button onClick={handleCreateLesson} disabled={!newLessonTitle.trim()}>Crear Lección</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
