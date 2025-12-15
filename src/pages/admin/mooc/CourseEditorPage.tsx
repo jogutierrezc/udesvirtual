@@ -13,6 +13,7 @@ import { MoocExamManager } from '@/pages/professor/components/MoocExamManager';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import { useToast } from "@/hooks/use-toast";
+import { Trash2 } from "lucide-react";
 
 type Lesson = {
   id?: string;
@@ -202,6 +203,21 @@ export default function CourseEditorPage() {
     }
   };
 
+  const deleteLesson = async (lessonId: string) => {
+    if (!confirm("¿Estás seguro de eliminar esta lección? Esta acción no se puede deshacer.")) return;
+    
+    try {
+      const { error } = await supabase.from('mooc_lessons').delete().eq('id', lessonId);
+      if (error) throw error;
+      
+      setLessons(prev => prev.filter(l => l.id !== lessonId));
+      toast({ title: 'Lección eliminada' });
+    } catch (e:any) {
+      console.error('deleteLesson', e);
+      toast({ title: 'Error', description: 'No se pudo eliminar la lección', variant: 'destructive' });
+    }
+  };
+
   const addSection = async (title:string) => {
     if (!courseId) return;
     try {
@@ -343,6 +359,11 @@ export default function CourseEditorPage() {
                       <div className="flex gap-2">
                         <Button size="sm" onClick={async ()=>{ await openLessonEditor(l); }}>Editar</Button>
                         <Button size="sm" variant="outline" onClick={()=> setShowExamForm(true)}>Crear examen</Button>
+                        {l.id && (
+                          <Button size="sm" variant="destructive" onClick={() => deleteLesson(l.id!)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -369,6 +390,11 @@ export default function CourseEditorPage() {
                   <div className="flex gap-2">
                     <Button size="sm" onClick={async ()=>{ await openLessonEditor(l); }}>Editar</Button>
                     <Button size="sm" variant="outline" onClick={()=> setShowExamForm(true)}>Crear examen</Button>
+                    {l.id && (
+                      <Button size="sm" variant="destructive" onClick={() => deleteLesson(l.id!)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -376,10 +402,6 @@ export default function CourseEditorPage() {
           </div>
         </details>
 
-      </div>
-
-      <div className="mt-8">
-        <MoocExamManager courseId={courseId} />
       </div>
 
       {showExamForm && courseId && (
