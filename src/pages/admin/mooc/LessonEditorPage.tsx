@@ -11,7 +11,7 @@ import QuillEditor from '@/components/QuillEditor';
 import DOMPurify from 'dompurify';
 import { sanitizeLessonHtml } from '@/lib/html';
 import { useToast } from "@/hooks/use-toast";
-import { FileText, Upload, Trash2, Loader2, Video, Calendar } from "lucide-react";
+import { FileText, Upload, Trash2, Loader2, Video, Calendar, BookOpen, Clock, ExternalLink, Download, Pencil, GraduationCap, Rocket, Plus, ArrowLeft, Eye, Globe, X } from "lucide-react";
 import LessonActivitySection from './LessonActivitySection';
 
 export default function LessonEditorPage() {
@@ -26,7 +26,8 @@ export default function LessonEditorPage() {
   const [uploadingReading, setUploadingReading] = useState(false);
   const [activity, setActivity] = useState<any>(null);
   const [hasActivity, setHasActivity] = useState(false);
-  const [submissionTypes, setSubmissionTypes] = useState<string[]>([]);
+  const [showQuickCreateModal, setShowQuickCreateModal] = useState(false);
+  const [submissionTypes, setSubmissionTypes] = useState<any>({ file: true, video: false, link: false });
 
   useEffect(() => {
     if (lessonId) {
@@ -232,84 +233,23 @@ export default function LessonEditorPage() {
     } finally { setLoading(false); }
   };
 
-  if (!lesson) return <div className="p-6">Cargando lección...</div>;
-
-  return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-semibold">Editar Lección</h2>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => navigate(-1)}>Volver</Button>
-          <Button onClick={handleSave} disabled={loading}>Guardar</Button>
-          <Button variant="ghost" onClick={() => setPreview(p => !p)}>{preview ? 'Ocultar vista previa' : 'Vista previa estudiante'}</Button>
-        </div>
-      </div>
-
-      {!preview ? (
-        <>
-          <Card className="mb-6">
-            <CardContent className="pt-6">
-              <div className="space-y-4">
+  const renderSpecificContentFields = () => {
+    switch (lesson.content_type) {
+      case 'live_session':
+        return (
+          <div className="space-y-4 col-span-1 md:col-span-2 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <h3 className="text-lg font-bold text-blue-700 flex items-center space-x-2">
+                <Globe className="h-5 w-5" />
+                <span>Detalles de Sesión en Vivo</span>
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label>Título</Label>
-                  <Input value={lesson.title || ''} onChange={e => setLesson((p: any) => ({ ...p, title: e.target.value }))} />
-                </div>
-
-                <div>
-                  <Label>Duración (horas)</Label>
-                  <Input type="number" min={1} value={lesson.duration_hours || 1} onChange={e => setLesson((p: any) => ({ ...p, duration_hours: parseInt(e.target.value) || 1 }))} />
-                </div>
-
-                <div>
-                  <Label>Tipo de Contenido</Label>
-                  <Select
-                    value={lesson.content_type || 'video'}
-                    onValueChange={(val) => setLesson((p: any) => ({ ...p, content_type: val }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecciona el tipo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="video">
-                        <div className="flex items-center gap-2">
-                          <Video className="h-4 w-4" />
-                          Video Grabado (YouTube, Vimeo, etc.)
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="live_session">
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4" />
-                          Sesión Sincrónica (Meet, Teams, Zoom)
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Campos según el tipo de contenido */}
-                {lesson.content_type === 'video' && (
-                  <div>
-                    <Label>URL del Video (YouTube, Vimeo, etc.)</Label>
-                    <Input
-                      value={lesson.video_url || ''}
-                      onChange={e => setLesson((p: any) => ({ ...p, video_url: e.target.value }))}
-                      placeholder="https://www.youtube.com/watch?v=..."
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Pega el enlace directo del video
-                    </p>
-                  </div>
-                )}
-
-                {lesson.content_type === 'live_session' && (
-                  <>
-                    <div>
-                      <Label>Plataforma</Label>
-                      <Select
+                    <Label>Plataforma</Label>
+                    <Select
                         value={lesson.live_platform || 'meet'}
                         onValueChange={(val) => setLesson((p: any) => ({ ...p, live_platform: val }))}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="bg-white mt-1">
                           <SelectValue placeholder="Selecciona la plataforma" />
                         </SelectTrigger>
                         <SelectContent>
@@ -319,175 +259,373 @@ export default function LessonEditorPage() {
                           <SelectItem value="other">Otra</SelectItem>
                         </SelectContent>
                       </Select>
-                    </div>
-
-                    <div>
-                      <Label>URL de la Sesión</Label>
-                      <Input
-                        value={lesson.live_url || ''}
-                        onChange={e => setLesson((p: any) => ({ ...p, live_url: e.target.value }))}
-                        placeholder="https://meet.google.com/..."
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label>Fecha</Label>
-                        <Input
-                          type="date"
-                          value={lesson.live_date || ''}
-                          onChange={e => setLesson((p: any) => ({ ...p, live_date: e.target.value }))}
-                        />
-                      </div>
-                      <div>
-                        <Label>Hora</Label>
-                        <Input
-                          type="time"
-                          value={lesson.live_time || ''}
-                          onChange={e => setLesson((p: any) => ({ ...p, live_time: e.target.value }))}
-                        />
-                      </div>
-                    </div>
-                  </>
-                )}
-
+                </div>
                 <div>
-                  <Label>Descripción (rich text)</Label>
-                  <QuillEditor
+                    <Label>URL de la Sesión</Label>
+                    <div className="mt-1 flex rounded-lg shadow-sm">
+                        <Input
+                            value={lesson.live_url || ''}
+                            onChange={e => setLesson((p: any) => ({ ...p, live_url: e.target.value }))}
+                            className="rounded-r-none bg-white"
+                            placeholder="https://"
+                        />
+                        <a href={lesson.live_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center px-4 rounded-r-lg border border-l-0 border-gray-300 bg-gray-50 text-gray-500 text-sm hover:bg-gray-100">
+                            <ExternalLink className="h-5 w-5" />
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <Label>Fecha de la Sesión</Label>
+                    <div className='flex items-center mt-1 border border-gray-300 rounded-lg p-2.5 bg-white'>
+                        <Calendar className='h-5 w-5 text-gray-400 mr-2'/>
+                        <input
+                            type="date"
+                            value={lesson.live_date || ''}
+                            onChange={e => setLesson((p: any) => ({ ...p, live_date: e.target.value }))}
+                            className="w-full focus:outline-none text-sm"
+                        />
+                    </div>
+                </div>
+                <div>
+                    <Label>Hora de la Sesión</Label>
+                    <div className='flex items-center mt-1 border border-gray-300 rounded-lg p-2.5 bg-white'>
+                        <Clock className='h-5 w-5 text-gray-400 mr-2'/>
+                        <input
+                            type="time"
+                            value={lesson.live_time || ''}
+                            onChange={e => setLesson((p: any) => ({ ...p, live_time: e.target.value }))}
+                            className="w-full focus:outline-none text-sm"
+                        />
+                    </div>
+                </div>
+            </div>
+          </div>
+        );
+      case 'video':
+        return (
+          <div className="space-y-4 col-span-1 md:col-span-2 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+            <h3 className="text-lg font-bold text-purple-700 flex items-center space-x-2">
+                <Video className="h-5 w-5" />
+                <span>Detalles del Video</span>
+            </h3>
+            <div>
+              <Label>URL del Video (Ej: YouTube, Vimeo)</Label>
+              <Input
+                value={lesson.video_url || ''}
+                onChange={e => setLesson((p: any) => ({ ...p, video_url: e.target.value }))}
+                className="mt-1 bg-white"
+                placeholder="https://youtube.com/watch?v=..."
+              />
+            </div>
+          </div>
+        );
+      default:
+        return (
+            <div className="col-span-1 md:col-span-2 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                <p className="text-sm text-gray-600">El contenido de esta lección se basará principalmente en los archivos adjuntos y el texto detallado.</p>
+            </div>
+        );
+    }
+  };
+
+  const QuickCreateModal = ({ onClose }: { onClose: () => void }) => (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm">
+        <div className="p-5 border-b flex justify-between items-center">
+          <h2 className="text-xl font-bold text-gray-800">Añadir a "{lesson.title}"</h2>
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 text-gray-500">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="p-5 space-y-4">
+          <p className="text-gray-600">Selecciona el tipo de contenido que deseas vincular a esta lección.</p>
+          <button
+            onClick={() => { toast({title: "Funcionalidad en desarrollo", description: "Por favor crea el examen desde el editor del curso."}); onClose(); }}
+            className="flex items-center w-full p-3 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors space-x-3 border border-red-300"
+          >
+            <GraduationCap className="h-6 w-6" /> <span>Crear Nueva Evaluación</span>
+          </button>
+          <button
+            onClick={() => { setHasActivity(true); onClose(); }}
+            className="flex items-center w-full p-3 text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors space-x-3 border border-orange-300"
+          >
+            <Rocket className="h-6 w-6" /> <span>Crear Nueva Actividad</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (!lesson) return <div className="p-6 flex items-center justify-center h-screen"><Loader2 className="h-8 w-8 animate-spin text-blue-600" /></div>;
+
+  return (
+    <div className="min-h-screen bg-gray-100 p-4 sm:p-8 font-sans">
+      
+      {/* Encabezado Principal */}
+      <header className="mb-8 flex justify-between items-center w-full px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center space-x-3">
+          <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-200 transition-colors">
+             <ArrowLeft className="h-6 w-6 text-gray-600" />
+          </button>
+          <h1 className="text-3xl font-extrabold text-gray-900">Editar Lección</h1>
+        </div>
+        
+        <div className="flex space-x-3">
+          <Button
+            variant="outline"
+            onClick={() => navigate(-1)}
+            className="text-gray-700 bg-white hover:bg-gray-100 border border-gray-300"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Volver
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={loading}
+            className="text-white bg-blue-600 hover:bg-blue-700"
+          >
+            {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Pencil className="h-4 w-4 mr-2" />}
+            Guardar
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => setPreview(p => !p)}
+            className="text-white bg-green-600 hover:bg-green-700"
+          >
+            <Eye className="h-4 w-4 mr-2" />
+            {preview ? 'Editar' : 'Vista Previa'}
+          </Button>
+        </div>
+      </header>
+
+      {!preview ? (
+      <main className="w-full px-4 sm:px-6 lg:px-8 space-y-6">
+        
+        {/* Card de Información Básica */}
+        <section className="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+          <h2 className="text-xl font-bold text-blue-600 mb-4 flex items-center space-x-2">
+            <BookOpen className="h-6 w-6" />
+            <span>Información de la Lección</span>
+          </h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            {/* Título */}
+            <div className='md:col-span-2'>
+              <Label>Título</Label>
+              <Input
+                value={lesson.title || ''}
+                onChange={e => setLesson((p: any) => ({ ...p, title: e.target.value }))}
+                className="mt-1"
+              />
+            </div>
+            
+            {/* Duración */}
+            <div>
+              <Label>Duración (horas)</Label>
+              <Input
+                type="number"
+                min={1}
+                value={lesson.duration_hours || 1}
+                onChange={e => setLesson((p: any) => ({ ...p, duration_hours: parseInt(e.target.value) || 1 }))}
+                className="mt-1"
+              />
+            </div>
+
+            {/* Tipo de Contenido */}
+            <div className='md:col-span-3 border-t pt-4 mt-4'>
+              <Label className="mb-1 block">Tipo de Contenido</Label>
+              <Select
+                value={lesson.content_type || 'video'}
+                onValueChange={(val) => setLesson((p: any) => ({ ...p, content_type: val }))}
+              >
+                <SelectTrigger className="bg-white">
+                  <SelectValue placeholder="Selecciona el tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="video">Video Grabado / Externo</SelectItem>
+                  <SelectItem value="live_session">Sesión Sincrónica (En vivo)</SelectItem>
+                  <SelectItem value="document">Documento / Lectura</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Renderizado Condicional Específico */}
+          <div className="mt-6">
+              {renderSpecificContentFields()}
+          </div>
+        </section>
+
+        {/* Card de Descripción y Contenido */}
+        <section className="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+          <h2 className="text-xl font-bold text-blue-600 mb-4 flex items-center space-x-2">
+            <Pencil className="h-6 w-6" />
+            <span>Contenido Detallado</span>
+          </h2>
+          
+          <div className="space-y-6">
+            <div>
+                <Label className="mb-2 block">Descripción (Resumen)</Label>
+                <QuillEditor
                     value={lesson.description || ''}
                     onChange={(val) => setLesson((p: any) => ({ ...p, description: val }))}
-                    placeholder="Escribe la descripción de la lección..."
-                  />
-                </div>
-
-                <div>
-                  <Label>Contenido (rich text)</Label>
-                  <QuillEditor
+                    placeholder="Escribe una breve descripción..."
+                />
+            </div>
+            <div>
+                <Label className="mb-2 block">Cuerpo de la Lección</Label>
+                <QuillEditor
                     value={lesson.content || ''}
                     onChange={(val) => setLesson((p: any) => ({ ...p, content: val }))}
-                    placeholder="Escribe el contenido de la lección..."
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+                    placeholder="Escribe el contenido completo..."
+                />
+            </div>
+          </div>
+        </section>
 
-          {/* Sección de Lecturas */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Lecturas (archivos)
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {/* Botón de subida */}
-                <div className="flex items-center gap-4">
-                  <Label
-                    htmlFor="reading-upload"
-                    className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
-                  >
-                    {uploadingReading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Subiendo...
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="h-4 w-4" />
-                        Subir archivos
-                      </>
-                    )}
-                  </Label>
-                  <Input
-                    id="reading-upload"
-                    type="file"
-                    multiple
-                    accept=".pdf,.ppt,.pptx,.doc,.docx,.png,.jpg,.jpeg,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,image/png,image/jpeg"
-                    className="hidden"
-                    onChange={handleFileUpload}
-                    disabled={uploadingReading}
-                  />
-                  <span className="text-sm text-muted-foreground">
-                    Tipos permitidos: PDF, PPT, PPTX, DOC, DOCX, PNG, JPG (máx. 50MB por archivo)
-                  </span>
-                </div>
+        {/* Card de Lecturas (Archivos) */}
+        <section className="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+          <div className="flex justify-between items-center mb-4 border-b pb-3">
+            <h2 className="text-xl font-bold text-blue-600 flex items-center space-x-2">
+              <FileText className="h-6 w-6" />
+              <span>Lecturas (Archivos)</span>
+            </h2>
+            <Label
+                htmlFor="reading-upload"
+                className="px-4 py-2 bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-600 transition-colors flex items-center space-x-1 text-sm cursor-pointer"
+            >
+                {uploadingReading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                <span>Subir archivos</span>
+            </Label>
+            <Input
+                id="reading-upload"
+                type="file"
+                multiple
+                accept=".pdf,.ppt,.pptx,.doc,.docx,.png,.jpg,.jpeg"
+                className="hidden"
+                onChange={handleFileUpload}
+                disabled={uploadingReading}
+            />
+          </div>
 
-                {/* Lista de lecturas */}
-                {readings.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-4">
-                    No hay lecturas cargadas. Sube archivos PDF para que los estudiantes puedan descargarlos.
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {readings.map((reading) => {
-                      // Obtener URL pública si tiene storage_path
-                      const fileUrl = reading.storage_path
+          <p className="text-sm text-gray-500 mb-4">Tipos permitidos: PDF, PPTX, DOC, DOCX, PNG, JPG (máx. 50MB por archivo)</p>
+          
+          <div className="space-y-2">
+            {readings.length === 0 ? (
+                <p className="text-center text-gray-500 italic p-4 border rounded-lg bg-gray-50">No hay archivos adjuntos.</p>
+            ) : (
+                readings.map(reading => {
+                    const fileUrl = reading.storage_path
                         ? supabase.storage.from('mooc-readings').getPublicUrl(reading.storage_path).data.publicUrl
                         : null;
-
-                      return (
-                        <div
-                          key={reading.id}
-                          className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50 transition-colors"
-                        >
-                          <div className="flex items-center gap-3">
-                            <FileText className="h-5 w-5 text-red-600" />
-                            <div>
-                              <p className="font-medium">{reading.title}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {new Date(reading.created_at).toLocaleDateString()}
-                              </p>
+                    return (
+                        <div key={reading.id} className="flex items-center justify-between p-3 my-2 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors">
+                            <div className="flex items-center space-x-3 min-w-0">
+                                <FileText className="h-5 w-5 text-gray-500 flex-shrink-0" />
+                                <div className="min-w-0">
+                                    <p className="text-sm font-medium truncate text-gray-800">{reading.title}</p>
+                                    <p className="text-xs text-gray-500">Subido el {new Date(reading.created_at).toLocaleDateString()}</p>
+                                </div>
                             </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {fileUrl && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => window.open(fileUrl, '_blank')}
-                              >
-                                Ver
-                              </Button>
-                            )}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteReading(reading.id, reading.storage_path)}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
+                            <div className="flex items-center space-x-2 flex-shrink-0">
+                                {fileUrl && (
+                                    <button
+                                        className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+                                        title="Ver/Descargar"
+                                        onClick={() => window.open(fileUrl, '_blank')}
+                                    >
+                                        <Download className="h-4 w-4" />
+                                    </button>
+                                )}
+                                <button
+                                    className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
+                                    title="Eliminar archivo"
+                                    onClick={() => handleDeleteReading(reading.id, reading.storage_path)}
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </button>
+                            </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+                    );
+                })
+            )}
+          </div>
+        </section>
 
-          {/* --- NUEVO MÓDULO: Actividad / Tarea --- */}
-          <LessonActivitySection
-            lessonId={lesson.id}
-            activity={activity}
-            setActivity={setActivity}
-            hasActivity={hasActivity}
-            setHasActivity={setHasActivity}
-            submissionTypes={submissionTypes}
-            setSubmissionTypes={setSubmissionTypes}
-          />
-        </>
+        {/* Card de Evaluaciones y Actividades (Acciones Rápidas) */}
+        <section className="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+            <h2 className="text-xl font-bold text-blue-600 mb-4 flex items-center space-x-2">
+                <Rocket className="h-6 w-6" />
+                <span>Vinculación Rápida</span>
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                
+                {/* Botón para Crear Examen */}
+                <button
+                    onClick={() => setShowQuickCreateModal(true)}
+                    className="flex items-center justify-between p-4 rounded-lg border-2 border-red-400 transition-colors bg-red-50 hover:bg-red-100"
+                >
+                    <div className="flex items-center space-x-3">
+                        <GraduationCap className="h-6 w-6 text-red-500" />
+                        <span className="font-semibold text-gray-800">Crear Evaluación</span>
+                    </div>
+                    <Plus className="h-5 w-5 text-red-500" />
+                </button>
+
+                {/* Botón para Crear Actividad */}
+                <button
+                    onClick={() => hasActivity ? null : setShowQuickCreateModal(true)}
+                    className={`flex items-center justify-between p-4 rounded-lg border-2 border-orange-400 transition-colors ${hasActivity ? 'bg-orange-100 cursor-default' : 'bg-orange-50 hover:bg-orange-100'}`}
+                >
+                    <div className="flex items-center space-x-3">
+                        <Rocket className={`h-6 w-6 ${hasActivity ? 'text-orange-700' : 'text-orange-500'}`} />
+                        <span className="font-semibold text-gray-800">{hasActivity ? 'Actividad Vinculada' : 'Crear Actividad'}</span>
+                    </div>
+                    {hasActivity ? <Pencil className="h-5 w-5 text-orange-700" /> : <Plus className="h-5 w-5 text-orange-500" />}
+                </button>
+            </div>
+            
+            {/* Editor de Actividad (Si existe) */}
+            {hasActivity && (
+                <div className="mt-6 border-t pt-6">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Configuración de la Actividad</h3>
+                    <LessonActivitySection
+                        lessonId={lesson.id}
+                        activity={activity}
+                        setActivity={setActivity}
+                        hasActivity={hasActivity}
+                        setHasActivity={setHasActivity}
+                        submissionTypes={submissionTypes}
+                        setSubmissionTypes={setSubmissionTypes}
+                    />
+                </div>
+            )}
+        </section>
+      </main>
       ) : (
-        <div>
-          <h3 className="text-lg font-semibold mb-3">Vista previa (estudiante)</h3>
+        <div className="max-w-4xl mx-auto bg-white p-8 rounded-xl shadow-lg">
+          <h3 className="text-2xl font-bold mb-6 text-gray-800 border-b pb-4">Vista Previa del Estudiante</h3>
           <div className="prose max-w-none">
-            <div dangerouslySetInnerHTML={{ __html: sanitizeLessonHtml(lesson.description) }} />
-            <div className="mt-4" dangerouslySetInnerHTML={{ __html: sanitizeLessonHtml(lesson.content) }} />
+            <h1 className="text-3xl font-bold text-blue-900 mb-4">{lesson.title}</h1>
+            <div className="bg-blue-50 p-4 rounded-lg mb-6 text-blue-800">
+                <div dangerouslySetInnerHTML={{ __html: sanitizeLessonHtml(lesson.description) }} />
+            </div>
+            <div dangerouslySetInnerHTML={{ __html: sanitizeLessonHtml(lesson.content) }} />
           </div>
         </div>
       )}
+
+      {/* Modal de Creación Rápida */}
+      {showQuickCreateModal && (
+        <QuickCreateModal 
+            onClose={() => setShowQuickCreateModal(false)}
+        />
+      )}
+
     </div>
   );
 }
