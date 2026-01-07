@@ -29,11 +29,17 @@ const ReadingView: React.FC = () => {
         if (error) throw error;
         // If this reading is a file stored in Supabase storage, resolve a public URL
         let readingRow: any = data as any;
-        if (readingRow?.type === 'file' && readingRow?.storage_path) {
+        const isFile = !!readingRow?.storage_path || readingRow?.type === 'file';
+        if (isFile && readingRow?.storage_path) {
           try {
             const pub = supabase.storage.from('mooc-readings').getPublicUrl(readingRow.storage_path);
             const publicUrl = pub?.data?.publicUrl || null;
-            readingRow = { ...readingRow, public_url: publicUrl };
+            readingRow = {
+              ...readingRow,
+              public_url: publicUrl,
+              type: readingRow?.type || 'file',
+              file_name: readingRow?.file_name || readingRow?.title
+            };
           } catch (e) {
             console.warn('Could not get public URL for reading', e);
           }
@@ -134,12 +140,14 @@ const ReadingView: React.FC = () => {
 
   if (!reading) return <div className="min-h-screen flex items-center justify-center">Lectura no encontrada</div>;
 
+  const isFileReading = !!reading?.storage_path || reading?.type === 'file';
+
   return (
     <div className="min-h-screen bg-background py-8">
       <div className="container mx-auto px-4 max-w-3xl">
         <Card className="p-6">
           <h1 className="text-2xl font-bold mb-4">{reading.title}</h1>
-          {reading.type === 'file' && reading.storage_path ? (
+          {isFileReading && reading.storage_path ? (
             <div>
               <p className="mb-4 text-sm text-muted-foreground">Archivo: {reading.file_name}</p>
               {reading.public_url ? (

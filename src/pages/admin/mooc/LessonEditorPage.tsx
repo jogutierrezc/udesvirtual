@@ -116,7 +116,9 @@ export default function LessonEditorPage() {
           .insert({
             lesson_id: lessonId,
             title: file.name,
-            storage_path: fileName
+            storage_path: fileName,
+            type: 'file',
+            file_name: file.name
           });
 
         if (dbError) throw dbError;
