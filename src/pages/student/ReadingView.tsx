@@ -151,8 +151,11 @@ const ReadingView: React.FC = () => {
             <div>
               <p className="mb-4 text-sm text-muted-foreground">Archivo: {reading.file_name}</p>
               {reading.public_url ? (
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Button onClick={() => setPdfModalOpen(true)}>Ver</Button>
+                  <Button variant="secondary" asChild>
+                    <a href={reading.public_url} target="_blank" rel="noreferrer">Abrir en nueva pestaña</a>
+                  </Button>
                   <Button variant="outline" asChild>
                     <a href={reading.public_url} download>Descargar</a>
                   </Button>

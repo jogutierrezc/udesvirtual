@@ -18,7 +18,8 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
 import { StudentAttemptsDialog } from "./components/StudentAttemptsDialog";
-import { Ban, MoreHorizontal, CheckCircle } from "lucide-react";
+import { RegradeExamDialog } from "./components/RegradeExamDialog";
+import { Ban, MoreHorizontal, CheckCircle, RefreshCw } from "lucide-react";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -75,6 +76,10 @@ export default function CourseResultsPage() {
     const [attemptsDialogOpen, setAttemptsDialogOpen] = useState(false);
     const [selectedStudentForAttempts, setSelectedStudentForAttempts] = useState<{ name: string, id: string } | null>(null);
     const [selectedExamForAttempts, setSelectedExamForAttempts] = useState<{ title: string, id: string } | null>(null);
+    
+    // Regrade dialog state
+    const [regradeDialogOpen, setRegradeDialogOpen] = useState(false);
+    const [selectedExamForRegrade, setSelectedExamForRegrade] = useState<{ id: string, title: string } | null>(null);
 
     useEffect(() => {
         if (courseId) {
@@ -177,6 +182,16 @@ export default function CourseResultsPage() {
         setSelectedStudentForAttempts({ name: student.full_name || "Estudiante", id: student.id });
         setSelectedExamForAttempts({ title: exam.title, id: exam.id });
         setAttemptsDialogOpen(true);
+    };
+
+    const handleRegradeExam = (exam: Exam) => {
+        setSelectedExamForRegrade({ id: exam.id, title: exam.title });
+        setRegradeDialogOpen(true);
+    };
+
+    const handleRegradeComplete = () => {
+        // Reload data to show updated scores
+        loadData();
     };
 
     const handleToggleStudentStatus = async (student: Student, newStatus: string) => {
@@ -501,16 +516,30 @@ export default function CourseResultsPage() {
                                 const passRate = totalAttempts > 0 ? (passedCount / totalAttempts) * 100 : 0;
 
                                 return (
-                                    <div key={exam.id} className="space-y-2">
-                                        <div className="flex justify-between text-sm">
-                                            <span className="font-medium">{exam.title}</span>
-                                            <span className="text-muted-foreground">{passedCount}/{totalAttempts} aprobados</span>
-                                        </div>
-                                        <div className="h-2 w-full rounded-full bg-secondary">
-                                            <div
-                                                className="h-full rounded-full bg-green-500 transition-all"
-                                                style={{ width: `${passRate}%` }}
-                                            />
+                                    <div key={exam.id} className="space-y-2 p-3 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
+                                        <div className="flex justify-between items-start">
+                                            <div className="flex-1">
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="font-medium">{exam.title}</span>
+                                                    <span className="text-muted-foreground">{passedCount}/{totalAttempts} aprobados</span>
+                                                </div>
+                                                <div className="h-2 w-full rounded-full bg-secondary mt-2">
+                                                    <div
+                                                        className="h-full rounded-full bg-green-500 transition-all"
+                                                        style={{ width: `${passRate}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => handleRegradeExam(exam)}
+                                                className="ml-2 h-8 text-xs"
+                                                title="Recalificar este examen para todos los estudiantes"
+                                            >
+                                                <RefreshCw className="h-3.5 w-3.5 mr-1" />
+                                                Recalificar
+                                            </Button>
                                         </div>
                                     </div>
                                 );
@@ -531,6 +560,13 @@ export default function CourseResultsPage() {
                     )}
                 />
             )}
+
+            <RegradeExamDialog
+                open={regradeDialogOpen}
+                onOpenChange={setRegradeDialogOpen}
+                exam={selectedExamForRegrade}
+                onRegradeComplete={handleRegradeComplete}
+            />
         </div>
     );
 }

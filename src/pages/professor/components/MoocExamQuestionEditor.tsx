@@ -4,8 +4,9 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, PlusCircle, Edit, Trash2 } from "lucide-react";
+import { Loader2, PlusCircle, Edit, Trash2, AlertCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const QUESTION_TYPES = [
   { value: "single_choice", label: "Selección única" },
@@ -24,13 +25,6 @@ export const MoocExamQuestionEditor = ({ examId, maxScore }: { examId: string, m
     loadQuestions();
   }, [examId]);
 
-  // Recalculate points whenever maxScore or questions length changes
-  useEffect(() => {
-    if (questions.length > 0) {
-      recalculatePoints();
-    }
-  }, [maxScore, questions.length]);
-
   const loadQuestions = async () => {
     setLoading(true);
     const { data, error } = await supabase
@@ -40,24 +34,6 @@ export const MoocExamQuestionEditor = ({ examId, maxScore }: { examId: string, m
       .order("order_index", { ascending: true });
     if (!error && data) setQuestions(data);
     setLoading(false);
-  };
-
-  const recalculatePoints = async () => {
-    if (questions.length === 0) return;
-
-    const pointsPerQuestion = Number((maxScore / questions.length).toFixed(2));
-
-    // Optimistically update local state
-    const updatedQuestions = questions.map(q => ({ ...q, points: pointsPerQuestion }));
-    // Only update if points actually changed to avoid infinite loops or unnecessary updates
-    if (JSON.stringify(updatedQuestions) !== JSON.stringify(questions)) {
-      setQuestions(updatedQuestions);
-
-      // Update in DB
-      for (const q of updatedQuestions) {
-        await supabase.from("mooc_exam_questions").update({ points: pointsPerQuestion }).eq("id", q.id);
-      }
-    }
   };
 
   const handleCreate = () => {
@@ -83,8 +59,25 @@ export const MoocExamQuestionEditor = ({ examId, maxScore }: { examId: string, m
     if (refresh) loadQuestions();
   };
 
+  // Calculate total points
+  const totalPoints = questions.reduce((sum, q) => sum + (Number(q.points) || 0), 0);
+  const pointsExceedMax = totalPoints > maxScore;
+
   return (
     <div className="space-y-4">
+      {questions.length > 0 && (
+        <Alert variant={pointsExceedMax ? "destructive" : "default"} className="bg-card">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            <span className="font-semibold">Puntos totales: {totalPoints.toFixed(2)}</span> de {maxScore} puntos máximos
+            {pointsExceedMax && (
+              <span className="block mt-1 text-destructive font-medium">
+                ⚠️ La suma de puntos excede el máximo configurado para el examen
+              </span>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Preguntas del examen ({questions.length})</CardTitle>
@@ -104,7 +97,7 @@ export const MoocExamQuestionEditor = ({ examId, maxScore }: { examId: string, m
                   <div className="flex-1">
                     <div className="font-medium">{q.prompt}</div>
                     <div className="text-xs text-muted-foreground mt-1">
-                      {QUESTION_TYPES.find(t => t.value === q.type)?.label} • {q.points} punto(s) (Automático)
+                      {QUESTION_TYPES.find(t => t.value === q.type)?.label} • <span className="font-semibold text-primary">{q.points}</span> punto(s)
                     </div>
                   </div>
                   <div className="flex gap-2">
@@ -121,6 +114,7 @@ export const MoocExamQuestionEditor = ({ examId, maxScore }: { examId: string, m
       <QuestionForm
         open={showForm}
         examId={examId}
+        maxScore={maxScore}
         question={editing}
         onClose={handleFormClose}
       />
@@ -128,12 +122,12 @@ export const MoocExamQuestionEditor = ({ examId, maxScore }: { examId: string, m
   );
 };
 
-function QuestionForm({ open, examId, question, onClose }: { open: boolean, examId: string, question?: any, onClose: (refresh?: boolean) => void }) {
+function QuestionForm({ open, examId, maxScore, question, onClose }: { open: boolean, examId: string, maxScore: number, question?: any, onClose: (refresh?: boolean) => void }) {
   const [form, setForm] = useState({
     type: "single_choice",
     prompt: "",
     order_index: 0,
-    points: 0, // Will be calculated automatically
+    points: 1.0, // Default value, can be customized
     options: [] as any[],
   });
   const [saving, setSaving] = useState(false);
@@ -153,7 +147,7 @@ function QuestionForm({ open, examId, question, onClose }: { open: boolean, exam
         type: "single_choice",
         prompt: "",
         order_index: 0,
-        points: 0,
+        points: 1.0,
         options: [],
       });
     }
@@ -194,7 +188,7 @@ function QuestionForm({ open, examId, question, onClose }: { open: boolean, exam
         type: form.type,
         prompt: form.prompt,
         order_index: form.order_index,
-        // points not updated here, handled by parent
+        points: form.points,
       }).eq("id", question.id).select();
     } else {
       res = await supabase.from("mooc_exam_questions").insert({
@@ -202,7 +196,7 @@ function QuestionForm({ open, examId, question, onClose }: { open: boolean, exam
         type: form.type,
         prompt: form.prompt,
         order_index: form.order_index,
-        points: 0, // Initial points, will be updated by parent
+        points: form.points,
       }).select();
     }
     if (!res.error && res.data) {
@@ -240,7 +234,7 @@ function QuestionForm({ open, examId, question, onClose }: { open: boolean, exam
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">Tipo de pregunta</label>
               <select name="type" value={form.type} onChange={handleChange} className="w-full border rounded px-3 py-2 h-10 bg-background">
@@ -248,6 +242,19 @@ function QuestionForm({ open, examId, question, onClose }: { open: boolean, exam
                   <option key={t.value} value={t.value}>{t.label}</option>
                 ))}
               </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Puntos *</label>
+              <Input 
+                name="points" 
+                type="number" 
+                min={0.1} 
+                step={0.1}
+                max={maxScore}
+                value={form.points} 
+                onChange={handleChange}
+                placeholder="1.0"
+              />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Orden</label>

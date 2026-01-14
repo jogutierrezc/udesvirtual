@@ -1,0 +1,85 @@
+================================================================================
+INSTRUCCIONES PARA APLICAR LA FUNCIÓN DE RECALIFICACIÓN
+================================================================================
+
+⚠️ IMPORTANTE: Debes ejecutar este SQL MANUALMENTE en Supabase ⚠️
+
+PASO 1: Abre tu navegador y ve a:
+https://ovdeaweddxafslbrflor.supabase.co
+
+PASO 2: En el menú lateral izquierdo, haz clic en "SQL Editor"
+
+PASO 3: Copia TODO el código SQL que está más abajo (desde "-- Drop" hasta el final)
+
+PASO 4: Pega el código en el SQL Editor de Supabase
+
+PASO 5: Haz clic en el botón "RUN" (o presiona Ctrl+Enter)
+
+PASO 6: Deberías ver un mensaje de éxito
+
+PASO 7: Recarga tu aplicación en el navegador (F5)
+
+================================================================================
+CÓDIGO SQL A EJECUTAR:
+================================================================================
+
+-- Drop existing function if it exists
+drop function if exists public.regrade_exam(bigint) cascade;
+
+-- Function to regrade all submitted attempts for a specific exam
+create or replace function public.regrade_exam(p_exam_id bigint)
+returns jsonb
+language plpgsql 
+security definer 
+as $$
+declare
+  v_result jsonb := '[]'::jsonb;
+  v_attempt record;
+  v_old_score numeric;
+  v_old_passed boolean;
+begin
+  -- Loop through all submitted attempts for this exam
+  for v_attempt in 
+    select id, user_id, score_numeric, passed
+    from public.mooc_exam_attempts
+    where exam_id = p_exam_id
+      and submitted_at is not null
+  loop
+    -- Store old values
+    v_old_score := v_attempt.score_numeric;
+    v_old_passed := v_attempt.passed;
+    
+    -- Recalculate score using existing function
+    perform public.compute_exam_score(v_attempt.id);
+    
+    -- Add result to array
+    v_result := v_result || jsonb_build_object(
+      'attempt_id', v_attempt.id,
+      'student_id', v_attempt.user_id,
+      'old_score', v_old_score,
+      'new_score', (select score_numeric from public.mooc_exam_attempts where id = v_attempt.id),
+      'old_passed', v_old_passed,
+      'new_passed', (select passed from public.mooc_exam_attempts where id = v_attempt.id)
+    );
+  end loop;
+  
+  return v_result;
+end;
+$$;
+
+-- Grant execute to authenticated users
+grant execute on function public.regrade_exam(bigint) to authenticated;
+
+-- Add comment
+comment on function public.regrade_exam is 'Recalculates scores for all submitted attempts of a specific exam. Returns old and new scores as JSONB array.';
+
+================================================================================
+FIN DEL CÓDIGO SQL
+================================================================================
+
+Después de ejecutar este código en Supabase:
+✅ La función estará disponible
+✅ El botón "Recalificar" funcionará
+✅ Podrás recalificar exámenes sin que los estudiantes los vuelvan a tomar
+
+================================================================================
