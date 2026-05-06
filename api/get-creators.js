@@ -2,7 +2,19 @@ const { createClient } = require('@supabase/supabase-js');
 
 // Serverless endpoint to return profile display names for a list of ids.
 // Expects POST JSON body: { ids: ["id1","id2", ...] }
-// Requires env vars: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY
+// Requires server env vars for Supabase URL and service role key.
+
+function parseBody(body) {
+  if (!body) return {};
+  if (typeof body === 'string') {
+    try {
+      return JSON.parse(body);
+    } catch {
+      return {};
+    }
+  }
+  return body;
+}
 
 module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') {
@@ -16,16 +28,24 @@ module.exports = async (req, res) => {
     return res.status(405).json({ error: 'Only POST allowed' });
   }
 
-  const { ids } = req.body || {};
+  const body = parseBody(req.body);
+  const { ids } = body || {};
   if (!ids || !Array.isArray(ids) || ids.length === 0) {
     return res.status(400).json({ error: 'Missing ids array in body' });
   }
 
-  const SUPABASE_URL = process.env.SUPABASE_URL;
-  const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+  const SUPABASE_SERVICE_ROLE_KEY =
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
 
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-    return res.status(500).json({ error: 'Missing Supabase service env vars' });
+    return res.status(500).json({
+      error: 'Missing Supabase service env vars',
+      details: {
+        hasSupabaseUrl: Boolean(SUPABASE_URL),
+        hasServiceRoleKey: Boolean(SUPABASE_SERVICE_ROLE_KEY),
+      },
+    });
   }
 
   try {
@@ -48,6 +68,11 @@ module.exports = async (req, res) => {
     return res.status(200).json({ profiles: map });
   } catch (err) {
     console.error('get-creators error', err);
-    return res.status(500).json({ error: err.message || String(err) });
+    return res.status(500).json({
+      error: err.message || String(err),
+      code: err.code || null,
+      hint: err.hint || null,
+      details: err.details || null,
+    });
   }
 };

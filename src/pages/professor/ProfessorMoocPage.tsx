@@ -119,7 +119,7 @@ export const ProfessorMoocPage = () => {
             .from("profiles")
             .select("full_name")
             .eq("id", course.created_by)
-            .single();
+            .maybeSingle();
 
           // Obtener lecciones
           const { data: lessons } = await supabase

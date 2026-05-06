@@ -58,3 +58,9 @@ CREATE POLICY "Approved courses or assigned professors can view lessons"
         )
     )
   );
+
+DROP POLICY IF EXISTS "Admins and course creators can manage teachers" ON public.mooc_course_teachers;
+CREATE POLICY "Admins can manage course teachers"
+  ON public.mooc_course_teachers FOR ALL
+  USING (has_role(auth.uid(), 'admin'::app_role))
+  WITH CHECK (has_role(auth.uid(), 'admin'::app_role));

@@ -55,6 +55,7 @@ export default function CourseEditorPage() {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const [showCreationModal, setShowCreationModal] = useState(false);
   const [examsExpanded, setExamsExpanded] = useState(true);
+  const [courseLoadError, setCourseLoadError] = useState<string | null>(null);
   
   // Section editing state
   const [editingSection, setEditingSection] = useState<Section | null>(null);
@@ -79,11 +80,17 @@ export default function CourseEditorPage() {
 
   const loadCourse = async (id: string) => {
     try {
-      const { data, error } = await supabase.from('mooc_courses').select('*').eq('id', id).single();
+      setCourseLoadError(null);
+      const { data, error } = await supabase.from('mooc_courses').select('*').eq('id', id).maybeSingle();
       if (error) throw error;
+      if (!data) {
+        setCourseLoadError('No tienes permisos para editar este curso o el curso no existe.');
+        return;
+      }
       setCourse(data);
     } catch (e:any) {
       console.error('loadCourse', e);
+      setCourseLoadError(e.message || 'No se pudo cargar el curso');
       toast({ title: 'Error', description: e.message || 'No se pudo cargar el curso', variant: 'destructive' });
     }
   };
@@ -412,6 +419,20 @@ export default function CourseEditorPage() {
   };
 
   return (
+    courseLoadError ? (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <Card className="w-full max-w-xl">
+          <CardContent className="pt-6 space-y-4">
+            <h2 className="text-xl font-semibold text-gray-900">No se pudo abrir el editor</h2>
+            <p className="text-sm text-gray-600">{courseLoadError}</p>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => navigate(-1)}>Volver</Button>
+              <Button onClick={() => courseId && loadCourse(courseId)}>Reintentar</Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    ) : (
     <div className="min-h-screen bg-gray-50 font-sans pb-20">
       <style>{`
         @keyframes fadeInScale { from { opacity: 0; transform: scale(0.9) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
@@ -747,5 +768,6 @@ export default function CourseEditorPage() {
         </DialogContent>
       </Dialog>
     </div>
+    )
   );
 }

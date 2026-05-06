@@ -38,7 +38,7 @@ const ProtectedRoute = ({ children, requireAdmin = false, requireAdminOrProfesso
         .from("profiles")
         .select("profile_completed")
         .eq("id", session.user.id)
-        .single();
+        .maybeSingle();
 
       setProfileCompleted(profile?.profile_completed || false);
 
