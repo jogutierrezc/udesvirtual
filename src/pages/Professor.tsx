@@ -111,14 +111,22 @@ const Professor = () => {
 
     setUserId(session.user.id);
 
-    const { data: role } = await supabase
+    const { data: roles, error: rolesError } = await supabase
       .from("user_roles")
       .select("role")
-      .eq("user_id", session.user.id)
-      .single();
+      .eq("user_id", session.user.id);
 
-    if (role?.role !== "professor") {
+    if (rolesError) {
+      console.error("Error checking professor role:", rolesError);
       navigate("/dashboard");
+      return;
+    }
+
+    const hasProfessorRole = (roles || []).some((role) => role.role === "professor");
+
+    if (!hasProfessorRole) {
+      navigate("/dashboard");
+      return;
     }
     setLoading(false);
   };
