@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, User, Eye, CheckSquare, Download } from "lucide-react";
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -100,9 +100,8 @@ export default function MisEstudiantes() {
     }
   };
 
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
     try {
-      // Flatten the data: Course Name -> Student Details
       const dataToExport: any[] = [];
 
       courses.forEach(course => {
@@ -129,10 +128,19 @@ export default function MisEstudiantes() {
         return;
       }
 
-      const ws = XLSX.utils.json_to_sheet(dataToExport);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Estudiantes");
-      XLSX.writeFile(wb, "Lista_Estudiantes_Udesvirtual.xlsx");
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Estudiantes');
+      worksheet.columns = Object.keys(dataToExport[0]).map(key => ({ header: key, key, width: 25 }));
+      worksheet.addRows(dataToExport);
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'Lista_Estudiantes_Udesvirtual.xlsx';
+      a.click();
+      URL.revokeObjectURL(url);
 
       toast({ title: 'Éxito', description: 'Archivo Excel generado correctamente' });
     } catch (error) {

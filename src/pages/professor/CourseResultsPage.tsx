@@ -16,7 +16,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import { StudentAttemptsDialog } from "./components/StudentAttemptsDialog";
 import { RegradeExamDialog } from "./components/RegradeExamDialog";
 import { Ban, MoreHorizontal, CheckCircle, RefreshCw } from "lucide-react";
@@ -242,7 +242,7 @@ export default function CourseResultsPage() {
         );
     }, [students, searchTerm]);
 
-    const exportToExcel = () => {
+    const exportToExcel = async () => {
         if (!course) return;
 
         const data = filteredStudents.map(student => {
@@ -271,10 +271,20 @@ export default function CourseResultsPage() {
             return row;
         });
 
-        const ws = XLSX.utils.json_to_sheet(data);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Resultados");
-        XLSX.writeFile(wb, `Resultados_${course.title.replace(/\s+/g, '_')}.xlsx`);
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Resultados');
+        if (data.length > 0) {
+          worksheet.columns = Object.keys(data[0]).map(key => ({ header: key, key, width: 25 }));
+          worksheet.addRows(data);
+        }
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Resultados_${course.title.replace(/\s+/g, '_')}.xlsx`;
+        a.click();
+        URL.revokeObjectURL(url);
     };
 
     if (loading) {

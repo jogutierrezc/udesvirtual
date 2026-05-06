@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, FileSpreadsheet } from "lucide-react";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import { useToast } from "@/hooks/use-toast";
 
 export const RegistrationsPage = () => {
@@ -17,7 +17,7 @@ export const RegistrationsPage = () => {
     ? registrations.filter((reg: any) => String(reg.class_id) === selectedClassId)
     : registrations;
 
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
     if (filteredRegistrations.length === 0) {
       toast({
         title: "No hay datos",
@@ -40,22 +40,18 @@ export const RegistrationsPage = () => {
     }));
 
     // Crear el libro de trabajo
-    const worksheet = XLSX.utils.json_to_sheet(excelData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Registros");
-
-    // Ajustar el ancho de las columnas
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Registros");
     const maxWidth = 50;
-    const colWidths = Object.keys(excelData[0] || {}).map((key) => ({
-      wch: Math.min(
-        Math.max(
-          key.length,
-          ...excelData.map((row: any) => String(row[key] || "").length)
-        ),
+    worksheet.columns = Object.keys(excelData[0] || {}).map((key) => ({
+      header: key,
+      key,
+      width: Math.min(
+        Math.max(key.length, ...excelData.map((row: any) => String(row[key] || "").length)),
         maxWidth
       ),
     }));
-    worksheet["!cols"] = colWidths;
+    worksheet.addRows(excelData);
 
     // Nombre del archivo
     const fileName = selectedClassId
@@ -63,7 +59,14 @@ export const RegistrationsPage = () => {
       : `registros_completos_${new Date().toLocaleDateString("es-ES").replace(/\//g, "-")}.xlsx`;
 
     // Descargar el archivo
-    XLSX.writeFile(workbook, fileName);
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    a.click();
+    URL.revokeObjectURL(url);
 
     toast({
       title: "✅ Exportación exitosa",

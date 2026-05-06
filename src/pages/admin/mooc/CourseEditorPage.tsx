@@ -10,8 +10,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { MoocExamForm } from "@/pages/professor/components/MoocExamForm";
 import { MoocExamManager } from '@/pages/professor/components/MoocExamManager';
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
 import { useToast } from "@/hooks/use-toast";
 import { Trash2, Menu, BookOpen, ClipboardList, GraduationCap, GripVertical, ChevronDown, ChevronUp, Pencil, Eye, EyeOff, Plus, Rocket, X, FileText, ArrowLeft, Save, Calendar, Clock } from "lucide-react";
 

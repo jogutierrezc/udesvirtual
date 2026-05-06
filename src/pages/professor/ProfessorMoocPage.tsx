@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, PlusCircle, Edit, Trash2, BookOpen, Clock, User, Award, BarChart } from "lucide-react";
+import { Loader2, PlusCircle, Edit, Trash2, BookOpen, Clock, User, Award, BarChart, Copy } from "lucide-react";
 
 
 interface MoocCourse {
@@ -173,6 +173,120 @@ export const ProfessorMoocPage = () => {
 
   const handleEdit = (course: MoocCourse) => {
     navigate(`/mooc/courses/${course.id}/edit`);
+  };
+
+  const handleDuplicate = async (course: MoocCourse) => {
+    if (!confirm(`¿Duplicar el curso "${course.title}"? Se copiarán todas las lecciones y evaluaciones.`)) return;
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('No autenticado');
+
+      // 1. Duplicar el curso
+      const { id: _id, created_at: _ca, enrolled_count: _ec, completed_count: _cc,
+        total_duration: _td, lesson_count: _lc, creator: _cr, ...courseFields } = course as any;
+      const { data: newCourse, error: courseError } = await supabase
+        .from('mooc_courses')
+        .insert({
+          ...courseFields,
+          title: `${course.title} (copia)`,
+          status: 'pending',
+          created_by: session.user.id,
+        })
+        .select('id')
+        .single();
+      if (courseError) throw courseError;
+
+      const newCourseId = newCourse.id;
+
+      // 2. Duplicar secciones y construir mapa old->new
+      const { data: sections } = await supabase
+        .from('mooc_course_sections')
+        .select('*')
+        .eq('course_id', course.id);
+
+      const sectionMap: Record<string, string> = {};
+      if (sections && sections.length > 0) {
+        for (const section of sections) {
+          const { id: _sid, ...sectionFields } = section;
+          const { data: newSection } = await supabase
+            .from('mooc_course_sections')
+            .insert({ ...sectionFields, course_id: newCourseId })
+            .select('id')
+            .single();
+          if (newSection) sectionMap[section.id] = newSection.id;
+        }
+      }
+
+      // 3. Duplicar lecciones y construir mapa old->new
+      const { data: lessons } = await supabase
+        .from('mooc_lessons')
+        .select('*')
+        .eq('course_id', course.id)
+        .order('order_index', { ascending: true });
+
+      const lessonMap: Record<string, string> = {};
+      if (lessons && lessons.length > 0) {
+        for (const lesson of lessons) {
+          const { id: _lid, created_at: _lca, ...lessonFields } = lesson;
+          const { data: newLesson } = await supabase
+            .from('mooc_lessons')
+            .insert({
+              ...lessonFields,
+              course_id: newCourseId,
+              section_id: lesson.section_id ? (sectionMap[lesson.section_id] ?? null) : null,
+            })
+            .select('id')
+            .single();
+          if (newLesson) lessonMap[lesson.id] = newLesson.id;
+        }
+      }
+
+      // 4. Duplicar evaluaciones y sus preguntas
+      const { data: exams } = await supabase
+        .from('mooc_exams')
+        .select('*')
+        .eq('course_id', course.id);
+
+      if (exams && exams.length > 0) {
+        for (const exam of exams) {
+          const { id: _eid, created_at: _eca, ...examFields } = exam;
+          const { data: newExam } = await supabase
+            .from('mooc_exams')
+            .insert({
+              ...examFields,
+              course_id: newCourseId,
+              lesson_id: exam.lesson_id ? (lessonMap[exam.lesson_id] ?? null) : null,
+              section_id: exam.section_id ? (sectionMap[exam.section_id] ?? null) : null,
+            })
+            .select('id')
+            .single();
+
+          if (newExam) {
+            const { data: questions } = await supabase
+              .from('mooc_exam_questions')
+              .select('*')
+              .eq('exam_id', exam.id);
+
+            if (questions && questions.length > 0) {
+              const newQuestions = questions.map(({ id: _qid, created_at: _qca, ...qFields }) => ({
+                ...qFields,
+                exam_id: newExam.id,
+              }));
+              await supabase.from('mooc_exam_questions').insert(newQuestions);
+            }
+          }
+        }
+      }
+
+      toast({
+        title: 'Curso duplicado',
+        description: `"${course.title} (copia)" creado correctamente. Puedes editarlo ahora.`,
+      });
+      navigate(`/mooc/courses/${newCourseId}/edit`);
+    } catch (e: any) {
+      toast({ title: 'Error', description: e.message || 'No se pudo duplicar el curso', variant: 'destructive' });
+    }
   };
 
   const handleCreateNew = async () => {
@@ -405,6 +519,14 @@ export const ProfessorMoocPage = () => {
                   >
                     <Edit className="h-4 w-4 mr-2" />
                     Editar
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDuplicate(course)}
+                    title="Duplicar curso"
+                  >
+                    <Copy className="h-4 w-4" />
                   </Button>
                   <Button
                     variant="outline"

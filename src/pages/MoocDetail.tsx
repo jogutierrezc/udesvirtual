@@ -189,7 +189,7 @@ export default function MoocDetail() {
 
       console.log("Curso cargado:", courseData);
 
-      // Obtener perfil del creador llamando al endpoint serverless (usa service role key)
+      // Obtener perfil del creador: primero intentar endpoint serverless, luego Supabase directamente
       let profileFromRelation = null;
       try {
         const resp = await fetch('/api/get-creators', {
@@ -200,11 +200,23 @@ export default function MoocDetail() {
         if (resp.ok) {
           const json = await resp.json();
           profileFromRelation = json.profiles ? json.profiles[courseData.created_by] : null;
-        } else {
-          console.warn('get-creators failed', await resp.text());
         }
       } catch (err) {
-        console.warn('Profile lookup failed:', err);
+        // silently fall through to Supabase fallback
+      }
+
+      // Fallback: consultar directamente la tabla profiles
+      if (!profileFromRelation?.full_name) {
+        try {
+          const { data: profileData } = await supabase
+            .from("profiles")
+            .select("full_name, email")
+            .eq("id", courseData.created_by)
+            .maybeSingle();
+          if (profileData) profileFromRelation = profileData;
+        } catch (err) {
+          console.warn("Profile fallback failed:", err);
+        }
       }
 
       // Obtener lecciones
@@ -217,8 +229,8 @@ export default function MoocDetail() {
       const totalDuration = lessonsData?.reduce((sum, lesson) => sum + (lesson.duration_hours || 0), 0) || 0;
       const lessonCount = lessonsData?.length || 0;
 
-      // Derivar nombre de creador: preferir profileFromRelation, luego created_by
-      const derivedName = profileFromRelation?.full_name || courseData.created_by || "Instructor";
+      // Derivar nombre de creador: preferir profileFromRelation, nunca mostrar UUID
+      const derivedName = profileFromRelation?.full_name || "Instructor";
       const derivedEmail = profileFromRelation?.email || "";
 
       const courseDetail: CourseDetail = {
@@ -404,7 +416,7 @@ export default function MoocDetail() {
 
             {/* Contenido programático */}
             {course.lessons && course.lessons.length > 0 && (
-              <Card>
+              <Card className="overflow-hidden">
                 <CardHeader>
                   <CardTitle className="text-xl">Contenido del Curso</CardTitle>
                   <CardDescription>
@@ -416,25 +428,25 @@ export default function MoocDetail() {
                     {course.lessons.map((lesson, index) => (
                       <div
                         key={lesson.id}
-                        className="flex items-start justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors"
+                        className="flex items-start justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors overflow-hidden"
                       >
-                        <div className="flex items-start gap-3 flex-1">
-                          <div className="text-indigo-600 mt-1">
+                        <div className="flex items-start gap-3 flex-1 min-w-0">
+                          <div className="text-indigo-600 mt-1 flex-shrink-0">
                             <Video className="h-5 w-5" />
                           </div>
-                          <div className="flex-1 min-w-0">
+                          <div className="flex-1 min-w-0 overflow-hidden">
                             <div className="font-medium mb-1 truncate">
                               {index + 1}. {lesson.title}
                             </div>
                             {lesson.description && (
                               <div
-                                className="text-sm text-muted-foreground line-clamp-2 break-words"
+                                className="text-sm text-muted-foreground line-clamp-2 break-words overflow-hidden [&_*]:max-w-full [&_img]:max-w-full"
                                 dangerouslySetInnerHTML={{ __html: sanitizeLessonHtml(lesson.description) }}
                               />
                             )}
                           </div>
                         </div>
-                        <Badge variant="outline" className="text-xs ml-2 flex-shrink-0">
+                        <Badge variant="outline" className="text-xs ml-2 flex-shrink-0 whitespace-nowrap">
                           <Clock className="h-3 w-3 mr-1" />
                           {lesson.duration_hours}h
                         </Badge>

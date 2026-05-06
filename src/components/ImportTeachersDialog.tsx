@@ -12,7 +12,7 @@ import {
 import { FileUp, Download, Loader2, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface ImportTeachersDialogProps {
@@ -27,7 +27,7 @@ export const ImportTeachersDialog = ({ onImportComplete }: ImportTeachersDialogP
   const { toast } = useToast();
 
   // Generar plantilla de Excel
-  const downloadTemplate = () => {
+  const downloadTemplate = async () => {
     const templateData = [
       {
         "Nombre del Docente": "Ejemplo: Dr. Juan Pérez",
@@ -41,23 +41,24 @@ export const ImportTeachersDialog = ({ onImportComplete }: ImportTeachersDialogP
       },
     ];
 
-    const worksheet = XLSX.utils.json_to_sheet(templateData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Plantilla Docentes");
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Plantilla Docentes");
+    const colWidths = [25, 60, 40, 40, 15, 20, 30, 50];
+    worksheet.columns = Object.keys(templateData[0]).map((key, i) => ({
+      header: key,
+      key,
+      width: colWidths[i],
+    }));
+    worksheet.addRows(templateData);
 
-    // Ajustar anchos de columna
-    worksheet["!cols"] = [
-      { wch: 25 }, // Nombre
-      { wch: 60 }, // Descripción
-      { wch: 40 }, // CvLAC
-      { wch: 40 }, // ORCID
-      { wch: 15 }, // Campus
-      { wch: 20 }, // Teléfono
-      { wch: 30 }, // Email
-      { wch: 50 }, // Intereses
-    ];
-
-    XLSX.writeFile(workbook, "plantilla_docentes_investigadores.xlsx");
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "plantilla_docentes_investigadores.xlsx";
+    a.click();
+    URL.revokeObjectURL(url);
 
     toast({
       title: "✅ Plantilla descargada",
@@ -107,9 +108,24 @@ export const ImportTeachersDialog = ({ onImportComplete }: ImportTeachersDialogP
     try {
       // Leer archivo Excel
       const data = await file.arrayBuffer();
-      const workbook = XLSX.read(data);
-      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-      const jsonData = XLSX.utils.sheet_to_json(worksheet);
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(data);
+      const worksheet = workbook.worksheets[0];
+      const headers: string[] = [];
+      const jsonData: Record<string, unknown>[] = [];
+      worksheet.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) {
+          row.eachCell((cell) => { headers.push(String(cell.value ?? "")); });
+        } else {
+          const obj: Record<string, unknown> = {};
+          row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+            obj[headers[colNumber - 1]] = cell.value;
+          });
+          if (Object.values(obj).some((v) => v !== null && v !== "")) {
+            jsonData.push(obj);
+          }
+        }
+      });
 
       if (jsonData.length === 0) {
         throw new Error("El archivo está vacío");

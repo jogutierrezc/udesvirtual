@@ -14,6 +14,15 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      // Node built-ins polyfill for exceljs in browser
+      stream: "stream-browserify",
+      buffer: "buffer",
     },
+  },
+  optimizeDeps: {
+    include: ["exceljs"],
+  },
+  define: {
+    global: "globalThis",
   },
 }));
