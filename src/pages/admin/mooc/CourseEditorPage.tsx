@@ -61,6 +61,27 @@ export default function CourseEditorPage() {
   const [editingSection, setEditingSection] = useState<Section | null>(null);
   const [showSectionSettings, setShowSectionSettings] = useState(false);
 
+  const formatSectionDate = (value?: string | null) => {
+    if (!value) return null;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+    return date.toLocaleDateString();
+  };
+
+  const toDateTimeLocalValue = (value?: string | null) => {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toISOString().slice(0, 16);
+  };
+
+  const toIsoOrNull = (value: string) => {
+    if (!value) return null;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+    return date.toISOString();
+  };
+
   useEffect(() => {
     if (!courseId) return;
     loadCourse(courseId);
@@ -309,7 +330,7 @@ export default function CourseEditorPage() {
     if (!courseId) return;
     try {
       if (lessonObj.id) {
-        navigate(`/admin/mooc/course/${courseId}/lesson/${lessonObj.id}/edit`);
+        navigate(`/mooc/course/${courseId}/lesson/${lessonObj.id}/edit`);
         return;
       }
       // create minimal lesson first
@@ -326,7 +347,7 @@ export default function CourseEditorPage() {
       if (error) throw error;
       // update local state
       setLessons(prev => prev.map(l => l === lessonObj ? { ...l, id: data.id } : l));
-      navigate(`/admin/mooc/course/${courseId}/lesson/${data.id}/edit`);
+      navigate(`/mooc/course/${courseId}/lesson/${data.id}/edit`);
     } catch (e:any) {
       console.error('openLessonEditor', e);
     }
@@ -511,9 +532,11 @@ export default function CourseEditorPage() {
 
         {/* Main Content - Full Width */}
         <main className="space-y-4 w-full mx-auto">
-            {sections.sort((a,b)=>(a.order_index||0)-(b.order_index||0)).map(section => {
+            {[...sections].sort((a,b)=>(a.order_index||0)-(b.order_index||0)).map(section => {
                 const sectionLessons = lessons.filter(l => l.section_id === section.id);
                 const isExpanded = expandedSections[section.id!] !== false;
+              const availableFromLabel = formatSectionDate(section.available_from);
+              const availableUntilLabel = formatSectionDate(section.available_until);
 
                 return (
                     <div key={section.id} className="bg-white rounded-xl border border-gray-200 shadow-sm transition-all duration-200 hover:shadow-md">
@@ -537,12 +560,12 @@ export default function CourseEditorPage() {
                                       <span className="text-xs font-normal px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full">
                                         {sectionLessons.length} items
                                       </span>
-                                      {(section.available_from || section.available_until) && (
+                                      {(availableFromLabel || availableUntilLabel) && (
                                         <span className="text-xs font-normal px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full flex items-center gap-1">
                                           <Clock className="h-3 w-3" />
-                                          {section.available_from ? new Date(section.available_from).toLocaleDateString() : 'Inicio'} 
+                                          {availableFromLabel || 'Inicio'} 
                                           {' - '}
-                                          {section.available_until ? new Date(section.available_until).toLocaleDateString() : 'Fin'}
+                                          {availableUntilLabel || 'Fin'}
                                         </span>
                                       )}
                                     </h2>
@@ -710,16 +733,16 @@ export default function CourseEditorPage() {
                 <Label>Disponible desde</Label>
                 <Input 
                   type="datetime-local"
-                  value={editingSection?.available_from ? new Date(editingSection.available_from).toISOString().slice(0, 16) : ''}
-                  onChange={(e) => setEditingSection(prev => prev ? { ...prev, available_from: e.target.value ? new Date(e.target.value).toISOString() : null } : null)}
+                  value={toDateTimeLocalValue(editingSection?.available_from)}
+                  onChange={(e) => setEditingSection(prev => prev ? { ...prev, available_from: toIsoOrNull(e.target.value) } : null)}
                 />
               </div>
               <div>
                 <Label>Disponible hasta</Label>
                 <Input 
                   type="datetime-local"
-                  value={editingSection?.available_until ? new Date(editingSection.available_until).toISOString().slice(0, 16) : ''}
-                  onChange={(e) => setEditingSection(prev => prev ? { ...prev, available_until: e.target.value ? new Date(e.target.value).toISOString() : null } : null)}
+                  value={toDateTimeLocalValue(editingSection?.available_until)}
+                  onChange={(e) => setEditingSection(prev => prev ? { ...prev, available_until: toIsoOrNull(e.target.value) } : null)}
                 />
               </div>
             </div>

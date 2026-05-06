@@ -34,6 +34,7 @@ import CoilOfferings from "./pages/CoilOfferings";
 import Navbar from "./components/Navbar";
 import Profesores from "./pages/Profesores";
 import ProtectedRoute from "./components/ProtectedRoute";
+import EditorErrorBoundary from "./components/EditorErrorBoundary";
 import StudentDashboard from "./pages/student/StudentDashboard";
 import CourseLearning from "./pages/student/CourseLearning";
 import ReadingView from "./pages/student/ReadingView";
@@ -152,7 +153,9 @@ const AppContent = () => {
           path="/mooc/courses/:courseId/edit"
           element={
             <ProtectedRoute requireAdminOrProfessor={true}>
-              <AdminCourseEditorPage />
+              <EditorErrorBoundary>
+                <AdminCourseEditorPage />
+              </EditorErrorBoundary>
             </ProtectedRoute>
           }
         />
@@ -160,7 +163,9 @@ const AppContent = () => {
           path="/mooc/course/:courseId/lesson/:lessonId/edit"
           element={
             <ProtectedRoute requireAdminOrProfessor={true}>
-              <LessonEditorPage />
+              <EditorErrorBoundary>
+                <LessonEditorPage />
+              </EditorErrorBoundary>
             </ProtectedRoute>
           }
         />
