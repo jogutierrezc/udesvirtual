@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, PlusCircle, Edit, Trash2, BookOpen, Clock, User, Award, BarChart, Copy } from "lucide-react";
+import { Loader2, PlusCircle, Edit, Trash2, BookOpen, Clock, User, Award, BarChart, Copy, EyeOff, Eye } from "lucide-react";
 
 
 interface MoocCourse {
@@ -19,7 +19,7 @@ interface MoocCourse {
   description: string;
   course_image_url: string | null;
   intro_video_url: string | null;
-  status: "pending" | "approved" | "rejected";
+  status: "pending" | "approved" | "rejected" | "closed";
   created_at: string | null;
   created_by: string;
   creator?: {
@@ -41,7 +41,7 @@ export const ProfessorMoocPage = () => {
   const [userId, setUserId] = useState<string>("");
   const [courses, setCourses] = useState<MoocCourse[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "approved" | "rejected" | "closed">("all");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -173,6 +173,31 @@ export const ProfessorMoocPage = () => {
 
   const handleEdit = (course: MoocCourse) => {
     navigate(`/mooc/courses/${course.id}/edit`);
+  };
+
+  const handleToggleClosed = async (course: MoocCourse) => {
+    const closing = course.status !== "closed";
+    const confirmMsg = closing
+      ? `¿Cerrar el curso "${course.title}"? Dejará de aparecer en el catálogo público.`
+      : `¿Reabrir el curso "${course.title}"? Volverá a enviarse para aprobación.`;
+    if (!confirm(confirmMsg)) return;
+    try {
+      const newStatus = closing ? "closed" : "pending";
+      const { error } = await supabase
+        .from("mooc_courses")
+        .update({ status: newStatus })
+        .eq("id", course.id);
+      if (error) throw error;
+      toast({
+        title: closing ? "Curso cerrado" : "Curso reabierto",
+        description: closing
+          ? "El curso ya no aparece en el catálogo público."
+          : "El curso fue enviado nuevamente para aprobación.",
+      });
+      await loadCourses(userId);
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    }
   };
 
   const handleDuplicate = async (course: MoocCourse) => {
@@ -341,9 +366,9 @@ export const ProfessorMoocPage = () => {
       pending: { label: "Pendiente", variant: "secondary" as const },
       approved: { label: "Aprobado", variant: "default" as const },
       rejected: { label: "Rechazado", variant: "destructive" as const },
+      closed: { label: "Cerrado", variant: "outline" as const },
     };
-
-    const config = statusConfig[status as keyof typeof statusConfig];
+    const config = statusConfig[status as keyof typeof statusConfig] ?? { label: status, variant: "outline" as const };
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
@@ -408,6 +433,13 @@ export const ProfessorMoocPage = () => {
             size="sm"
           >
             Rechazados
+          </Button>
+          <Button
+            variant={statusFilter === "closed" ? "default" : "outline"}
+            onClick={() => setStatusFilter("closed")}
+            size="sm"
+          >
+            Cerrados
           </Button>
         </div>
       </div>
@@ -508,6 +540,11 @@ export const ProfessorMoocPage = () => {
                     Este curso está pendiente de aprobación por el administrador.
                   </p>
                 )}
+                {course.status === "closed" && (
+                  <p className="text-sm text-muted-foreground">
+                    Este curso está cerrado y no aparece en el catálogo público.
+                  </p>
+                )}
 
                 {/* Actions */}
                 <div className="flex gap-2">
@@ -527,6 +564,15 @@ export const ProfessorMoocPage = () => {
                     title="Duplicar curso"
                   >
                     <Copy className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleToggleClosed(course)}
+                    title={course.status === "closed" ? "Reabrir curso" : "Cerrar curso"}
+                    className={course.status === "closed" ? "text-green-600 hover:text-green-700" : "text-orange-500 hover:text-orange-600"}
+                  >
+                    {course.status === "closed" ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
                   </Button>
                   <Button
                     variant="outline"

@@ -170,7 +170,7 @@ export default function MoocDetail() {
         .from("mooc_courses")
         .select("*")
         .eq("id", courseId)
-        .eq("status", "approved")
+        .in("status", ["approved"])
         .single();
 
       if (courseError) {

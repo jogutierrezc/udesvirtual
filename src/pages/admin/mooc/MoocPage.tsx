@@ -17,6 +17,7 @@ import {
   BookOpen,
   Clock,
   Eye,
+  EyeOff,
   Award
 } from "lucide-react";
 import { LinkPassportModal } from "./modals/LinkPassportModal";
@@ -190,6 +191,27 @@ export const MoocPage = () => {
     }
   };
 
+  const handleToggleClosed = async (course: MoocCourse) => {
+    const closing = course.status !== "closed";
+    const newStatus = closing ? "closed" : "approved";
+    try {
+      const { error } = await supabase
+        .from("mooc_courses")
+        .update({ status: newStatus })
+        .eq("id", course.id);
+      if (error) throw error;
+      toast({
+        title: closing ? "Curso cerrado" : "Curso reabierto",
+        description: closing
+          ? "El curso ya no aparecerá en el catálogo público."
+          : "El curso vuelve a estar disponible en el catálogo.",
+      });
+      loadCourses();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
   const handleDeleteCourse = async (courseId: string) => {
     if (!confirm("¿Eliminar este curso? Esta acción es irreversible.")) return;
 
@@ -281,6 +303,7 @@ export const MoocPage = () => {
                     <SelectItem value="pending">Pendientes</SelectItem>
                     <SelectItem value="approved">Aprobados</SelectItem>
                     <SelectItem value="rejected">Rechazados</SelectItem>
+                    <SelectItem value="closed">Cerrados</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -323,6 +346,8 @@ export const MoocPage = () => {
                             ? "default"
                             : course.status === "pending"
                             ? "secondary"
+                            : course.status === "closed"
+                            ? "outline"
                             : "destructive"
                         }
                       >
@@ -330,6 +355,8 @@ export const MoocPage = () => {
                           ? "Aprobado"
                           : course.status === "pending"
                           ? "Pendiente"
+                          : course.status === "closed"
+                          ? "Cerrado"
                           : "Rechazado"}
                       </Badge>
                     </div>
@@ -396,6 +423,16 @@ export const MoocPage = () => {
                         >
                           <Award className="h-4 w-4 mr-1" />
                           {course.passport_activity_id ? `${course.passport_points} pts` : "Pasaporte"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant={course.status === "closed" ? "outline" : "outline"}
+                          onClick={() => handleToggleClosed(course)}
+                          title={course.status === "closed" ? "Reabrir curso" : "Cerrar curso"}
+                          className={course.status === "closed" ? "text-green-600 hover:text-green-700" : "text-orange-500 hover:text-orange-600"}
+                        >
+                          {course.status === "closed" ? <Eye className="h-4 w-4 mr-1" /> : <EyeOff className="h-4 w-4 mr-1" />}
+                          {course.status === "closed" ? "Reabrir" : "Cerrar"}
                         </Button>
                         <Button
                           size="sm"
