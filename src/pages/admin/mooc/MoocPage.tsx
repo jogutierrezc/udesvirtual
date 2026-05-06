@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { 
   PlusCircle, 
@@ -18,6 +19,7 @@ import {
   Clock,
   Eye,
   EyeOff,
+  Users,
   Award
 } from "lucide-react";
 import { LinkPassportModal } from "./modals/LinkPassportModal";
@@ -42,8 +44,16 @@ type MoocCourse = {
     full_name: string;
     email: string;
   };
+  assigned_teacher_id?: string | null;
+  assigned_teacher_name?: string | null;
   total_duration?: number;
   lessons_count?: number;
+};
+
+type ProfessorOption = {
+  id: string;
+  full_name: string;
+  email: string;
 };
 
 export const MoocPage = () => {
@@ -56,9 +66,14 @@ export const MoocPage = () => {
   // const [showCourseModal, setShowCourseModal] = useState(false);
   // const [editingCourse, setEditingCourse] = useState<MoocCourse | null>(null);
   const [linkingCourse, setLinkingCourse] = useState<MoocCourse | null>(null);
+  const [professors, setProfessors] = useState<ProfessorOption[]>([]);
+  const [assigningCourse, setAssigningCourse] = useState<MoocCourse | null>(null);
+  const [selectedProfessorId, setSelectedProfessorId] = useState<string>("unassigned");
+  const [savingAssignment, setSavingAssignment] = useState(false);
 
   useEffect(() => {
     loadCourses();
+    loadProfessors();
   }, []);
 
   useEffect(() => {
@@ -84,6 +99,42 @@ export const MoocPage = () => {
 
       console.log("Cursos cargados:", coursesData);
 
+      const courseIds = (coursesData || []).map((course) => course.id);
+      let teacherLinksByCourse = new Map<string, string>();
+
+      if (courseIds.length > 0) {
+        const { data: teacherLinks, error: teacherLinksError } = await supabase
+          .from("mooc_course_teachers")
+          .select("course_id, teacher_id")
+          .in("course_id", courseIds);
+
+        if (teacherLinksError) {
+          console.error("Error loading course teacher links:", teacherLinksError);
+          throw teacherLinksError;
+        }
+
+        teacherLinksByCourse = new Map((teacherLinks || []).map((link) => [link.course_id, link.teacher_id]));
+      }
+
+      const assignedTeacherIds = Array.from(new Set(Array.from(teacherLinksByCourse.values())));
+      let assignedTeacherProfiles = new Map<string, { full_name: string | null; email: string | null }>();
+
+      if (assignedTeacherIds.length > 0) {
+        const { data: assignedProfiles, error: assignedProfilesError } = await supabase
+          .from("profiles")
+          .select("id, full_name, email")
+          .in("id", assignedTeacherIds);
+
+        if (assignedProfilesError) {
+          console.error("Error loading assigned teacher profiles:", assignedProfilesError);
+          throw assignedProfilesError;
+        }
+
+        assignedTeacherProfiles = new Map(
+          (assignedProfiles || []).map((profile) => [profile.id, { full_name: profile.full_name, email: profile.email }])
+        );
+      }
+
       // Obtener información de los creadores y stats de lecciones
       const coursesWithStats = await Promise.all(
         (coursesData || []).map(async (course) => {
@@ -102,10 +153,14 @@ export const MoocPage = () => {
 
           const totalDuration = lessonsData?.reduce((sum, lesson) => sum + lesson.duration_hours, 0) || 0;
           const lessonsCount = lessonsData?.length || 0;
+          const assignedTeacherId = teacherLinksByCourse.get(course.id) || null;
+          const assignedTeacherProfile = assignedTeacherId ? assignedTeacherProfiles.get(assignedTeacherId) : null;
 
           return {
             ...course,
             creator: profileData || { full_name: "Desconocido", email: "" },
+            assigned_teacher_id: assignedTeacherId,
+            assigned_teacher_name: assignedTeacherProfile?.full_name || null,
             total_duration: totalDuration,
             lessons_count: lessonsCount
           };
@@ -123,6 +178,90 @@ export const MoocPage = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadProfessors = async () => {
+    try {
+      const { data: roleRows, error: roleError } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "professor");
+
+      if (roleError) throw roleError;
+
+      const ids = Array.from(new Set((roleRows || []).map((row) => row.user_id)));
+      if (ids.length === 0) {
+        setProfessors([]);
+        return;
+      }
+
+      const { data: profileRows, error: profileError } = await supabase
+        .from("profiles")
+        .select("id, full_name, email")
+        .in("id", ids);
+
+      if (profileError) throw profileError;
+
+      setProfessors(
+        (profileRows || [])
+          .map((profile) => ({
+            id: profile.id,
+            full_name: profile.full_name || profile.email || "Profesor sin nombre",
+            email: profile.email || "",
+          }))
+          .sort((left, right) => left.full_name.localeCompare(right.full_name))
+      );
+    } catch (error: any) {
+      console.error("Error loading professors:", error);
+      toast({ title: "Error", description: "No se pudieron cargar los profesores", variant: "destructive" });
+    }
+  };
+
+  const openAssignProfessor = (course: MoocCourse) => {
+    setAssigningCourse(course);
+    setSelectedProfessorId(course.assigned_teacher_id || "unassigned");
+  };
+
+  const handleAssignProfessor = async () => {
+    if (!assigningCourse) return;
+
+    try {
+      setSavingAssignment(true);
+
+      const { error: deleteError } = await supabase
+        .from("mooc_course_teachers")
+        .delete()
+        .eq("course_id", assigningCourse.id);
+
+      if (deleteError) throw deleteError;
+
+      if (selectedProfessorId !== "unassigned") {
+        const { error: insertError } = await supabase
+          .from("mooc_course_teachers")
+          .insert({
+            course_id: assigningCourse.id,
+            teacher_id: selectedProfessorId,
+          });
+
+        if (insertError) throw insertError;
+      }
+
+      toast({
+        title: "Profesor asignado",
+        description: selectedProfessorId === "unassigned"
+          ? "El curso quedó sin profesor asignado."
+          : "La asignación del curso se actualizó correctamente.",
+      });
+
+      setAssigningCourse(null);
+      setSelectedProfessorId("unassigned");
+      await loadCourses();
+    } catch (error: any) {
+      console.error("Error assigning professor:", error);
+      toast({ title: "Error", description: error.message || "No se pudo asignar el profesor", variant: "destructive" });
+    } finally {
+      setSavingAssignment(false);
     }
   };
 
@@ -391,6 +530,9 @@ export const MoocPage = () => {
                         <p className="text-xs text-muted-foreground">
                           Creado por: {course.creator?.full_name || "Desconocido"}
                         </p>
+                        <p className="text-xs text-muted-foreground">
+                          Profesor asignado: {course.assigned_teacher_name || "Sin asignar"}
+                        </p>
                       </div>
 
                       {/* Acciones */}
@@ -423,6 +565,15 @@ export const MoocPage = () => {
                         >
                           <Award className="h-4 w-4 mr-1" />
                           {course.passport_activity_id ? `${course.passport_points} pts` : "Pasaporte"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => openAssignProfessor(course)}
+                          title="Asignar profesor"
+                        >
+                          <Users className="h-4 w-4 mr-1" />
+                          Asignar
                         </Button>
                         <Button
                           size="sm"
@@ -474,6 +625,46 @@ export const MoocPage = () => {
           onSuccess={loadCourses}
         />
       )}
+      <Dialog open={!!assigningCourse} onOpenChange={(open) => !open && setAssigningCourse(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Asignar profesor al curso</DialogTitle>
+            <DialogDescription>
+              Selecciona el profesor responsable para este curso MOOC sin cambiar el creador original.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Curso</Label>
+              <div className="text-sm font-medium">{assigningCourse?.title}</div>
+            </div>
+            <div className="space-y-2">
+              <Label>Profesor asignado</Label>
+              <Select value={selectedProfessorId} onValueChange={setSelectedProfessorId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona un profesor" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unassigned">Sin asignar</SelectItem>
+                  {professors.map((professor) => (
+                    <SelectItem key={professor.id} value={professor.id}>
+                      {professor.full_name}{professor.email ? ` (${professor.email})` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setAssigningCourse(null)} disabled={savingAssignment}>
+                Cancelar
+              </Button>
+              <Button onClick={handleAssignProfessor} disabled={savingAssignment}>
+                {savingAssignment ? "Guardando..." : "Guardar asignación"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
       {/* Administración de plantillas de certificado */}
       <div className="mt-12">
         <CertificateTemplateAdmin />
