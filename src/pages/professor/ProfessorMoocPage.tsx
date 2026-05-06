@@ -66,17 +66,48 @@ export const ProfessorMoocPage = () => {
     try {
       console.log("Cargando cursos del profesor:", professorId);
 
-      // Cargar cursos creados por el profesor
-      const { data: coursesData, error: coursesError } = await supabase
+      const { data: ownedCourses, error: ownedCoursesError } = await supabase
         .from("mooc_courses")
         .select("*, is_passport_activity, passport_pathway, passport_points, passport_complexity")
         .eq("created_by", professorId)
         .order("created_at", { ascending: false });
 
-      if (coursesError) {
-        console.error("Error loading courses:", coursesError);
-        throw coursesError;
+      if (ownedCoursesError) {
+        console.error("Error loading owned courses:", ownedCoursesError);
+        throw ownedCoursesError;
       }
+
+      const { data: assignedLinks, error: assignedLinksError } = await supabase
+        .from("mooc_course_teachers")
+        .select("course_id")
+        .eq("teacher_id", professorId);
+
+      if (assignedLinksError) {
+        console.error("Error loading assigned course links:", assignedLinksError);
+        throw assignedLinksError;
+      }
+
+      const assignedCourseIds = Array.from(new Set((assignedLinks || []).map((link) => link.course_id)));
+      let assignedCourses: any[] = [];
+
+      if (assignedCourseIds.length > 0) {
+        const { data: assignedCoursesData, error: assignedCoursesError } = await supabase
+          .from("mooc_courses")
+          .select("*, is_passport_activity, passport_pathway, passport_points, passport_complexity")
+          .in("id", assignedCourseIds)
+          .order("created_at", { ascending: false });
+
+        if (assignedCoursesError) {
+          console.error("Error loading assigned courses:", assignedCoursesError);
+          throw assignedCoursesError;
+        }
+
+        assignedCourses = assignedCoursesData || [];
+      }
+
+      const coursesData = Array.from(
+        new Map([...(ownedCourses || []), ...assignedCourses].map((course) => [course.id, course])).values()
+      );
 
       console.log("Cursos del profesor cargados:", coursesData);
 
