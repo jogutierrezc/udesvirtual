@@ -304,31 +304,30 @@ const Professor = () => {
 
       <div className="max-w-5xl mx-auto px-4 py-8">
         <Tabs defaultValue="class" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="class">
+          <TabsList className="flex w-full gap-2 overflow-x-auto rounded-xl p-2 sm:grid sm:grid-cols-5 sm:overflow-visible">
+            <TabsTrigger value="class" className="min-h-12 shrink-0 whitespace-nowrap px-3 py-2 text-center text-xs sm:text-sm">
               <BookOpen className="h-4 w-4 mr-2" />
-              Crear Clase
+              <span>Crear Clase</span>
             </TabsTrigger>
-            <TabsTrigger value="offering">
+            <TabsTrigger value="offering" className="min-h-12 shrink-0 whitespace-nowrap px-3 py-2 text-center text-xs sm:text-sm">
               <PlusCircle className="h-4 w-4 mr-2" />
-              Crear Oferta
+              <span>Crear Oferta</span>
             </TabsTrigger>
-            <TabsTrigger value="teacher">
+            <TabsTrigger value="teacher" className="min-h-12 shrink-0 whitespace-nowrap px-3 py-2 text-center text-xs sm:text-sm">
               <GraduationCap className="h-4 w-4 mr-2" />
-              Perfil Investigador
+              <span>Perfil Investigador</span>
             </TabsTrigger>
-            <TabsTrigger value="mooc">
+            <TabsTrigger value="mooc" className="min-h-12 shrink-0 whitespace-nowrap px-3 py-2 text-center text-xs sm:text-sm">
               <Video className="h-4 w-4 mr-2" />
-              Cursos MOOC
+              <span>Cursos MOOC</span>
             </TabsTrigger>
-            <TabsTrigger value="myclasses">
+            <TabsTrigger value="myclasses" className="min-h-12 shrink-0 whitespace-nowrap px-3 py-2 text-center text-xs sm:text-sm">
               <Package className="h-4 w-4 mr-2" />
-              Mis Clases Aprobadas
+              <span>Mis Clases Aprobadas</span>
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="class">
-          <TabsContent value="myclasses">
+          <TabsContent value="myclasses" className="mt-6 sm:mt-0">
             <Card>
               <CardHeader>
                 <CardTitle>Mis Clases Aprobadas</CardTitle>
@@ -512,6 +511,8 @@ const Professor = () => {
               </CardContent>
             </Card>
           </TabsContent>
+
+          <TabsContent value="class" className="mt-6 sm:mt-0">
             <Card>
               <CardHeader>
                 <CardTitle>Nueva Clase Espejo / MasterClass</CardTitle>
@@ -747,7 +748,7 @@ const Professor = () => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="offering">
+          <TabsContent value="offering" className="mt-6 sm:mt-0">
             <Card>
               <CardHeader>
                 <CardTitle>Crear Nueva Oferta Académica</CardTitle>
@@ -984,7 +985,7 @@ const Professor = () => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="teacher">
+          <TabsContent value="teacher" className="mt-6 sm:mt-0">
             <Card>
               <CardHeader>
                 <CardTitle>Perfil de Docente Investigador</CardTitle>
@@ -1091,7 +1092,7 @@ const Professor = () => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="mooc">
+          <TabsContent value="mooc" className="mt-6 sm:mt-0">
             <ProfessorMoocPage />
           </TabsContent>
         </Tabs>
