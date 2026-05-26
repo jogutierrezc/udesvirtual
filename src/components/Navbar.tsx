@@ -163,7 +163,6 @@ export const Navbar = ({ topOffset = 0 }: { topOffset?: number }) => {
     }
     
     // Navegación para profesores y otros usuarios
-    // Los profesores tienen navegación simplificada: ocultamos Catálogo, Oferta, COIL, MOOC y LIA
     if (user?.role === "professor") {
       return [
         { to: "/", label: "Inicio" },
@@ -173,24 +172,11 @@ export const Navbar = ({ topOffset = 0 }: { topOffset?: number }) => {
       ];
     }
 
-    const base = [
-      { to: "/", label: "Inicio" },
-      { 
-        label: "E-Exchange", 
-        isDropdown: true,
-        children: [
-          { to: "/profesores", label: "Profesores UDES" },
-          { to: "/catalog", label: "Catálogo UDES" },
-          { to: "/professor-offerings", label: "Oferta Virtual" },
-          { to: "/coil-offerings", label: "Proyectos COIL" },
-        ]
-      },
+    // Navegación pública reducida para mostrar solo los enlaces principales solicitados
+    return [
       { to: "/mooc", label: "MOOC" },
-      { to: "/lia", label: "LIA" },
-      { to: "/faq", label: "FAQ" }, // <-- Agregado
+      { to: "/faq", label: "FAQ" },
     ];
-
-    return base;
   }, [user?.role, isUdesEmail]);
 
   const initials = useMemo(() => {
