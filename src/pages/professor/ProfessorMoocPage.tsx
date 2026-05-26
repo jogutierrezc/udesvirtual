@@ -370,16 +370,6 @@ export const ProfessorMoocPage = () => {
     }
   };
 
-  const handleModalClose = () => {
-    setIsModalOpen(false);
-    setEditingCourse(null);
-  };
-
-  const handleSave = () => {
-    loadCourses(userId);
-    handleModalClose();
-  };
-
   const filteredCourses = useMemo(() => {
     return courses.filter((course) => {
       const matchesSearch =

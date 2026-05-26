@@ -63,8 +63,6 @@ export const MoocPage = () => {
   const [filteredCourses, setFilteredCourses] = useState<MoocCourse[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  // const [showCourseModal, setShowCourseModal] = useState(false);
-  // const [editingCourse, setEditingCourse] = useState<MoocCourse | null>(null);
   const [linkingCourse, setLinkingCourse] = useState<MoocCourse | null>(null);
   const [professors, setProfessors] = useState<ProfessorOption[]>([]);
   const [assigningCourse, setAssigningCourse] = useState<MoocCourse | null>(null);
@@ -377,19 +375,40 @@ export const MoocPage = () => {
     }
   };
 
+  const handleCreateCourse = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("No autenticado");
+
+      const { data, error } = await supabase
+        .from("mooc_courses")
+        .insert({
+          title: "Nuevo curso",
+          profession: "",
+          tags: [],
+          objective: "",
+          description: "",
+          status: "pending",
+          created_by: session.user.id,
+        })
+        .select("id")
+        .single();
+
+      if (error) throw error;
+
+      window.location.assign(`/admin/mooc/course/${data.id}/edit`);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo crear el curso",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleEditCourse = (course: MoocCourse) => {
     // Redirigir directamente al editor de curso
     window.location.href = `/admin/mooc/course/${course.id}/edit`;
-  };
-
-  const handleCloseModal = () => {
-    setShowCourseModal(false);
-    setEditingCourse(null);
-  };
-
-  const handleSaveCourse = () => {
-    loadCourses();
-    handleCloseModal();
   };
 
   if (loading) {
@@ -413,7 +432,7 @@ export const MoocPage = () => {
               Administra los cursos virtuales de la plataforma
             </p>
           </div>
-          <Button onClick={() => setShowCourseModal(true)}>
+          <Button onClick={handleCreateCourse}>
             <PlusCircle className="h-4 w-4 mr-2" />
             Crear Curso
           </Button>
