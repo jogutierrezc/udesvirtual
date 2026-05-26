@@ -19,65 +19,69 @@ const QuillEditor = forwardRef<Quill | null, QuillEditorProps>(({ value, default
 
     const [isHtmlMode, setIsHtmlMode] = React.useState(false);
     const [htmlContent, setHtmlContent] = React.useState('');
+    const [fallbackMode, setFallbackMode] = React.useState(false);
 
     useEffect(() => {
         if (!containerRef.current) return;
 
         const container = containerRef.current;
-        const editorContainer = container.appendChild(
-            container.ownerDocument.createElement('div')
-        );
+        try {
+            const editorContainer = container.appendChild(
+                container.ownerDocument.createElement('div')
+            );
 
-        const quill = new Quill(editorContainer, {
-            theme: 'snow',
-            modules: {
-                toolbar: {
-                    container: [
-                        ['bold', 'italic', 'underline', 'strike'],
-                        [{ 'list': 'ordered' }, { 'list': 'bullet' }],
-                        [{ 'script': 'sub' }, { 'script': 'super' }],
-                        [{ 'indent': '-1' }, { 'indent': '+1' }],
-                        [{ 'direction': 'rtl' }],
-                        [{ 'size': ['small', false, 'large', 'huge'] }],
-                        [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
-                        [{ 'color': [] }, { 'background': [] }],
-                        [{ 'font': [] }],
-                        [{ 'align': [] }],
-                        ['clean'],
-                        ['link', 'image', 'video'],
-                        ['table'],
-                        ['code-block'] // Use code-block icon for HTML mode or add custom button
-                    ],
-                    handlers: {
-                        'code-block': () => {
-                            setIsHtmlMode(prev => !prev);
+            const quill = new Quill(editorContainer, {
+                theme: 'snow',
+                modules: {
+                    toolbar: {
+                        container: [
+                            ['bold', 'italic', 'underline', 'strike'],
+                            [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                            [{ 'script': 'sub' }, { 'script': 'super' }],
+                            [{ 'indent': '-1' }, { 'indent': '+1' }],
+                            [{ 'direction': 'rtl' }],
+                            [{ 'size': ['small', false, 'large', 'huge'] }],
+                            [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+                            [{ 'color': [] }, { 'background': [] }],
+                            [{ 'font': [] }],
+                            [{ 'align': [] }],
+                            ['clean'],
+                            ['link', 'image', 'video'],
+                            ['table'],
+                            ['code-block']
+                        ],
+                        handlers: {
+                            'code-block': () => {
+                                setIsHtmlMode(prev => !prev);
+                            }
                         }
-                    }
+                    },
+                    table: true,
                 },
-                table: true, // Enable table module
-            },
-            placeholder: placeholder,
-        });
+                placeholder: placeholder,
+            });
 
-        quillRef.current = quill;
+            quillRef.current = quill;
 
-        // Add custom button icon for HTML mode if needed, or just use code-block
-        // Let's use code-block for now as "Source" toggle
-
-        if (defaultValue) {
-            quill.clipboard.dangerouslyPasteHTML(defaultValue);
-        } else if (value) {
-            quill.clipboard.dangerouslyPasteHTML(value);
-        }
-
-        const handleTextChange = () => {
-            if (onChange) {
-                onChange(quill.getSemanticHTML());
+            if (defaultValue) {
+                quill.clipboard.dangerouslyPasteHTML(defaultValue);
+            } else if (value) {
+                quill.clipboard.dangerouslyPasteHTML(value);
             }
-        };
 
-        quill.on(Quill.events.TEXT_CHANGE, handleTextChange);
-        onTextChangeRef.current = handleTextChange;
+            const handleTextChange = () => {
+                if (onChange) {
+                    onChange(quill.getSemanticHTML());
+                }
+            };
+
+            quill.on(Quill.events.TEXT_CHANGE, handleTextChange);
+            onTextChangeRef.current = handleTextChange;
+        } catch (error) {
+            console.error('Quill initialization failed, switching to fallback editor:', error);
+            setFallbackMode(true);
+            setHtmlContent(defaultValue || value || '');
+        }
 
         return () => {
             quillRef.current = null;
@@ -87,23 +91,25 @@ const QuillEditor = forwardRef<Quill | null, QuillEditorProps>(({ value, default
 
     // Sync value changes from prop if needed (be careful with loops)
     useEffect(() => {
+        if (fallbackMode) return;
         if (quillRef.current && value !== undefined && !isHtmlMode) {
             const currentContent = quillRef.current.getSemanticHTML();
             if (value !== currentContent) {
-                // Only update if significantly different to avoid cursor jumps
-                // Ideally we'd use delta diffing, but for now simple check
-                // This might cause cursor jump if typing fast and parent updates slow
-                // Better to rely on internal state for typing and only use value for initial or external resets
-                // For this use case (lesson editor), we usually just need initial load.
-                // But let's try to be safe.
-                const delta = quillRef.current.clipboard.convert({ html: value });
-                quillRef.current.setContents(delta, 'silent');
+                try {
+                    const delta = quillRef.current.clipboard.convert({ html: value });
+                    quillRef.current.setContents(delta, 'silent');
+                } catch (error) {
+                    console.error('Quill content sync failed, switching to fallback editor:', error);
+                    setFallbackMode(true);
+                    setHtmlContent(value || '');
+                }
             }
         }
-    }, [value, isHtmlMode]);
+    }, [value, isHtmlMode, fallbackMode]);
 
     // Sync HTML content when switching modes
     useEffect(() => {
+        if (fallbackMode) return;
         if (isHtmlMode && quillRef.current) {
             setHtmlContent(quillRef.current.getSemanticHTML());
         } else if (!isHtmlMode && quillRef.current && htmlContent) {
@@ -118,6 +124,19 @@ const QuillEditor = forwardRef<Quill | null, QuillEditorProps>(({ value, default
         setHtmlContent(e.target.value);
         if (onChange) onChange(e.target.value);
     };
+
+    if (fallbackMode) {
+        return (
+            <div className={className}>
+                <textarea
+                    value={htmlContent}
+                    onChange={handleHtmlChange}
+                    placeholder={placeholder}
+                    className="w-full min-h-[300px] p-4 border rounded-md bg-white"
+                />
+            </div>
+        );
+    }
 
     return (
         <div className={className} style={{ position: 'relative' }}>
