@@ -41,16 +41,6 @@ export default function Mooc() {
   const [loading, setLoading] = useState(true);
 
   // Categorías predefinidas
-  const predefinedCategories = [
-    "Negocios y Finanzas",
-    "Ciencia y Tecnología",
-    "Salud y Bienestar",
-    "Ciencias Sociales y Humanidades",
-    "Educación y Desarrollo Profesional",
-    "Arte, Cultura e Idiomas",
-    "Sostenibilidad y Gestión de Riesgos"
-  ];
-
   useEffect(() => {
     loadCourses();
   }, []);
@@ -137,13 +127,6 @@ export default function Mooc() {
   };
 
   // Obtener categorías predefinidas que realmente tienen cursos asociados
-  const availablePredefinedCategories = predefinedCategories.filter((cat) =>
-    courses.some((course) => course.tags?.includes(cat))
-  );
-
-  // Mostrar 'all' más las categorías disponibles
-  const categories = ["all", ...availablePredefinedCategories];
-
   const filteredCourses = courses.filter(course => {
     const matchesCategory = selectedCategory === "all" || course.tags?.includes(selectedCategory);
     return matchesCategory;
@@ -199,7 +182,7 @@ export default function Mooc() {
                     <p className="text-muted-foreground">
                       {courses.length === 0 
                         ? "Aún no hay cursos disponibles. ¡Vuelve pronto!"
-                        : "Intenta con otra categoría"}
+                        : "Intenta más tarde"}
                     </p>
                     {courses.length > 0 && (
                       <Button 
